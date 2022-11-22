@@ -1,4 +1,4 @@
-// Copyright 2022 zGraph Authors. All rights reserved.
+// Copyright 2016 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -8,7 +8,6 @@
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
@@ -37,7 +36,7 @@ func isUserVarChar(ch byte) bool {
 type trieNode struct {
 	childs [256]*trieNode
 	token  int
-	fn     func(s *Lexer) (int, Pos, string)
+	fn     func(s *Scanner) (int, Pos, string)
 }
 
 var ruleTable trieNode
@@ -60,7 +59,7 @@ func initTokenString(str string, tok int) {
 	node.token = tok
 }
 
-func initTokenFunc(str string, fn func(s *Lexer) (int, Pos, string)) {
+func initTokenFunc(str string, fn func(s *Scanner) (int, Pos, string)) {
 	for i := 0; i < len(str); i++ {
 		c := str[i]
 		if ruleTable.childs[c] == nil {
@@ -760,6 +759,9 @@ var tokenMap = map[string]int{
 	"TRUE":                     trueKwd,
 	"TRUNCATE":                 truncate,
 	"TRUE_CARD_COST":           trueCardCost,
+	"TTL":                      ttl,
+	"TTL_ENABLE":               ttlEnable,
+	"NO_TTL":                   nottl,
 	"TYPE":                     tp,
 	"UNBOUNDED":                unbounded,
 	"UNCOMMITTED":              uncommitted,
@@ -875,7 +877,107 @@ var aliases = map[string]string{
 	"SUBSTR":  "SUBSTRING",
 }
 
-func (s *Lexer) isTokenIdentifier(lit string, offset int) int {
+// hintedTokens is a set of tokens which recognizes a hint.
+// According to https://dev.mysql.com/doc/refman/8.0/en/optimizer-hints.html,
+// only SELECT, INSERT, REPLACE, UPDATE and DELETE accept optimizer hints.
+// additionally we support CREATE and PARTITION for hints at table creation.
+var hintedTokens = map[int]struct{}{
+	selectKwd: {},
+	insert:    {},
+	replace:   {},
+	update:    {},
+	deleteKwd: {},
+	create:    {},
+	partition: {},
+}
+
+var hintTokenMap = map[string]int{
+	// MySQL 8.0 hint names
+	"JOIN_FIXED_ORDER":      hintJoinFixedOrder,
+	"JOIN_ORDER":            hintJoinOrder,
+	"JOIN_PREFIX":           hintJoinPrefix,
+	"JOIN_SUFFIX":           hintJoinSuffix,
+	"BKA":                   hintBKA,
+	"NO_BKA":                hintNoBKA,
+	"BNL":                   hintBNL,
+	"NO_BNL":                hintNoBNL,
+	"HASH_JOIN":             hintHashJoin,
+	"HASH_JOIN_BUILD":       hintHashJoinBuild,
+	"HASH_JOIN_PROBE":       hintHashJoinProbe,
+	"NO_HASH_JOIN":          hintNoHashJoin,
+	"MERGE":                 hintMerge,
+	"NO_MERGE":              hintNoMerge,
+	"INDEX_MERGE":           hintIndexMerge,
+	"NO_INDEX_MERGE":        hintNoIndexMerge,
+	"MRR":                   hintMRR,
+	"NO_MRR":                hintNoMRR,
+	"NO_ICP":                hintNoICP,
+	"NO_RANGE_OPTIMIZATION": hintNoRangeOptimization,
+	"SKIP_SCAN":             hintSkipScan,
+	"NO_SKIP_SCAN":          hintNoSkipScan,
+	"SEMIJOIN":              hintSemijoin,
+	"NO_SEMIJOIN":           hintNoSemijoin,
+	"MAX_EXECUTION_TIME":    hintMaxExecutionTime,
+	"SET_VAR":               hintSetVar,
+	"RESOURCE_GROUP":        hintResourceGroup,
+	"QB_NAME":               hintQBName,
+
+	// TiDB hint names
+	"AGG_TO_COP":              hintAggToCop,
+	"LIMIT_TO_COP":            hintLimitToCop,
+	"IGNORE_PLAN_CACHE":       hintIgnorePlanCache,
+	"HASH_AGG":                hintHashAgg,
+	"MPP_1PHASE_AGG":          hintMpp1PhaseAgg,
+	"MPP_2PHASE_AGG":          hintMpp2PhaseAgg,
+	"IGNORE_INDEX":            hintIgnoreIndex,
+	"INL_HASH_JOIN":           hintInlHashJoin,
+	"INL_JOIN":                hintInlJoin,
+	"INL_MERGE_JOIN":          hintInlMergeJoin,
+	"MEMORY_QUOTA":            hintMemoryQuota,
+	"NO_SWAP_JOIN_INPUTS":     hintNoSwapJoinInputs,
+	"QUERY_TYPE":              hintQueryType,
+	"READ_CONSISTENT_REPLICA": hintReadConsistentReplica,
+	"READ_FROM_STORAGE":       hintReadFromStorage,
+	"BROADCAST_JOIN":          hintBCJoin,
+	"SHUFFLE_JOIN":            hintShuffleJoin,
+	"MERGE_JOIN":              hintSMJoin,
+	"STREAM_AGG":              hintStreamAgg,
+	"SWAP_JOIN_INPUTS":        hintSwapJoinInputs,
+	"USE_INDEX_MERGE":         hintUseIndexMerge,
+	"USE_INDEX":               hintUseIndex,
+	"USE_PLAN_CACHE":          hintUsePlanCache,
+	"USE_TOJA":                hintUseToja,
+	"TIME_RANGE":              hintTimeRange,
+	"USE_CASCADES":            hintUseCascades,
+	"NTH_PLAN":                hintNthPlan,
+	"FORCE_INDEX":             hintForceIndex,
+	"STRAIGHT_JOIN":           hintStraightJoin,
+	"LEADING":                 hintLeading,
+	"SEMI_JOIN_REWRITE":       hintSemiJoinRewrite,
+	"NO_DECORRELATE":          hintNoDecorrelate,
+
+	// TiDB hint aliases
+	"TIDB_HJ":   hintHashJoin,
+	"TIDB_INLJ": hintInlJoin,
+	"TIDB_SMJ":  hintSMJoin,
+
+	// Other keywords
+	"OLAP":            hintOLAP,
+	"OLTP":            hintOLTP,
+	"TIKV":            hintTiKV,
+	"TIFLASH":         hintTiFlash,
+	"PARTITION":       hintPartition,
+	"FALSE":           hintFalse,
+	"TRUE":            hintTrue,
+	"MB":              hintMB,
+	"GB":              hintGB,
+	"DUPSWEEDOUT":     hintDupsWeedOut,
+	"FIRSTMATCH":      hintFirstMatch,
+	"LOOSESCAN":       hintLooseScan,
+	"MATERIALIZATION": hintMaterialization,
+}
+
+func (s *Scanner) isTokenIdentifier(lit string, offset int) int {
 	// An identifier before or after '.' means it is part of a qualified identifier.
 	// We do not parse it as keyword.
 	if s.r.peek() == '.' {

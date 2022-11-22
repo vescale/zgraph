@@ -21,4 +21,4 @@ parser: goyacc
 	@tools/bin/goyacc -o parser/parser.go parser/parser.y
 
 goyacc:
-	test -e tools/bin/goyacc || (cd tools && $(GO) get modernc.org/goyacc && $(GO) build -o bin/goyacc modernc.org/goyacc)
+	test -e tools/bin/goyacc || ($(GO) build -o tools/bin/goyacc ./parser/goyacc/)

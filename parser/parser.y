@@ -51,7 +51,6 @@ import (
 
 	/*yy:token "%c"     */
 	identifier "identifier"
-	asof       "AS OF"
 
 	/*yy:token "_%c"    */
 	underscoreCS "UNDERSCORE_CHARSET"
@@ -61,6 +60,115 @@ import (
 	singleAtIdentifier "identifier with single leading at"
 	doubleAtIdentifier "identifier with double leading at"
 	invalid            "a special token never used by parser, used by lexer to indicate error"
+	andand             "&&"
+	pipes              "||"
+
+	/* Reserved keywords */
+	as                    "AS"
+	asc                   "ASC"
+	bigIntType            "BIGINT"
+	by                    "BY"
+	character             "CHARACTER"
+	charType              "CHAR"
+	create                "CREATE"
+	currentTs             "CURRENT_TIMESTAMP"
+	database              "DATABASE"
+	decimalType           "DECIMAL"
+	defaultKwd            "DEFAULT"
+	deleteKwd             "DELETE"
+	desc                  "DESC"
+	destination           "DESTINATION"
+	doubleType            "DOUBLE"
+	drop                  "DROP"
+	edge                  "EDGE"
+	exists                "EXISTS"
+	falseKwd              "FALSE"
+	floatType             "FLOAT"
+	from                  "FROM"
+	group                 "GROUP"
+	having                "HAVING"
+	ifKwd                 "IF"
+	index                 "INDEX"
+	insert                "INSERT"
+	int1Type              "INT1"
+	int2Type              "INT2"
+	int3Type              "INT3"
+	int4Type              "INT4"
+	int8Type              "INT8"
+	integerType           "INTEGER"
+	into                  "INTO"
+	intType               "INT"
+	is                    "IS"
+	key                   "KEY"
+	limit                 "LIMIT"
+	localTime             "LOCALTIME"
+	localTs               "LOCALTIMESTAMP"
+	longtextType          "LONGTEXT"
+	match                 "MATCH"
+	mediumIntType         "MEDIUMINT"
+	mediumtextType        "MEDIUMTEXT"
+	not                   "NOT"
+	null                  "NULL"
+	numericType           "NUMERIC"
+	on                    "ON"
+	order                 "ORDER"
+	precisionType         "PRECISION"
+	primary               "PRIMARY"
+	realType              "REAL"
+	references            "REFERENCES"
+	selectKwd             "SELECT"
+	set                   "SET"
+	smallIntType          "SMALLINT"
+	source                "SOURCE"
+	tableKwd              "TABLE"
+	tinyIntType           "TINYINT"
+	tinytextType          "TINYTEXT"
+	trueKwd               "TRUE"
+	unique                "UNIQUE"
+	unsigned              "UNSIGNED"
+	update                "UPDATE"
+	use                   "USE"
+	values                "VALUES"
+	varcharacter          "VARCHARACTER"
+	varcharType           "VARCHAR"
+	varying               "VARYING"
+	vertex                "VERTEX"
+	where                 "WHERE"
+	xor                   "XOR"
+	zerofill              "ZEROFILL"
+	or                    "OR"
+	and                   "AND"
+
+	/* Unreserved keywords */
+	begin                 "BEGIN"
+	commit                "COMMIT"
+	comment               "COMMENT"
+	booleanType           "BOOLEAN"
+	boolType              "BOOL"
+	explain               "EXPLAIN"
+	fixed                 "FIXED"
+	bitType               "BIT"
+	national              "NATIONAL"
+	ncharType             "NCHAR"
+	yearType              "YEAR"
+	textType              "TEXT"
+	data                  "DATA"
+	datetimeType          "DATETIME"
+	dateType              "DATE"
+	day                   "DAY"
+	timestampType         "TIMESTAMP"
+	timeType              "TIME"
+	signed                "SIGNED"
+	value                 "VALUE"
+	duplicate             "DUPLICATE"
+	rollback              "ROLLBACK"
+	offset                "OFFSET"
+	autoIncrement         "AUTO_INCREMENT"
+	visible               "VISIBLE"
+	invisible             "INVISIBLE"
+	nvarcharType          "NVARCHAR"
+	sqlTsiYear            "SQL_TSI_YEAR"
+	pipesAsOr
 
 %token	<item>
 
@@ -94,12 +202,20 @@ import (
 
 %token not2
 %type	<expr>
-	Expression                 "expression"
+	Expression                      "expression"
+	ExprOrDefault                   "expression or default"
+	Literal                         "literal value"
+	SubSelect                       "Sub Select"
+	StringLiteral                   "text literal"
+	SignedLiteral                   "Literal or NumLiteral with sign"
+	DefaultValueExpr                "DefaultValueExpr(Now or Signed Literal)"
+	NowSymOptionFraction            "NowSym with optional fraction part"
+	NowSymOptionFractionParentheses "NowSym with optional fraction part within potential parentheses"
 
 %type	<statement>
 	EmptyStmt                  "Empty statement"
 	BeginStmt                  "BEGIN statement"
-	CommitStmt                 "BEGIN statement"
+	CommitStmt                 "COMMIT statement"
 	CreateDatabaseStmt         "Create graph databases ddl statement"
 	CreateTableStmt            "Create vertex/edge tables ddl statement"
 	DeleteStmt                 "Delete vertices/edges statement"
@@ -109,14 +225,86 @@ import (
 	InsertStmt                 "Insert vertices/edges statement"
 	RollbackStmt               "ROLLBACK statement"
 	SelectStmt                 "Select statement"
+	Statement                  "Statement"
 	UpdateStmt                 "Update vertices/edges statement"
 	UseStmt                    "USE statement"
 
 %type	<ident>
 	Identifier                 "identifier or unreserved keyword"
+	FieldAsNameOpt                  "Field alias name opt"
+
+%type   <item>
+	Assignment                             "assignment"
+	AssignmentList                         "assignment list"
+	AssignmentListOpt                      "assignment list opt"
+	ColumnDef                              "table column definition"
+	ColumnName                             "column name"
+	ColumnList                             "column list"
+	ColumnNameListOpt                      "column name list opt"
+	ColumnSetValue                         "insert statement set value by column name"
+	ColumnSetValueList                     "insert statement set value by column name list"
+	ColumnOption                           "column definition option"
+	ColumnOptionList                       "column definition option list"
+	ColumnOptionListOpt                    "optional column definition option list"
+	Constraint                             "table constraint"
+	Field                                  "field expression"
+	FieldList                              "field expression list"
+	IfExists                               "If Exists"
+	IfNotExists                            "If Not Exists"
+	HavingClauseOpt                        "HAVING clause"
+	IndexInvisible                         "index visible/invisible"
+	IndexOptionList                        "Index Option List or empty"
+	IndexName                              "index name"
+	InsertValues                           "Rest part of INSERT/REPLACE INTO statement"
+	LimitOption                            "Limit option could be integer or parameter marker."
+	NumLiteral                             "Num/Int/Float/Decimal Literal"
+	OnDuplicateKeyUpdate                   "ON DUPLICATE KEY UPDATE value list"
+	Order                                  "Ordering keyword: ASC or DESC"
+	ByItem                                 "BY item"
+	ByList                                 "BY list"
+	RowValue                               "Row value"
+	SelectFieldList                       "SELECT statement field list"
+	LimitClauseOpt                     "SELECT statement optional LIMIT clause"
+	StatementList                          "statement list"
+	StringList                             "string list"
+	TableAsName                            "table alias name"
+	TableAsNameOpt                         "table alias name optional"
+	TableElement                           "table definition element"
+	TableElementList                       "table definition element list"
+	TableElementListOpt                    "table definition element list optional"
+	TableName                              "Table name"
+	TextString                             "text string item"
+	TextStringList                         "text string list"
+	Values                                 "values"
+	ValuesList                             "values list"
+	ValuesOpt                              "values optional"
+	WhereClauseOpt                         "Optional WHERE clause"
+	Type                                   "Types"
+	NumericType                            "Numeric types"
+	IntegerType                            "Integer Types types"
+	BooleanType                            "Boolean Types types"
+	FixedPointType                         "Exact value types"
+	FloatingPointType                      "Approximate value types"
+	BitValueType                           "bit value types"
+	StringType                             "String types"
+	TextType                               "Text types"
+	DateAndTimeType                        "Date and Time types"
+	OptFieldLen                            "Field length or empty"
+	FieldLen                               "Field length"
+	FieldOpts                              "Field type definition option list"
+	FieldOpt                               "Field type definition option"
+	FloatOpt                               "Floating-point type option"
+	Precision                              "Floating-point precision option"
+	NUM                                    "A number"
+	LengthNum                              "Field length num(uint64)"
 
 %precedence empty
-%precedence lowerThanRemove
+%precedence lowerThanStringLitToken
+%precedence insertValues
+%precedence lowerThanKey
+
+%left pipes or pipesAsOr
+%left '*' '/' '%' div mod
 
 %start	Entry
 
@@ -310,6 +498,18 @@ ColumnList:
 |	ColumnList ',' Identifier
 	{}
 
+ColumnNameList:
+	ColumnName
+	{}
+|	ColumnNameList ',' ColumnName
+	{}
+
+ColumnNameListOpt:
+	/* EMPTY */
+	{}
+|	ColumnNameList
+	{}
+
 KeyOrIndex:
 	"KEY"
 |	"INDEX"
@@ -327,6 +527,16 @@ IndexOptionList:
 	{}
 |	"COMMENT" stringLit
 	{}
+
+IndexInvisible:
+	"VISIBLE"
+	{
+		$$ = ast.IndexVisibilityVisible
+	}
+|	"INVISIBLE"
+	{
+		$$ = ast.IndexVisibilityInvisible
+	}
 
 /*************************************Type Begin***************************************/
 Type:
@@ -375,11 +585,6 @@ BooleanType:
 	{}
 |	"BOOLEAN"
 	{}
-
-OptInteger:
-	{}
-|	"INTEGER"
-|	"INT"
 
 FixedPointType:
 	"DECIMAL"
@@ -522,10 +727,6 @@ TextStringList:
 NUM:
 	intLit
 
-StringName:
-	stringLit
-|	Identifier
-
 DeleteStmt:
 	"DELETE" "FROM" TableName TableAsNameOpt WhereClauseOpt OrderByClauseOpt LimitClauseOpt
 	{}
@@ -549,15 +750,19 @@ TableAsName:
 
 DropDatabaseStmt:
 	"DROP" "DATABASE" IfExists DatabaseName
+	{}
 
 DropTableStmt:
 	"DROP" "TABLE" IfExists TableName
+	{}
 
 ExplainStmt:
 	"EXPLAIN" SelectStmt
+	{}
 
 InsertStmt:
 	"INSERT" IntoOpt TableName InsertValues OnDuplicateKeyUpdate
+	{}
 
 IntoOpt:
 	{}
@@ -603,13 +808,9 @@ ValuesOpt:
 
 Values:
 	Values ',' ExprOrDefault
-	{
-		$$ = append($1.([]ast.ExprNode), $3)
-	}
+	{}
 |	ExprOrDefault
-	{
-		$$ = []ast.ExprNode{$1}
-	}
+	{}
 
 ExprOrDefault:
 	Expression
@@ -714,6 +915,7 @@ FieldAsNameOpt:
 		$$ = ""
 	}
 |	FieldAsName
+	{}
 
 FieldAsName:
 	Identifier
@@ -734,6 +936,14 @@ Expression:
 	{}
 |	"NOT" Expression %prec not
 	{}
+
+logOr:
+	pipesAsOr
+|	"OR"
+
+logAnd:
+	"&&"
+|	"AND"
 
 MatchClauseList:
 	MatchClause
@@ -758,7 +968,7 @@ MatchClause:
 	"MATCH" GraphPattern OnClauseOpt RowsPerMatchOpt
 	{}
 
-GraphPathPattern:
+GraphPattern:
 	'(' PathPatternList ')'
 	{}
 
@@ -909,6 +1119,15 @@ UpdateStmt:
 UseStmt:
 	"USE" DatabaseName
 	{}
+
+IfExists:
+	{
+		$$ = false
+	}
+|	"IF" "EXISTS"
+	{
+		$$ = true
+	}
 
 IfNotExists:
 	{
