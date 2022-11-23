@@ -169,6 +169,7 @@ import (
 	nvarcharType          "NVARCHAR"
 	sqlTsiYear            "SQL_TSI_YEAR"
 	pipesAsOr
+	graph                 "GRAPH"
 
 %token	<item>
 
@@ -199,6 +200,7 @@ import (
 	nulleq       "<=>"
 	paramMarker  "?"
 	rsh          ">>"
+	outgoing     "-]"
 
 %token not2
 %type	<expr>
@@ -231,7 +233,8 @@ import (
 
 %type	<ident>
 	Identifier                 "identifier or unreserved keyword"
-	FieldAsNameOpt                  "Field alias name opt"
+	FieldAsNameOpt             "Field alias name opt"
+	UnreservedKeywords         "Unreserved keywords"
 
 %type   <item>
 	Assignment                             "assignment"
@@ -298,13 +301,30 @@ import (
 	NUM                                    "A number"
 	LengthNum                              "Field length num(uint64)"
 
+
 %precedence empty
+%precedence value
 %precedence lowerThanStringLitToken
 %precedence insertValues
 %precedence lowerThanKey
+%precedence key
 
+%right '('
+%left ')'
+%right assignmentEq
 %left pipes or pipesAsOr
+%left xor
+%left andand and
+%left between
+%left '|'
+%left '&'
+%left rsh lsh
+%left '-' '+'
 %left '*' '/' '%' div mod
+%left '^'
+%left '~' neg
+%right not
+%precedence ','
 
 %start	Entry
 
@@ -350,7 +370,7 @@ CommitStmt:
 	{}
 
 CreateDatabaseStmt:
-	"CREATE" "DATABASE" IfNotExists DatabaseName
+	"CREATE" "GRAPH" "DATABASE" IfNotExists DatabaseName
 	{}
 
 CreateTableStmt:
@@ -965,11 +985,7 @@ MatchClauseList:
  - AllPathPattern
  ********************************************************/
 MatchClause:
-	"MATCH" GraphPattern OnClauseOpt RowsPerMatchOpt
-	{}
-
-GraphPattern:
-	'(' PathPatternList ')'
+	"MATCH" PathPatternList OnClauseOpt RowsPerMatchOpt
 	{}
 
 PathPatternList:
@@ -1003,8 +1019,8 @@ EdgePattern:
 	{}
 
 OutgoingEdgePattern:
-	'->'
-|	'-[' VariableSpecification ']->'
+	jss
+|	outgoing VariableSpecification ']->'
 
 IncomingEdgePattern:
 	'<-'
@@ -1042,6 +1058,7 @@ Label:
 	Identifier
 
 OnClauseOpt:
+	%prec empty
 	{}
 |	DatabaseName
 	{}
@@ -1142,20 +1159,18 @@ DatabaseName:
 	Identifier
 
 TableName:
+	Identifier
 	{}
-|	Identifier
+|	Identifier '.' Identifier
 	{}
 
 ColumnName:
 	Identifier
-	{
-	}
+	{}
 |	Identifier '.' Identifier
-	{
-	}
+	{}
 |	Identifier '.' Identifier '.' Identifier
-	{
-	}
+	{}
 
 IndexName:
 	{}
@@ -1167,4 +1182,37 @@ VariableName:
 
 Identifier:
 	identifier
+|	UnreservedKeywords
+
+UnreservedKeywords:
+	"BEGIN"
+|	"COMMIT"
+|	"COMMENT"
+|	"BOOLEAN"
+|	"BOOL"
+|	"EXPLAIN"
+|	"FIXED"
+|	"BIT"
+|	"NATIONAL"
+|	"NCHAR"
+|	"YEAR"
+|	"TEXT"
+|	"DATA"
+|	"DATETIME"
+|	"DATE"
+|	"DAY"
+|	"TIMESTAMP"
+|	"TIME"
+|	"SIGNED"
+|	"VALUE"
+|	"DUPLICATE"
+|	"ROLLBACK"
+|	"OFFSET"
+|	"AUTO_INCREMENT"
+|	"VISIBLE"
+|	"INVISIBLE"
+|	"NVARCHAR"
+|	"SQL_TSI_YEAR"
+|	"GRAPH"
+
 %%
