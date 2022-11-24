@@ -52,9 +52,6 @@ import (
 	/*yy:token "%c"     */
 	identifier "identifier"
 
-	/*yy:token "_%c"    */
-	underscoreCS "UNDERSCORE_CHARSET"
-
 	/*yy:token "\"%c\"" */
 	stringLit          "string literal"
 	singleAtIdentifier "identifier with single leading at"
@@ -68,15 +65,10 @@ import (
 	asc                   "ASC"
 	bigIntType            "BIGINT"
 	by                    "BY"
-	character             "CHARACTER"
-	charType              "CHAR"
 	create                "CREATE"
-	currentTs             "CURRENT_TIMESTAMP"
-	decimalType           "DECIMAL"
 	defaultKwd            "DEFAULT"
 	deleteKwd             "DELETE"
 	desc                  "DESC"
-	destination           "DESTINATION"
 	doubleType            "DOUBLE"
 	drop                  "DROP"
 	edge                  "EDGE"
@@ -89,51 +81,27 @@ import (
 	ifKwd                 "IF"
 	index                 "INDEX"
 	insert                "INSERT"
-	int1Type              "INT1"
-	int2Type              "INT2"
-	int3Type              "INT3"
-	int4Type              "INT4"
-	int8Type              "INT8"
 	integerType           "INTEGER"
 	into                  "INTO"
 	intType               "INT"
 	is                    "IS"
-	key                   "KEY"
 	limit                 "LIMIT"
-	localTime             "LOCALTIME"
-	localTs               "LOCALTIMESTAMP"
-	longtextType          "LONGTEXT"
 	match                 "MATCH"
-	mediumIntType         "MEDIUMINT"
-	mediumtextType        "MEDIUMTEXT"
 	not                   "NOT"
 	null                  "NULL"
-	numericType           "NUMERIC"
 	on                    "ON"
 	order                 "ORDER"
 	precisionType         "PRECISION"
 	primary               "PRIMARY"
-	realType              "REAL"
-	references            "REFERENCES"
 	selectKwd             "SELECT"
 	set                   "SET"
-	smallIntType          "SMALLINT"
-	source                "SOURCE"
-	tinyIntType           "TINYINT"
-	tinytextType          "TINYTEXT"
 	trueKwd               "TRUE"
 	unique                "UNIQUE"
-	unsigned              "UNSIGNED"
 	update                "UPDATE"
 	use                   "USE"
-	values                "VALUES"
-	varcharacter          "VARCHARACTER"
-	varcharType           "VARCHAR"
-	varying               "VARYING"
 	vertex                "VERTEX"
 	where                 "WHERE"
 	xor                   "XOR"
-	zerofill              "ZEROFILL"
 	or                    "OR"
 	and                   "AND"
 	between               "BETWEEN"
@@ -148,7 +116,6 @@ import (
 	/* Unreserved keywords */
 	begin                 "BEGIN"
 	commit                "COMMIT"
-	comment               "COMMENT"
 	booleanType           "BOOLEAN"
 	explain               "EXPLAIN"
 	yearType              "YEAR"
@@ -212,10 +179,10 @@ import (
 %token	<item>
 
 	/*yy:token "1.%d"   */
-	decLit "decimal literal"
+	decLit       "decimal literal"
 
 	/*yy:token "%d"     */
-	intLit "integer literal"
+	intLit       "integer literal"
 
 	andnot       "&^"
 	assignmentEq ":="
@@ -241,104 +208,102 @@ import (
 	sRightArrow  "/->"
 	allProp      ".*"
 
-%token not2
 %type	<expr>
-	ValueExpression                 "expression"
-	Literal                         "literal value"
-	SubSelect                       "Sub Select"
-	StringLiteral                   "text literal"
+	Aggregation
+	ArithmeticExpression
+	BindVariable
+	BracketedValueExpression
+	CaseExpression
+	CastSpecification
+	CharacterSubstring
+	ExistsPredicate
+	ExtractFunction
+	FunctionInvocation
+	InPredicate
+	IsNotNullPredicate
+	IsNullPredicate
+	Literal
+	LogicalExpression
+	NotInPredicate
+	PropertyAccess
+	RelationalExpression
+	ScalarSubquery
+	StringConcat
+	StringLiteral
+	SubSelect
+	ValueExpression
 	VariableReference
-        PropertyAccess
-        BindVariable
-        ArithmeticExpression
-        RelationalExpression
-        LogicalExpression
-        StringConcat
-        BracketedValueExpression
-        FunctionInvocation
-        CharacterSubstring
-        Aggregation
-        ExtractFunction
-        IsNullPredicate
-        IsNotNullPredicate
-        CastSpecification
-        CaseExpression
-        InPredicate
-        NotInPredicate
-        ExistsPredicate
-        ScalarSubquery
 
 %type	<statement>
-	EmptyStmt                  "Empty statement"
-	BeginStmt                  "BEGIN statement"
-	CommitStmt                 "COMMIT statement"
-	CreateGraphStmt            "Create graph ddl statement"
-	CreateIndexStmt            "Create index ddl statement"
-	DeleteStmt                 "Delete vertices/edges statement"
-	DropGraphStmt              "Drop graph ddl statement"
-	DropIndexStmt              "Drop index ddl statement"
-	ExplainStmt                "EXPLAIN statement"
-	InsertStmt                 "Insert vertices/edges statement"
-	RollbackStmt               "ROLLBACK statement"
-	SelectStmt                 "Select statement"
-	Statement                  "Statement"
-	UpdateStmt                 "Update vertices/edges statement"
-	UseStmt                    "USE statement"
+	BeginStmt
+	CommitStmt
+	CreateGraphStmt
+	CreateIndexStmt
+	DeleteStmt
+	DropGraphStmt
+	DropIndexStmt
+	EmptyStmt
+	ExplainStmt
+	InsertStmt
+	RollbackStmt
+	SelectStmt
+	Statement
+	UpdateStmt
+	UseStmt
 
 %type	<ident>
-	Identifier                 "identifier or unreserved keyword"
-	FieldAsNameOpt             "Field alias name opt"
-	UnreservedKeywords         "Unreserved keywords"
-	GraphName                  "Graph name"
-	LabelName                  "Label name"
-	VariableName               "Variable name"
+	FieldAsNameOpt
+	GraphName
+	Identifier
+	LabelName
+	VariableName
 
 %type   <item>
-	Assignment                             "assignment"
-	PropertyName                             "column name"
-	Field                                  "field expression"
-	IfExists                               "If Exists"
-	IfNotExists                            "If Not Exists"
-	HavingClauseOpt                        "HAVING clause"
-	IndexName                              "index name"
-	LimitOption                            "Limit option could be integer or parameter marker."
-	NumericLiteral                             "Num/Int/Float/Decimal Literal"
-	Order                                  "Ordering keyword: ASC or DESC"
-	ByItem                                 "BY item"
-	ByList                                 "BY list"
-	SelectElementList                       "SELECT statement field list"
-	LimitClauseOpt                     "SELECT statement optional LIMIT clause"
-	StatementList                          "statement list"
-	TableAsName                            "table alias name"
-	TableAsNameOpt                         "table alias name optional"
-	WhereClauseOpt                         "Optional WHERE clause"
-	LengthNum                              "Field length num(uint64)"
-	MatchClause                            "Match clause"
-	MatchClauseList                        "Match clause list"
-	GraphOnClause                          "Graph ON Clause"
-	GraphOnClauseOpt                       "Graph ON Clause optional"
-	GraphPattern                           "Graph pattern"
-	PathPattern                            "Path pattern"
-	PathPatternList                        "Path pattern list"
-	SimplePathPattern                      "Simple path pattern"
-	VertexPattern                          "Vertex pattern"
-	VertexPatternOpt                       "Vertex pattern optional"
-	ReachabilityPathExpr                   "Reachability path expression"
-	EdgePattern                            "Edge pattern"
-	VariableLengthPathPattern              "Variable length path pattern"
-	QuantifiedPathExpr                     "Quantified path expression"
-	LabelPredicate                         "Label predicate"
-	LabelPredicateOpt                      "Label predicate optional"
-	PatternQuantifier                      "Pattern quantifier"
-	LabelNameList                          "Label name list"
-	PatternQuantifierOpt                   "Pattern quantifier optional"
-	VariableSpec                           "Variable specification"
-	VariableNameOpt                        "Variable name optional"
-	CostClause                             "Cost clause optional"
-	CostClauseOpt                          "Cost clause"
-	PathPatternMacro                       "Path pattern macro"
-	PathPatternMacroList                   "Path pattern macro list"
-	IndexKeyTypeOpt                        "Optional index key type"
+	Assignment
+	ByItem
+	ByList
+	CostClause
+	CostClauseOpt
+	EdgePattern
+	Field
+	GraphOnClause
+	GraphOnClauseOpt
+	GraphPattern
+	HavingClauseOpt
+	IfExists
+	IfNotExists
+	IndexKeyTypeOpt
+	IndexName
+	LabelNameList
+	LabelPredicate
+	LabelPredicateOpt
+	LengthNum
+	LimitClauseOpt
+	LimitOption
+	MatchClause
+	MatchClauseList
+	NumericLiteral
+	Order
+	PathPattern
+	PathPatternList
+	PathPatternMacro
+	PathPatternMacroList
+	PatternQuantifier
+	PatternQuantifierOpt
+	PropertyName
+	QuantifiedPathExpr
+	ReachabilityPathExpr
+	SelectElementList
+	SimplePathPattern
+	StatementList
+	TableAsName
+	TableAsNameOpt
+	VariableLengthPathPattern
+	VariableNameOpt
+	VariableSpec
+	VertexPattern
+	VertexPatternOpt
+	WhereClauseOpt
 
 %precedence empty
 %precedence stringLiteral
@@ -1462,24 +1427,11 @@ VariableName:
 
 Identifier:
 	identifier
-|	UnreservedKeywords
 
 PropertyNameList:
 	PropertyName
 	{}
 |	PropertyNameList ',' PropertyName
 	{}
-
-UnreservedKeywords:
-	"BEGIN"
-|	"COMMIT"
-|	"COMMENT"
-|	"BOOLEAN"
-|	"EXPLAIN"
-|	"YEAR"
-|	"DAY"
-|	"ROLLBACK"
-|	"OFFSET"
-|	"GRAPH"
 
 %%
