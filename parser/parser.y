@@ -72,7 +72,6 @@ import (
 	charType              "CHAR"
 	create                "CREATE"
 	currentTs             "CURRENT_TIMESTAMP"
-	database              "DATABASE"
 	decimalType           "DECIMAL"
 	defaultKwd            "DEFAULT"
 	deleteKwd             "DELETE"
@@ -120,7 +119,6 @@ import (
 	set                   "SET"
 	smallIntType          "SMALLINT"
 	source                "SOURCE"
-	tableKwd              "TABLE"
 	tinyIntType           "TINYINT"
 	tinytextType          "TINYTEXT"
 	trueKwd               "TRUE"
@@ -138,36 +136,28 @@ import (
 	zerofill              "ZEROFILL"
 	or                    "OR"
 	and                   "AND"
+	between               "BETWEEN"
+	labels                "LABELS"
+	properties            "PROPERTIES"
+        case                  "CASE"
+        end                   "END"
+        then                  "THEN"
+        when                  "WHEN"
+        else                  "ELSE"
 
 	/* Unreserved keywords */
 	begin                 "BEGIN"
 	commit                "COMMIT"
 	comment               "COMMENT"
 	booleanType           "BOOLEAN"
-	boolType              "BOOL"
 	explain               "EXPLAIN"
-	fixed                 "FIXED"
-	bitType               "BIT"
-	national              "NATIONAL"
-	ncharType             "NCHAR"
 	yearType              "YEAR"
-	textType              "TEXT"
-	data                  "DATA"
-	datetimeType          "DATETIME"
 	dateType              "DATE"
 	day                   "DAY"
 	timestampType         "TIMESTAMP"
 	timeType              "TIME"
-	signed                "SIGNED"
-	value                 "VALUE"
-	duplicate             "DUPLICATE"
 	rollback              "ROLLBACK"
 	offset                "OFFSET"
-	autoIncrement         "AUTO_INCREMENT"
-	visible               "VISIBLE"
-	invisible             "INVISIBLE"
-	nvarcharType          "NVARCHAR"
-	sqlTsiYear            "SQL_TSI_YEAR"
 	pipesAsOr
 	graph                 "GRAPH"
 	all                   "ALL"
@@ -177,11 +167,49 @@ import (
 	top                   "TOP"
 	cost                  "COST"
 	path                  "PATH"
+	interval              "INTERVAL"
+        hour                  "HOUR"
+        minute                "MINUTE"
+        month                 "MONTH"
+        second                "SECOND"
+        substring             "SUBSTRING"
+        for                   "FOR"
+        array_agg             "ARRAY_AGG"
+        avg                   "AVG"
+        count                 "COUNT"
+        listagg               "LISTAGG"
+        max                   "MAX"
+        min                   "MIN"
+        sum                   "SUM"
+        distinct              "DISTINCT"
+        extract               "EXTRACT"
+        timezone_hour         "TIMEZONE_HOUR"
+        timezone_minute       "TIMEZONE_MINUTE"
+        cast                  "CAST"
+        long                  "LONG"
+        string                "STRING"
+        with                  "WITH"
+        zone                  "ZONE"
+        in                    "IN"
+	prefix                "PREFIX"
+
+	/* Functions */
+	lower                 "LOWER"
+	uppper                "UPPER"
+	in_degree             "IN_DEGREE"
+	java_regexp_like      "JAVA_REGEXP_LIKE"
+	label                 "LABEL"
+	match_number          "MATCH_NUMBER"
+	out_degree            "OUT_DEGREE"
+	abs                   "ABS"
+	ceil                  "CEIL"
+	ceiling               "CEILING"
+	element_number        "ELEMENT_NUMBER"
+	floor                 "FLOOR"
+	has_label             "HAS_LABEL"
+	id                    "ID"
 
 %token	<item>
-
-	/*yy:token "1.%d"   */
-	floatLit "floating-point literal"
 
 	/*yy:token "1.%d"   */
 	decLit "decimal literal"
@@ -189,11 +217,6 @@ import (
 	/*yy:token "%d"     */
 	intLit "integer literal"
 
-	/*yy:token "%x"     */
-	hexLit "hexadecimal literal"
-
-	/*yy:token "%b"     */
-	bitLit       "bit literal"
 	andnot       "&^"
 	assignmentEq ":="
 	eq           "="
@@ -216,28 +239,44 @@ import (
 	bRightArrow  "]->"
 	sLeftArrow   "<-/"
 	sRightArrow  "/->"
+	allProp      ".*"
 
 %token not2
 %type	<expr>
-	Expression                      "expression"
-	ExprOrDefault                   "expression or default"
+	ValueExpression                 "expression"
 	Literal                         "literal value"
 	SubSelect                       "Sub Select"
 	StringLiteral                   "text literal"
-	SignedLiteral                   "Literal or NumLiteral with sign"
-	DefaultValueExpr                "DefaultValueExpr(Now or Signed Literal)"
-	NowSymOptionFraction            "NowSym with optional fraction part"
-	NowSymOptionFractionParentheses "NowSym with optional fraction part within potential parentheses"
+	VariableReference
+        PropertyAccess
+        BindVariable
+        ArithmeticExpression
+        RelationalExpression
+        LogicalExpression
+        StringConcat
+        BracketedValueExpression
+        FunctionInvocation
+        CharacterSubstring
+        Aggregation
+        ExtractFunction
+        IsNullPredicate
+        IsNotNullPredicate
+        CastSpecification
+        CaseExpression
+        InPredicate
+        NotInPredicate
+        ExistsPredicate
+        ScalarSubquery
 
 %type	<statement>
 	EmptyStmt                  "Empty statement"
 	BeginStmt                  "BEGIN statement"
 	CommitStmt                 "COMMIT statement"
-	CreateDatabaseStmt         "Create graph databases ddl statement"
-	CreateTableStmt            "Create vertex/edge tables ddl statement"
+	CreateGraphStmt            "Create graph ddl statement"
+	CreateIndexStmt            "Create index ddl statement"
 	DeleteStmt                 "Delete vertices/edges statement"
-	DropDatabaseStmt           "Drop graph database ddl statement"
-	DropTableStmt              "Drop vertices/edges ddl statement"
+	DropGraphStmt              "Drop graph ddl statement"
+	DropIndexStmt              "Drop index ddl statement"
 	ExplainStmt                "EXPLAIN statement"
 	InsertStmt                 "Insert vertices/edges statement"
 	RollbackStmt               "ROLLBACK statement"
@@ -256,67 +295,23 @@ import (
 
 %type   <item>
 	Assignment                             "assignment"
-	AssignmentList                         "assignment list"
-	AssignmentListOpt                      "assignment list opt"
-	ColumnDef                              "table column definition"
-	ColumnName                             "column name"
-	ColumnList                             "column list"
-	ColumnNameListOpt                      "column name list opt"
-	ColumnSetValue                         "insert statement set value by column name"
-	ColumnSetValueList                     "insert statement set value by column name list"
-	ColumnOption                           "column definition option"
-	ColumnOptionList                       "column definition option list"
-	ColumnOptionListOpt                    "optional column definition option list"
-	Constraint                             "table constraint"
+	PropertyName                             "column name"
 	Field                                  "field expression"
-	FieldList                              "field expression list"
 	IfExists                               "If Exists"
 	IfNotExists                            "If Not Exists"
 	HavingClauseOpt                        "HAVING clause"
-	IndexInvisible                         "index visible/invisible"
-	IndexOptionList                        "Index Option List or empty"
 	IndexName                              "index name"
-	InsertValues                           "Rest part of INSERT/REPLACE INTO statement"
 	LimitOption                            "Limit option could be integer or parameter marker."
-	NumLiteral                             "Num/Int/Float/Decimal Literal"
-	OnDuplicateKeyUpdate                   "ON DUPLICATE KEY UPDATE value list"
+	NumericLiteral                             "Num/Int/Float/Decimal Literal"
 	Order                                  "Ordering keyword: ASC or DESC"
 	ByItem                                 "BY item"
 	ByList                                 "BY list"
-	RowValue                               "Row value"
-	SelectFieldList                       "SELECT statement field list"
+	SelectElementList                       "SELECT statement field list"
 	LimitClauseOpt                     "SELECT statement optional LIMIT clause"
 	StatementList                          "statement list"
-	StringList                             "string list"
 	TableAsName                            "table alias name"
 	TableAsNameOpt                         "table alias name optional"
-	TableElement                           "table definition element"
-	TableElementList                       "table definition element list"
-	TableElementListOpt                    "table definition element list optional"
-	TableName                              "Table name"
-	TextString                             "text string item"
-	TextStringList                         "text string list"
-	Values                                 "values"
-	ValuesList                             "values list"
-	ValuesOpt                              "values optional"
 	WhereClauseOpt                         "Optional WHERE clause"
-	Type                                   "Types"
-	NumericType                            "Numeric types"
-	IntegerType                            "Integer Types types"
-	BooleanType                            "Boolean Types types"
-	FixedPointType                         "Exact value types"
-	FloatingPointType                      "Approximate value types"
-	BitValueType                           "bit value types"
-	StringType                             "String types"
-	TextType                               "Text types"
-	DateAndTimeType                        "Date and Time types"
-	OptFieldLen                            "Field length or empty"
-	FieldLen                               "Field length"
-	FieldOpts                              "Field type definition option list"
-	FieldOpt                               "Field type definition option"
-	FloatOpt                               "Floating-point type option"
-	Precision                              "Floating-point precision option"
-	NUM                                    "A number"
 	LengthNum                              "Field length num(uint64)"
 	MatchClause                            "Match clause"
 	MatchClauseList                        "Match clause list"
@@ -343,13 +338,11 @@ import (
 	CostClauseOpt                          "Cost clause"
 	PathPatternMacro                       "Path pattern macro"
 	PathPatternMacroList                   "Path pattern macro list"
+	IndexKeyTypeOpt                        "Optional index key type"
 
 %precedence empty
-%precedence value
-%precedence lowerThanStringLitToken
-%precedence insertValues
-%precedence lowerThanKey
-%precedence key
+%precedence stringLiteral
+%precedence insert
 
 %right '('
 %left ')'
@@ -361,6 +354,8 @@ import (
 %left xor
 %left andand and
 %left between
+%precedence lowerThanEq
+%left eq ge le neq neqSynonym '>' '<' is like in
 %left '|'
 %left '&'
 %left rsh lsh
@@ -370,6 +365,7 @@ import (
 %left '~' neg
 %right not
 %precedence ','
+%precedence higherThanComma
 
 %start	Entry
 
@@ -390,11 +386,11 @@ Statement:
 	EmptyStmt
 |	BeginStmt
 |	CommitStmt
-|	CreateDatabaseStmt
-|	CreateTableStmt
+|	CreateGraphStmt
+|	CreateIndexStmt
 |	DeleteStmt
-|	DropDatabaseStmt
-|	DropTableStmt
+|	DropGraphStmt
+|	DropIndexStmt
 |	ExplainStmt
 |	InsertStmt
 |	RollbackStmt
@@ -414,386 +410,37 @@ CommitStmt:
 	"COMMIT"
 	{}
 
-CreateDatabaseStmt:
-	"CREATE" "GRAPH" "DATABASE" IfNotExists GraphName
+CreateGraphStmt:
+	"CREATE" "GRAPH" IfNotExists GraphName
 	{}
 
-CreateTableStmt:
-	"CREATE" TableType IfNotExists TableName TableElementListOpt
+CreateIndexStmt:
+	"CREATE" IndexKeyTypeOpt "INDEX" IfNotExists "ON" GraphName GraphName '(' PropertyNameList ')'
 	{}
 
-TableType:
-	"VERTEX"
-	{}
-|	"EDGE"
-	{}
-
-TableElementListOpt:
-	/* empty */
-	{}
-|	'(' TableElementList ')'
-	{}
-
-TableElementList:
-	TableElement
-	{}
-|	TableElementList ',' TableElement
-	{}
-
-TableElement:
-	ColumnDef
-|	Constraint
-
-ColumnDef:
-	ColumnName Type ColumnOptionListOpt
-	{}
-
-ColumnOptionListOpt:
-	{}
-|	ColumnOptionList
-
-ColumnOptionList:
-	ColumnOption
-	{}
-|	ColumnOptionList ColumnOption
-	{}
-
-ColumnOption:
-	"NOT" "NULL"
-	{}
-|	"NULL"
-	{}
-|	"AUTO_INCREMENT"
-	{}
-|	"PRIMARY" "KEY"
-	{}
-|	"UNIQUE" %prec lowerThanKey
-	{}
-|	"UNIQUE" "KEY"
-	{}
-|	"SOURCE" "KEY"
-	{}
-|	"DESTINATION" "KEY"
-	{}
-|	"DEFAULT" DefaultValueExpr
-	{}
-|	"COMMENT" stringLit
-	{}
-|	"REFERENCES" TableName '(' ColumnName ')'
-	{}
-
-DefaultValueExpr:
-	SignedLiteral
-|	NowSymOptionFractionParentheses
-
-SignedLiteral:
-	Literal
-	{}
-|	'+' NumLiteral
-	{}
-|	'-' NumLiteral
-	{ß}
-
-Literal:
-	"FALSE"
-	{}
-|	"NULL"
-	{}
-|	"TRUE"
-	{}
-|	floatLit
-	{}
-|	decLit
-	{}
-|	intLit
-	{}
-|	StringLiteral %prec lowerThanStringLitToken
-	{}
-|	hexLit
-	{}
-|	bitLit
-	{}
-
-StringLiteral:
-	stringLit
-	{}
-|	StringLiteral stringLit
-	{}
-
-NumLiteral:
-	intLit
-|	floatLit
-|	decLit
-
-
-NowSymOptionFractionParentheses:
-	'(' NowSymOptionFractionParentheses ')'
-	{}
-|	NowSymOptionFraction
-
-NowSymOptionFraction:
-	NowSym
-	{}
-|	NowSymFunc '(' ')'
-	{}
-|	NowSymFunc '(' NUM ')'
-	{}
-
-NowSymFunc:
-	"CURRENT_TIMESTAMP"
-|	"LOCALTIME"
-|	"LOCALTIMESTAMP"
-
-NowSym:
-	"CURRENT_TIMESTAMP"
-|	"LOCALTIME"
-|	"LOCALTIMESTAMP"
-
-Constraint:
-	"PRIMARY" "KEY" IndexName '(' ColumnList ')' IndexOptionList
-	{}
-|	KeyOrIndex IfNotExists IndexName '(' ColumnList ')' IndexOptionList
-	{}
-|	"UNIQUE" KeyOrIndexOpt IndexName '(' ColumnList ')' IndexOptionList
-	{}
-
-ColumnList:
-	Identifier
-	{}
-|	ColumnList ',' Identifier
-	{}
-
-ColumnNameList:
-	ColumnName
-	{}
-|	ColumnNameList ',' ColumnName
-	{}
-
-ColumnNameListOpt:
-	/* EMPTY */
-	{}
-|	ColumnNameList
-	{}
-
-KeyOrIndex:
-	"KEY"
-|	"INDEX"
-
-KeyOrIndexOpt:
-	{}
-|	KeyOrIndex
-
-IndexOptionList:
+IndexKeyTypeOpt:
 	{
-		$$ = nil
+		$$ = ast.IndexKeyTypeNone
 	}
-|
-	IndexInvisible
-	{}
-|	"COMMENT" stringLit
-	{}
-
-IndexInvisible:
-	"VISIBLE"
+|	"UNIQUE"
 	{
-		$$ = ast.IndexVisibilityVisible
-	}
-|	"INVISIBLE"
-	{
-		$$ = ast.IndexVisibilityInvisible
+		$$ = ast.IndexKeyTypeUnique
 	}
 
-/*************************************Type Begin***************************************/
-Type:
-	NumericType
-|	StringType
-|	DateAndTimeType
+/******************************************************************************
 
-NumericType:
-	IntegerType OptFieldLen FieldOpts
-	{}
-|	BooleanType FieldOpts
-	{}
-|	FixedPointType FloatOpt FieldOpts
-	{}
-|	FloatingPointType FloatOpt FieldOpts
-	{}
-|	BitValueType OptFieldLen
-	{}
+ DELETE Statement Specification
+ Reference: https://pgql-lang.org/spec/1.5/#delete
 
-IntegerType:
-	"TINYINT"
-	{}
-|	"SMALLINT"
-	{}
-|	"MEDIUMINT"
-	{}
-|	"INT"
-	{}
-|	"INT1"
-	{}
-|	"INT2"
-	{}
-|	"INT3"
-	{}
-|	"INT4"
-	{}
-|	"INT8"
-	{}
-|	"INTEGER"
-	{}
-|	"BIGINT"
-	{}
-
-BooleanType:
-	"BOOL"
-	{}
-|	"BOOLEAN"
-	{}
-
-FixedPointType:
-	"DECIMAL"
-	{}
-|	"NUMERIC"
-	{}
-|	"FIXED"
-	{}
-
-FloatingPointType:
-	"FLOAT"
-	{}
-|	"REAL"
-	{}
-|	"DOUBLE"
-	{}
-|	"DOUBLE" "PRECISION"
-	{}
-
-BitValueType:
-	"BIT"
-	{}
-
-StringType:
-	Char FieldLen
-	{}
-|	Char
-	{}
-|	NChar FieldLen
-	{}
-|	NChar
-	{}
-|	Varchar FieldLen
-	{}
-|	NVarchar FieldLen
-	{}
-
-Char:
-	"CHARACTER"
-|	"CHAR"
-
-NChar:
-	"NCHAR"
-|	"NATIONAL" "CHARACTER"
-|	"NATIONAL" "CHAR"
-
-Varchar:
-	"CHARACTER" "VARYING"
-|	"CHAR" "VARYING"
-|	"VARCHAR"
-|	"VARCHARACTER"
-
-NVarchar:
-	"NATIONAL" "VARCHAR"
-|	"NATIONAL" "VARCHARACTER"
-|	"NVARCHAR"
-|	"NCHAR" "VARCHAR"
-|	"NCHAR" "VARCHARACTER"
-|	"NATIONAL" "CHARACTER" "VARYING"
-|	"NATIONAL" "CHAR" "VARYING"
-|	"NCHAR" "VARYING"
-
-Year:
-	"YEAR"
-|	"SQL_TSI_YEAR"
-
-TextType:
-	"TINYTEXT"
-	{}
-|	"TEXT" OptFieldLen
-	{}
-|	"MEDIUMTEXT"
-	{}
-|	"LONGTEXT"
-	{}
-
-DateAndTimeType:
-	"DATE"
-	{}
-|	"DATETIME" OptFieldLen
-	{}
-|	"TIMESTAMP" OptFieldLen
-	{}
-|	"TIME" OptFieldLen
-	{}
-|	Year OptFieldLen FieldOpts
-	{}
-
-FieldLen:
-	'(' LengthNum ')'
-	{}
-
-OptFieldLen:
-	{}
-|	FieldLen
-
-FieldOpt:
-	"UNSIGNED"
-	{}
-|	"SIGNED"
-	{}
-|	"ZEROFILL"
-	{}
-
-FieldOpts:
-	{}
-|	FieldOpts FieldOpt
-	{}
-
-FloatOpt:
-	{}
-|	FieldLen
-	{}
-|	Precision
-
-Precision:
-	'(' LengthNum ',' LengthNum ')'
-	{}
-
-StringList:
-	stringLit
-	{}
-|	StringList ',' stringLit
-	{}
-
-TextString:
-	stringLit
-	{}
-|	hexLit
-	{}
-|	bitLit
-	{}
-
-TextStringList:
-	TextString
-	{}
-|	TextStringList ',' TextString
-	{}
-
-NUM:
-	intLit
-
+ ******************************************************************************/
 DeleteStmt:
-	"DELETE" "FROM" TableName TableAsNameOpt WhereClauseOpt OrderByClauseOpt LimitClauseOpt
+	PathPatternMacroOpt "DELETE" VariableReferenceList FromClause WhereClauseOpt GroupByClauseOpt HavingClauseOpt OrderByClauseOpt LimitClauseOpt
+	{}
+
+VariableReferenceList:
+	VariableReference
+	{}
+|	VariableReferenceList ',' VariableReference
 	{}
 
 TableAsNameOpt:
@@ -813,135 +460,440 @@ TableAsName:
 		$$ = model.NewCIStr($2)
 	}
 
-DropDatabaseStmt:
-	"DROP" "DATABASE" IfExists GraphName
+DropGraphStmt:
+	"DROP" "GRAPH" IfExists GraphName
 	{}
 
-DropTableStmt:
-	"DROP" "TABLE" IfExists TableName
+DropIndexStmt:
+	"DROP" "INDEX" IfExists Identifier "ON" GraphName
 	{}
 
 ExplainStmt:
 	"EXPLAIN" SelectStmt
 	{}
 
+/******************************************************************************
+
+ INSERT Statement Specification
+ Reference: https://pgql-lang.org/spec/1.5/#insert
+
+ ******************************************************************************/
 InsertStmt:
-	"INSERT" IntoOpt TableName InsertValues OnDuplicateKeyUpdate
+	"INSERT" IntoClauseOpt GraphElementInsertionList %prec insert
+	{}
+|	PathPatternMacroOpt "INSERT" IntoClauseOpt GraphElementInsertionList FromClause WhereClauseOpt GroupByClauseOpt HavingClauseOpt OrderByClauseOpt LimitClauseOpt
 	{}
 
-IntoOpt:
+IntoClauseOpt:
 	{}
-|	"INTO"
-
-InsertValues:
-	'(' ColumnNameListOpt ')' ValueSym ValuesList
-	{}
-|	'(' ColumnNameListOpt ')' SelectStmt
-	{}
-|	'(' ColumnNameListOpt ')' SubSelect
-	{}
-|	ValueSym ValuesList %prec insertValues
-	{}
-|	"SET" ColumnSetValueList
+|	IntoClause
 	{}
 
-ValueSym:
-	"VALUE"
-|	"VALUES"
-
-ValuesList:
-	RowValue
-	{
-		$$ = [][]ast.ExprNode{$1.([]ast.ExprNode)}
-	}
-|	ValuesList ',' RowValue
-	{
-		$$ = append($1.([][]ast.ExprNode), $3.([]ast.ExprNode))
-	}
-
-RowValue:
-	'(' ValuesOpt ')'
-	{
-		$$ = $2
-	}
-
-ValuesOpt:
-	{
-		$$ = []ast.ExprNode{}
-	}
-|	Values
-
-Values:
-	Values ',' ExprOrDefault
-	{}
-|	ExprOrDefault
+IntoClause:
+	"INTO" GraphName
 	{}
 
-ExprOrDefault:
-	Expression
-|	"DEFAULT"
-	{
-		$$ = &ast.DefaultExpr{}
-	}
+GraphElementInsertionList:
+	GraphElementInsertion
+	{}
+|	GraphElementInsertionList ',' GraphElementInsertion
+	{}
 
-ColumnSetValue:
-	ColumnName eq ExprOrDefault
-	{
-		$$ = &ast.Assignment{
-			Column: $1.(*ast.ColumnName),
-			Expr:   $3,
-		}
-	}
+GraphElementInsertion:
+	"VERTEX" VariableNameOpt LabelsAndProperties
+	{}
+|	"EDGE" VariableNameOpt "BETWEEN" VertexReference "AND" VertexReference LabelsAndProperties
+	{}
 
-ColumnSetValueList:
-	{
-		$$ = []*ast.Assignment{}
-	}
-|	ColumnSetValue
-	{
-		$$ = []*ast.Assignment{$1.(*ast.Assignment)}
-	}
-|	ColumnSetValueList ',' ColumnSetValue
-	{
-		$$ = append($1.([]*ast.Assignment), $3.(*ast.Assignment))
-	}
+VertexReference:
+	Identifier
 
-/*
- * ON DUPLICATE KEY UPDATE col_name=expr [, col_name=expr] ...
- * See https://dev.mysql.com/doc/refman/5.7/en/insert-on-duplicate.html
- */
-OnDuplicateKeyUpdate:
-	{
-		$$ = nil
-	}
-|	"ON" "DUPLICATE" "KEY" "UPDATE" AssignmentList
-	{
-		$$ = $5
-	}
-/*******************************************************************************************/
+LabelsAndProperties:
+	LabelSpecificationOpt PropertiesSpecificationOpt
+
+LabelSpecificationOpt:
+	{}
+|	LabelSpecification
+	{}
+
+LabelSpecification:
+	"LABELS" '(' LabelList ')'
+
+PropertiesSpecificationOpt:
+	{}
+|	PropertiesSpecification
+	{}
+
+PropertiesSpecification:
+	"PROPERTIES" '(' PropertyAssignmentList ')'
+
+PropertyAssignmentList:
+	PropertyAssignment
+	{}
+|	PropertyAssignmentList ',' PropertyAssignment
+	{}
+
+PropertyAssignment:
+	PropertyAccess '=' ValueExpression
+	{}
+
+PropertyAccess:
+	VariableReference '.' PropertyName
+	{}
+
+ValueExpression:
+	VariableReference
+|	PropertyAccess
+|	Literal
+|	BindVariable
+|	ArithmeticExpression
+|	RelationalExpression
+|	LogicalExpression
+|	StringConcat
+|	BracketedValueExpression
+|	FunctionInvocation
+|	CharacterSubstring
+|	Aggregation
+|	ExtractFunction
+|	IsNullPredicate
+|	IsNotNullPredicate
+|	CastSpecification
+|	CaseExpression
+|	InPredicate
+|	NotInPredicate
+|	ExistsPredicate
+|	ScalarSubquery
+
+VariableReference:
+	VariableName
+	{}
+
+Literal:
+	StringLiteral %prec stringLiteral
+	{}
+|	NumericLiteral
+	{}
+|	BooleanLiteral
+	{}
+|	DateLiteral
+	{}
+|	TimeLiteral
+	{}
+|	TimestampLiteral
+	{}
+|	IntervalLiteral
+	{}
+
+StringLiteral:
+	stringLit
+	{}
+
+NumericLiteral:
+	intLit
+|	decLit
+
+BooleanLiteral:
+	"FALSE"
+	{}
+|	"TRUE"
+	{}
+
+DateLiteral:
+	"DATE" stringLit
+	{}
+
+TimeLiteral:
+	"TIME" stringLit
+	{}
+
+TimestampLiteral:
+	"TIMESTAMP" stringLit
+	{}
+
+IntervalLiteral:
+	"INTERVAL" stringLit DateTimeField
+	{}
+
+DateTimeField:
+	"YEAR"
+|	"MONTH"
+|	"DAY"
+|	"HOUR"
+|	"MINUTE"
+|	"SECOND"
+
+BindVariable:
+	'?'
+	{}
+
+ArithmeticExpression:
+	'-' ValueExpression %prec neg
+	{}
+|	ValueExpression '*' ValueExpression %prec '*'
+	{}
+|	ValueExpression '/' ValueExpression %prec '/'
+	{}
+|	ValueExpression '%' ValueExpression %prec '%'
+	{}
+|	ValueExpression '+' ValueExpression %prec '+'
+	{}
+|	ValueExpression '-' ValueExpression %prec '-'
+	{}
+
+RelationalExpression:
+	ValueExpression eq ValueExpression
+	{}
+|	ValueExpression neqSynonym ValueExpression
+	{}
+|	ValueExpression '>' ValueExpression
+	{}
+|	ValueExpression '<' ValueExpression
+	{}
+|	ValueExpression ge ValueExpression
+	{}
+|	ValueExpression le ValueExpression
+	{}
+
+LogicalExpression:
+	ValueExpression logOr ValueExpression %prec pipes
+	{}
+|	ValueExpression "XOR" ValueExpression %prec xor
+	{}
+|	ValueExpression logAnd ValueExpression %prec andand
+	{}
+|	"NOT" ValueExpression %prec not
+	{}
+
+logOr:
+	pipesAsOr
+|	"OR"
+
+logAnd:
+	"&&"
+|	"AND"
+
 Assignment:
-	ColumnName eq ExprOrDefault
-	{
-		$$ = &ast.Assignment{Column: $1.(*ast.ColumnName), Expr: $3}
-	}
+	singleAtIdentifier assignmentEq ValueExpression %prec assignmentEq
+	{}
 
-AssignmentList:
-	Assignment
-	{
-		$$ = []*ast.Assignment{$1.(*ast.Assignment)}
-	}
-|	AssignmentList ',' Assignment
-	{
-		$$ = append($1.([]*ast.Assignment), $3.(*ast.Assignment))
-	}
+StringConcat:
+	ValueExpression pipes ValueExpression
+	{}
 
-AssignmentListOpt:
-	/* EMPTY */
-	{
-		$$ = []*ast.Assignment{}
-	}
-|	AssignmentList
+BracketedValueExpression:
+	'(' ValueExpression ')'
+	{}
 
+/******************************************************************************
+
+ Reference
+ - https://pgql-lang.org/spec/1.5/#user-defined-functions
+
+ zGraph doesn't plan to support UDF and remove the PackageSpecificationOpt
+
+ FunctionInvocation  ::= PackageSpecification? FunctionName '(' ArgumentList? ')'
+ PackageSpecification::= PackageName '.'
+ PackageName         ::= Identifier
+
+ FunctionInvocation:
+ 	PackageSpecificationOpt FunctionName '(' ArgumentList ')'
+ 	{}
+
+ PackageSpecificationOpt:
+ 	{}
+ |	PackageName '.'
+ 	{}
+
+ PackageName:
+ 	Identifier
+
+ ******************************************************************************/
+FunctionInvocation:
+	FunctionName '(' ArgumentList ')'
+	{}
+
+FunctionName:
+	"LOWER"
+|	"UPPER"
+|	"JAVA_REGEXP_LIKE"
+|	"ABS"
+|	"CEIL"
+|	"CEILING"
+|	"FLOOR"
+|	"ID"
+|	"LABEL"
+|	"LABELS"
+|	"HAS_LABEL"
+|	"MATCH_NUMBER"
+|	"ELEMENT_NUMBER"
+|	"IN_DEGREE"
+|	"OUT_DEGREE"
+
+ArgumentList:
+	ValueExpression
+	{}
+|	ArgumentList ',' ValueExpression
+	{}
+
+CharacterSubstring:
+	"SUBSTRING" '(' ValueExpression "FROM" StartPosition ForStringLengthOpt ')'
+	{}
+
+StartPosition:
+	ValueExpression
+
+ForStringLengthOpt:
+	{}
+|	"FOR" ValueExpression
+	{}
+
+Aggregation:
+	"COUNT" '(' '*' ')'
+	{}
+|	"COUNT" '(' DistinctOpt ValueExpression ')'
+	{}
+|	"MIN" '(' DistinctOpt ValueExpression ')'
+	{}
+|	"MAX" '(' DistinctOpt ValueExpression ')'
+	{}
+|	"AVG" '(' DistinctOpt ValueExpression ')'
+	{}
+|	"SUM" '(' DistinctOpt ValueExpression ')'
+	{}
+|	"ARRAY_AGG" '(' DistinctOpt ValueExpression ')'
+	{}
+|	"LISTAGG" '(' DistinctOpt ValueExpression ListaggSeparatorOpt')'
+	{}
+
+DistinctOpt:
+	{}
+|	"DISTINCT"
+	{}
+
+ListaggSeparatorOpt:
+	{}
+|	',' StringLiteral
+	{}
+
+ExtractFunction:
+	"EXTRACT" '(' ExtractField "FROM" ValueExpression ')'
+	{}
+
+ExtractField:
+	"YEAR"
+	{}
+|	"MONTH"
+	{}
+|	"DAY"
+	{}
+|	"HOUR"
+	{}
+|	"MINUTE"
+	{}
+|	"SECOND"
+	{}
+|	"TIMEZONE_HOUR"
+	{}
+|	"TIMEZONE_MINUTE"
+
+IsNullPredicate:
+	ValueExpression "IS" "NULL"
+	{}
+
+IsNotNullPredicate:
+	ValueExpression "IS" "NOT" "NULL"
+	{}
+
+CastSpecification:
+	"CAST" '(' ValueExpression "AS" DataType ')'
+	{}
+
+DataType:
+	"STRING"
+	{}
+|	"BOOLEAN"
+	{}
+|	"INTEGER"
+	{}
+|	"INT"
+	{}
+|	"LONG"
+	{}
+|	"FLOAT"
+	{}
+|	"DOUBLE"
+	{}
+|	"DATE"
+	{}
+|	"TIME"
+	{}
+|	"TIME" "WITH" "TIME" "ZONE"
+	{}
+|	"TIMESTAMP"
+	{}
+|	"TIMESTAMP" "WITH" "TIME" "ZONE"
+	{}
+
+CaseExpression:
+	SimpleCase
+	{}
+|	SearchedCase
+	{}
+
+SimpleCase:
+	"CASE" ValueExpression WhenCaluseList ElseClauseOpt "END"
+
+SearchedCase:
+	"CASE" WhenCaluseList ElseClauseOpt "END"
+
+WhenCaluseList:
+	WhenClause
+	{}
+|	WhenCaluseList WhenClause
+	{}
+
+WhenClause:
+	"WHEN" ValueExpression "THEN" ValueExpression
+	{}
+
+ElseClauseOpt:
+	{}
+|	"ELSE" ValueExpression
+	{}
+
+InPredicate:
+	ValueExpression "IN" InValueList
+	{}
+
+NotInPredicate:
+	ValueExpression "NOT" "IN" InValueList
+	{}
+
+InValueList:
+	'(' ValueExpressionList ')'
+	{}
+|	BindVariable
+	{}
+
+ValueExpressionList:
+	ValueExpression
+	{}
+|	ValueExpressionList ',' ValueExpression
+	{}
+
+ExistsPredicate:
+	"EXISTS" SubSelect
+	{}
+
+ScalarSubquery:
+	SubSelect
+	{}
+
+/******************************************************************************
+
+ ROLLBACK Statement
+
+ *****************************************************************************/
 RollbackStmt:
 	"ROLLBACK"
 	{}
@@ -952,26 +904,35 @@ SubSelect:
 	{}
 
 SelectStmt:
-	"SELECT" SelectFieldList "FROM" MatchClauseList WhereClauseOpt GroupByClauseOpt HavingClauseOpt OrderByClauseOpt LimitClauseOpt
+	PathPatternMacroOpt SelectClause FromClause WhereClauseOpt GroupByClauseOpt HavingClauseOpt OrderByClauseOpt LimitClauseOpt
 	{}
 
-SelectFieldList:
-	FieldList
+SelectClause:
+	"SELECT" DistinctOpt SelectElementList
+	{}
+|	"SELECT" '*' %prec '*'
 	{}
 
-FieldList:
+SelectElementList:
 	Field
 	{}
-|	FieldList ',' Field
+|	SelectElementList ',' Field
 	{}
+
 Field:
-	'*' %prec '*'
+	ExpAsVar
 	{}
-|	Identifier '.' '*' %prec '*'
+|	Identifier allProp AllPropertiesPrefixOpt %prec '*'
 	{}
-|	Identifier '.' Identifier '.' '*' %prec '*'
+
+ExpAsVar:
+	ValueExpression FieldAsNameOpt
 	{}
-|	Expression FieldAsNameOpt
+
+AllPropertiesPrefixOpt:
+	%prec empty
+	{}
+|	"PREFIX" StringLiteral
 	{}
 
 FieldAsNameOpt:
@@ -990,25 +951,9 @@ FieldAsName:
 |	"AS" stringLit
 	{}
 
-Expression:
-	singleAtIdentifier assignmentEq Expression %prec assignmentEq
+FromClause:
+	"FROM" MatchClauseList
 	{}
-|	Expression logOr Expression %prec pipes
-	{}
-|	Expression "XOR" Expression %prec xor
-	{}
-|	Expression logAnd Expression %prec andand
-	{}
-|	"NOT" Expression %prec not
-	{}
-
-logOr:
-	pipesAsOr
-|	"OR"
-
-logAnd:
-	"&&"
-|	"AND"
 
 MatchClauseList:
 	MatchClause
@@ -1268,7 +1213,7 @@ ColonOrIsKeyword:
 LabelList:
 	Label:
 	{}
-|	LabelList '|' Label
+|	LabelList ',' Label
 	{}
 
 Label:
@@ -1310,7 +1255,7 @@ QuantifiedPathExpr:
 	}
 
 CostClause:
-	"COST" Expression
+	"COST" ValueExpression
 	{
 		$$ = $2.(ast.ExprNode)
 	}
@@ -1358,6 +1303,12 @@ PatternQuantifierOpt:
 	}
 |	PatternQuantifier
 
+PathPatternMacroOpt:
+	%prec empty
+	{}
+|	PathPatternMacroList
+	{}
+
 PathPatternMacroList:
 	PathPatternMacro
 	{
@@ -1383,7 +1334,7 @@ PathPatternMacro:
 
 WhereClauseOpt:
  	{}
-|	"WHERE" Expression
+|	"WHERE" ValueExpression
 	{}
 
 GroupByClauseOpt:
@@ -1398,9 +1349,9 @@ ByList:
 	{}
 
 ByItem:
-	Expression
+	ExpAsVar
 	{}
-|	Expression Order
+|	ExpAsVar Order
 	{}
 
 Order:
@@ -1417,7 +1368,7 @@ HavingClauseOpt:
 	{
 		$$ = nil
 	}
-|	"HAVING" Expression
+|	"HAVING" ValueExpression
 	{}
 
 OrderByClauseOpt:
@@ -1441,11 +1392,27 @@ LimitOption:
 	{}
 
 LengthNum:
-	NUM
+	intLit
 	{}
 
+/******************************************************************************
+
+ UPDATE Statement Specification
+ Reference: https://pgql-lang.org/spec/1.5/#update
+
+ ******************************************************************************/
 UpdateStmt:
-	"UPDATE" TableName TableAsNameOpt "SET" AssignmentList WhereClauseOpt OrderByClauseOpt LimitClauseOpt
+	PathPatternMacroOpt "UPDATE" GraphElementUpdateList FromClause  WhereClauseOpt GroupByClauseOpt HavingClauseOpt OrderByClauseOpt LimitClauseOpt
+	{}
+
+GraphElementUpdateList:
+	GraphElementUpdate
+	{}
+|	GraphElementUpdateList ',' GraphElementUpdate
+	{}
+
+GraphElementUpdate:
+	VariableReference "SET" '(' PropertyAssignmentList ')'
 	{}
 
 UseStmt:
@@ -1473,18 +1440,10 @@ IfNotExists:
 GraphName:
 	Identifier
 
-TableName:
+PropertyName:
 	Identifier
 	{}
 |	Identifier '.' Identifier
-	{}
-
-ColumnName:
-	Identifier
-	{}
-|	Identifier '.' Identifier
-	{}
-|	Identifier '.' Identifier '.' Identifier
 	{}
 
 IndexName:
@@ -1505,35 +1464,22 @@ Identifier:
 	identifier
 |	UnreservedKeywords
 
+PropertyNameList:
+	PropertyName
+	{}
+|	PropertyNameList ',' PropertyName
+	{}
+
 UnreservedKeywords:
 	"BEGIN"
 |	"COMMIT"
 |	"COMMENT"
 |	"BOOLEAN"
-|	"BOOL"
 |	"EXPLAIN"
-|	"FIXED"
-|	"BIT"
-|	"NATIONAL"
-|	"NCHAR"
 |	"YEAR"
-|	"TEXT"
-|	"DATA"
-|	"DATETIME"
-|	"DATE"
 |	"DAY"
-|	"TIMESTAMP"
-|	"TIME"
-|	"SIGNED"
-|	"VALUE"
-|	"DUPLICATE"
 |	"ROLLBACK"
 |	"OFFSET"
-|	"AUTO_INCREMENT"
-|	"VISIBLE"
-|	"INVISIBLE"
-|	"NVARCHAR"
-|	"SQL_TSI_YEAR"
 |	"GRAPH"
 
 %%

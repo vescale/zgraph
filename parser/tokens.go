@@ -107,6 +107,7 @@ func init() {
 	initTokenString("<=", le)
 	initTokenString("!=", neq)
 	initTokenString("<>", neqSynonym)
+	initTokenString(".*", allProp)
 	initTokenString("<<", lsh)
 	initTokenString(">>", rsh)
 	initTokenString("\\N", null)
