@@ -12,14 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package zerrors
+package datum
 
-import "errors"
-
-var (
-	ErrConflicts = errors.New("transction conflicts")
-)
-
-func Trace(err error) error {
-	return err
+func NewDecimal(str string) (interface{}, error) {
+	panic("not implemented")
 }

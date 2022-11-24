@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package zerrors
+package ast
 
-import "errors"
+// IndexKeyType is the type for index key.
+type IndexKeyType int
 
-var (
-	ErrConflicts = errors.New("transction conflicts")
+// Index key types.
+const (
+	IndexKeyTypeNone IndexKeyType = iota
+	IndexKeyTypeUnique
 )
-
-func Trace(err error) error {
-	return err
-}

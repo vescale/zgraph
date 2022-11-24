@@ -32,9 +32,8 @@
 package parser
 
 import (
-	"strings"
-
 	"github.com/vescale/zgraph/parser/ast"
+	"github.com/vescale/zgraph/parser/model"
 )
 
 %}
@@ -107,11 +106,11 @@ import (
 	between               "BETWEEN"
 	labels                "LABELS"
 	properties            "PROPERTIES"
-        case                  "CASE"
+        caseKwd               "CASE"
         end                   "END"
         then                  "THEN"
         when                  "WHEN"
-        else                  "ELSE"
+        elseKwd               "ELSE"
 
 	/* Unreserved keywords */
 	begin                 "BEGIN"
@@ -125,7 +124,6 @@ import (
 	timeType              "TIME"
 	rollback              "ROLLBACK"
 	offset                "OFFSET"
-	pipesAsOr
 	graph                 "GRAPH"
 	all                   "ALL"
 	any                   "ANY"
@@ -140,7 +138,7 @@ import (
         month                 "MONTH"
         second                "SECOND"
         substring             "SUBSTRING"
-        for                   "FOR"
+        forkKwd               "FOR"
         array_agg             "ARRAY_AGG"
         avg                   "AVG"
         count                 "COUNT"
@@ -154,7 +152,7 @@ import (
         timezone_minute       "TIMEZONE_MINUTE"
         cast                  "CAST"
         long                  "LONG"
-        string                "STRING"
+        stringKwd             "STRING"
         with                  "WITH"
         zone                  "ZONE"
         in                    "IN"
@@ -191,12 +189,10 @@ import (
 	le           "<="
 	jss          "->"
 	juss         "->>"
-	lsh          "<<"
 	neq          "!="
 	neqSynonym   "<>"
 	nulleq       "<=>"
 	paramMarker  "?"
-	rsh          ">>"
 	leftArrow    "<-"
 	dashSlash    "-/"
 	slashDash    "/-"
@@ -255,7 +251,6 @@ import (
 	FieldAsNameOpt
 	GraphName
 	Identifier
-	LabelName
 	VariableName
 
 %type   <item>
@@ -274,6 +269,7 @@ import (
 	IfNotExists
 	IndexKeyTypeOpt
 	IndexName
+	LabelName
 	LabelNameList
 	LabelPredicate
 	LabelPredicateOpt
@@ -306,12 +302,10 @@ import (
 	WhereClauseOpt
 
 %precedence empty
-%precedence stringLiteral
 %precedence insert
 
 %right '('
 %left ')'
-%precedence higherThanParenthese
 %precedence lowerThanOn
 %precedence on
 %right assignmentEq
@@ -319,18 +313,15 @@ import (
 %left xor
 %left andand and
 %left between
-%precedence lowerThanEq
-%left eq ge le neq neqSynonym '>' '<' is like in
+%left eq ge le neq neqSynonym '>' '<' is in
 %left '|'
 %left '&'
-%left rsh lsh
 %left '-' '+'
 %left '*' '/' '%' div mod
 %left '^'
 %left '~' neg
 %right not
 %precedence ','
-%precedence higherThanComma
 
 %start	Entry
 
@@ -534,7 +525,7 @@ VariableReference:
 	{}
 
 Literal:
-	StringLiteral %prec stringLiteral
+	StringLiteral
 	{}
 |	NumericLiteral
 	{}
@@ -620,22 +611,14 @@ RelationalExpression:
 	{}
 
 LogicalExpression:
-	ValueExpression logOr ValueExpression %prec pipes
+	ValueExpression "OR" ValueExpression %prec pipes
 	{}
 |	ValueExpression "XOR" ValueExpression %prec xor
 	{}
-|	ValueExpression logAnd ValueExpression %prec andand
+|	ValueExpression "AND" ValueExpression %prec andand
 	{}
 |	"NOT" ValueExpression %prec not
 	{}
-
-logOr:
-	pipesAsOr
-|	"OR"
-
-logAnd:
-	"&&"
-|	"AND"
 
 Assignment:
 	singleAtIdentifier assignmentEq ValueExpression %prec assignmentEq

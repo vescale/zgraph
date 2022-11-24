@@ -14,14 +14,9 @@
 
 package ast
 
-import "errors"
-
-package ast
-
 import (
-"github.com/pingcap/errors"
-"github.com/pingcap/tidb/parser/format"
-"github.com/pingcap/tidb/parser/model"
+	"errors"
+	"github.com/vescale/zgraph/parser/model"
 )
 
 var (

@@ -12,14 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package zerrors
+package constant
 
-import "errors"
-
-var (
-	ErrConflicts = errors.New("transction conflicts")
-)
-
-func Trace(err error) error {
-	return err
-}
+// ErrTextLength error text length limit.
+const ErrTextLength = 80
