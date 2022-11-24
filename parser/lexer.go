@@ -48,11 +48,6 @@ type Lexer struct {
 	// It is used to ignore a stray `*/` when scanning.
 	inBangComment bool
 
-	// If the lexer should recognize keywords for window function.
-	// It may break the compatibility when support those keywords,
-	// because some application may already use them as identifiers.
-	supportWindowFunc bool
-
 	// Whether record the original text keyword position to the AST node.
 	skipPositionRecording bool
 
@@ -263,16 +258,10 @@ func (l *Lexer) LexLiteral() interface{} {
 	return symType.item
 }
 
-// EnableWindowFunc controls whether the scanner recognize the keywords of window function.
-func (l *Lexer) EnableWindowFunc(val bool) {
-	l.supportWindowFunc = val
-}
-
 // InheritScanner returns a new scanner object which inherits configurations from the parent scanner.
 func (l *Lexer) InheritScanner(sql string) *Lexer {
 	return &Lexer{
-		r:                 reader{s: sql},
-		supportWindowFunc: l.supportWindowFunc,
+		r: reader{s: sql},
 	}
 }
 
