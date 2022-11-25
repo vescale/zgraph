@@ -17,8 +17,8 @@ include build/Makefile.env
 .PHONY: parser goyacc
 
 parser: goyacc
-	@echo "bin/goyacc -o parser/parser.go"
-	@tools/bin/goyacc -o parser/parser.go parser/parser.y
+	@echo "bin/goyacc -o parser/parser.y.go"
+	@tools/bin/goyacc -o parser/parser.y.go parser/parser.y
 
 goyacc:
 	test -e tools/bin/goyacc || ($(GO) build -o tools/bin/goyacc ./parser/goyacc/)

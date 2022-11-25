@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/vescale/zgraph/zerrors"
+	"github.com/pingcap/errors"
 )
 
 // CIStr is case-insensitive string.
@@ -35,6 +35,11 @@ func (cis CIStr) String() string {
 // Equal reports whether `cis` is equal to `other` in a case-insensitive way.
 func (cis CIStr) Equal(other CIStr) bool {
 	return cis.L == other.L
+}
+
+// IsEmpty reports whether the CIStr is an empty string
+func (cis CIStr) IsEmpty() bool {
+	return cis.O == ""
 }
 
 // NewCIStr creates a new CIStr.
@@ -57,7 +62,7 @@ func (cis *CIStr) UnmarshalJSON(b []byte) error {
 	// Unmarshal CIStr from a single string.
 	err := json.Unmarshal(b, &cis.O)
 	if err != nil {
-		return zerrors.Trace(err)
+		return errors.Trace(err)
 	}
 	cis.L = strings.ToLower(cis.O)
 	return nil

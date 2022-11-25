@@ -149,14 +149,14 @@ type ExpAsVar struct {
 	node
 
 	Expr   ExprNode
-	AsName *model.CIStr
+	AsName model.CIStr
 }
 
 func (e *ExpAsVar) Restore(ctx *format.RestoreCtx) error {
 	if err := e.Expr.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore ByItem.Expr")
 	}
-	if e.AsName != nil {
+	if e.AsName.O != "" {
 		ctx.WriteKeyWord(" AS ")
 		ctx.WriteName(e.AsName.String())
 	}
@@ -366,7 +366,7 @@ type InsertStmt struct {
 	dmlNode
 
 	PathPatternMacros []*PathPatternMacro
-	IntoGraphName     *model.CIStr
+	IntoGraphName     model.CIStr
 	Insertions        []*GraphElementInsertion
 
 	// Full modify query
@@ -393,7 +393,7 @@ type DeleteStmt struct {
 	dmlNode
 
 	PathPatternMacros  []*PathPatternMacro
-	VariableReferences []string
+	VariableReferences []*VariableReference
 	From               *MatchClauseList
 	Where              ExprNode
 	GroupBy            *GroupByClause
@@ -419,7 +419,9 @@ func (d *DeleteStmt) Restore(ctx *format.RestoreCtx) error {
 		if i != 0 {
 			ctx.WritePlain(",")
 		}
-		ctx.WritePlain(r)
+		if err := r.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore DeleteStmt.VariableReferences[%d]", i)
+		}
 	}
 
 	if err := d.From.Restore(ctx); err != nil {
@@ -518,7 +520,7 @@ type UpdateStmt struct {
 	dmlNode
 
 	PathPatternMacros []*PathPatternMacro
-	Updates           []*GraphElementInsertion
+	Updates           []*GraphElementUpdate
 
 	// Full modify query
 	// ref: https://pgql-lang.org/spec/1.5/#insert
@@ -643,7 +645,7 @@ func (n *MatchClauseList) Accept(v Visitor) (Node, bool) {
 type MatchClause struct {
 	node
 
-	Graph *model.CIStr
+	Graph model.CIStr
 	Paths []*PathPattern
 }
 
@@ -670,7 +672,7 @@ func (n *MatchClause) Restore(ctx *format.RestoreCtx) error {
 		}
 		ctx.WritePlain(")")
 	}
-	if n.Graph != nil {
+	if !n.Graph.IsEmpty() {
 		ctx.WriteKeyWord(" ON ")
 		ctx.WriteName(n.Graph.String())
 	}

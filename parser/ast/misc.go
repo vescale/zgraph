@@ -28,7 +28,7 @@ var (
 )
 
 type UseStmt struct {
-	node
+	stmtNode
 
 	GraphName model.CIStr
 }
@@ -48,7 +48,7 @@ func (u *UseStmt) Accept(v Visitor) (node Node, ok bool) {
 }
 
 type BeginStmt struct {
-	node
+	stmtNode
 }
 
 func (b *BeginStmt) Restore(ctx *format.RestoreCtx) error {
@@ -82,7 +82,7 @@ func (r *RollbackStmt) Accept(v Visitor) (node Node, ok bool) {
 }
 
 type CommitStmt struct {
-	node
+	stmtNode
 }
 
 func (c *CommitStmt) Restore(ctx *format.RestoreCtx) error {
@@ -99,7 +99,7 @@ func (c *CommitStmt) Accept(v Visitor) (node Node, ok bool) {
 }
 
 type ExplainStmt struct {
-	node
+	stmtNode
 
 	Select *SelectStmt
 }

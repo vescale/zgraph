@@ -16,14 +16,14 @@ package parser
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"github.com/vescale/zgraph/datum"
-	"github.com/vescale/zgraph/parser/constant"
 	"math"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/vescale/zgraph/datum"
+	"github.com/vescale/zgraph/parser/constant"
 )
 
 var _ = yyLexer(&Lexer{})
@@ -207,10 +207,6 @@ func (l *Lexer) Lex(v *yySymType) int {
 	return tok
 }
 
-func (l *Lexer) Error(msg string) {
-	l.AppendError(errors.New(msg))
-}
-
 func toInt(l yyLexer, lval *yySymType, str string) int {
 	n, err := strconv.ParseUint(str, 10, 64)
 	if err != nil {
@@ -226,7 +222,7 @@ func toInt(l yyLexer, lval *yySymType, str string) int {
 			// get value 99999999999999999999999999999999999999999999999999999999999999999
 			return toDecimal(l, lval, str)
 		}
-		l.Error(fmt.Sprintf("integer literal: %v", err))
+		l.AppendError(fmt.Errorf("integer literal: %v", err))
 		return invalid
 	}
 
@@ -242,7 +238,7 @@ func toInt(l yyLexer, lval *yySymType, str string) int {
 func toDecimal(l yyLexer, lval *yySymType, str string) int {
 	dec, err := datum.NewDecimal(str)
 	if err != nil {
-		l.Error(err.Error())
+		l.AppendError(err)
 	}
 	lval.item = dec
 	return decLit
@@ -265,8 +261,8 @@ func (l *Lexer) InheritScanner(sql string) *Lexer {
 	}
 }
 
-// NewScanner returns a new scanner object.
-func NewScanner(s string) *Lexer {
+// NewLexer returns a new scanner object.
+func NewLexer(s string) *Lexer {
 	lexer := &Lexer{r: reader{s: s}}
 	lexer.reset(s)
 	return lexer

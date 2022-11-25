@@ -17,9 +17,8 @@ package ast
 import (
 	"fmt"
 	"io"
-	"reflect"
-	"regexp"
 	"strings"
+	"time"
 
 	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/parser/format"
@@ -62,6 +61,11 @@ type VariableReference struct {
 	VariableName string
 }
 
+func (n *VariableReference) Format(w io.Writer) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (n *VariableReference) Restore(ctx *format.RestoreCtx) error {
 	//TODO implement me
 	panic("implement me")
@@ -77,6 +81,11 @@ type PropertyAccess struct {
 
 	VariableName *VariableReference
 	PropertyName model.CIStr
+}
+
+func (p *PropertyAccess) Format(w io.Writer) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (p *PropertyAccess) Restore(ctx *format.RestoreCtx) error {
@@ -95,10 +104,40 @@ type StringLiteral struct {
 	Value string
 }
 
+func (s *StringLiteral) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *StringLiteral) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *StringLiteral) Format(w io.Writer) {
+	//TODO implement me
+	panic("implement me")
+}
+
 type IntegerLiteral struct {
 	exprNode
 
 	Value int64
+}
+
+func (i *IntegerLiteral) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (i *IntegerLiteral) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (i *IntegerLiteral) Format(w io.Writer) {
+	//TODO implement me
+	panic("implement me")
 }
 
 type DecimalLiteral struct {
@@ -108,10 +147,40 @@ type DecimalLiteral struct {
 	Value interface{}
 }
 
+func (d *DecimalLiteral) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *DecimalLiteral) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *DecimalLiteral) Format(w io.Writer) {
+	//TODO implement me
+	panic("implement me")
+}
+
 type BooleanLiteral struct {
 	exprNode
 
 	Value bool
+}
+
+func (b *BooleanLiteral) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (b *BooleanLiteral) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (b *BooleanLiteral) Format(w io.Writer) {
+	//TODO implement me
+	panic("implement me")
 }
 
 type DateLiteral struct {
@@ -120,16 +189,61 @@ type DateLiteral struct {
 	Value time.Date
 }
 
+func (d *DateLiteral) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *DateLiteral) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *DateLiteral) Format(w io.Writer) {
+	//TODO implement me
+	panic("implement me")
+}
+
 type TimeLiteral struct {
 	exprNode
 
 	Value time.Time
 }
 
+func (t *TimeLiteral) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t *TimeLiteral) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t *TimeLiteral) Format(w io.Writer) {
+	//TODO implement me
+	panic("implement me")
+}
+
 type TimestampLiteral struct {
 	exprNode
 
 	Value int64
+}
+
+func (t *TimestampLiteral) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t *TimestampLiteral) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t *TimestampLiteral) Format(w io.Writer) {
+	//TODO implement me
+	panic("implement me")
 }
 
 type DateTimeField byte
@@ -150,8 +264,38 @@ type IntervalLiteral struct {
 	Unit  DateTimeField
 }
 
+func (i *IntervalLiteral) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (i *IntervalLiteral) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (i *IntervalLiteral) Format(w io.Writer) {
+	//TODO implement me
+	panic("implement me")
+}
+
 type BindVariable struct {
 	exprNode
+}
+
+func (b *BindVariable) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (b *BindVariable) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (b *BindVariable) Format(w io.Writer) {
+	//TODO implement me
+	panic("implement me")
 }
 
 // UnaryOperationExpr is the expression for unary operator.
@@ -384,6 +528,21 @@ type SubstrFuncExpr struct {
 	For   ExprNode
 }
 
+func (s *SubstrFuncExpr) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *SubstrFuncExpr) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *SubstrFuncExpr) Format(w io.Writer) {
+	//TODO implement me
+	panic("implement me")
+}
+
 // AggregateFuncExpr represents aggregate function expression.
 type AggregateFuncExpr struct {
 	funcNode
@@ -474,6 +633,21 @@ type ExtractFuncExpr struct {
 
 	ExtractField ExtractField
 	Expr         ExprNode
+}
+
+func (e *ExtractFuncExpr) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExtractFuncExpr) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *ExtractFuncExpr) Format(w io.Writer) {
+	//TODO implement me
+	panic("implement me")
 }
 
 // IsNullExpr is the expression for null check.
@@ -829,7 +1003,7 @@ func (n *PatternInExpr) Accept(v Visitor) (Node, bool) {
 type SubqueryExpr struct {
 	exprNode
 	// Query is the query SelectNode.
-	Query      ResultSetNode
+	Query      *SelectStmt
 	Evaluated  bool
 	Correlated bool
 	MultiRows  bool
