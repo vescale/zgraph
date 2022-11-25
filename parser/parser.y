@@ -32,8 +32,11 @@
 package parser
 
 import (
+	"time"
+
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/parser/model"
+	"github.com/vescale/zgraph/parser/opcode"
 )
 
 %}
@@ -212,23 +215,37 @@ import (
 	CaseExpression
 	CastSpecification
 	CharacterSubstring
+	ElseClauseOpt
 	ExistsPredicate
 	ExtractFunction
 	FunctionInvocation
+	ForStringLengthOpt
 	InPredicate
+	InValueList
 	IsNotNullPredicate
 	IsNullPredicate
 	Literal
+	ListaggSeparatorOpt
 	LogicalExpression
 	NotInPredicate
 	PropertyAccess
 	RelationalExpression
 	ScalarSubquery
+	SimpleCase
+	SearchedCase
+	StartPosition
 	StringConcat
 	StringLiteral
-	SubSelect
+	Subquery
 	ValueExpression
 	VariableReference
+	NumericLiteral
+	BooleanLiteral
+	DateLiteral
+	TimeLiteral
+	TimestampLiteral
+	IntervalLiteral
+
 
 %type	<statement>
 	BeginStmt
@@ -248,23 +265,40 @@ import (
 	UseStmt
 
 %type	<ident>
-	FieldAsNameOpt
-	GraphName
 	Identifier
 	VariableName
+	VertexReference
+	FunctionName
 
 %type   <item>
-	Assignment
+	AllPropertiesPrefixOpt
+	ArgumentList
 	ByItem
 	ByList
 	CostClause
 	CostClauseOpt
+	DataType
+	DateTimeField
+	DistinctOpt
 	EdgePattern
-	Field
+	ExpAsVar
+	ExtractField
+	SelectEelement
+	FieldAsName
+	FieldAsNameOpt
+	FromClause
+	GraphElementInsertion
+	GraphElementInsertionList
+	GraphElementUpdate
+	GraphElementUpdateList
+	GraphName
 	GraphOnClause
 	GraphOnClauseOpt
 	GraphPattern
+	GroupByClauseOpt
 	HavingClauseOpt
+	IntoClause
+	IntoClauseOpt
 	IfExists
 	IfNotExists
 	IndexKeyTypeOpt
@@ -273,32 +307,44 @@ import (
 	LabelNameList
 	LabelPredicate
 	LabelPredicateOpt
+	LabelsAndProperties
+	LabelSpecification
+	LabelSpecificationOpt
 	LengthNum
 	LimitClauseOpt
 	LimitOption
 	MatchClause
 	MatchClauseList
-	NumericLiteral
 	Order
+	OrderByClauseOpt
 	PathPattern
 	PathPatternList
 	PathPatternMacro
 	PathPatternMacroList
+	PathPatternMacroOpt
 	PatternQuantifier
 	PatternQuantifierOpt
+	PropertyAssignment
+	PropertyAssignmentList
+	PropertiesSpecification
+	PropertiesSpecificationOpt
 	PropertyName
+	PropertyNameList
 	QuantifiedPathExpr
 	ReachabilityPathExpr
+	SelectClause
 	SelectElementList
 	SimplePathPattern
 	StatementList
-	TableAsName
-	TableAsNameOpt
+	ValueExpressionList
 	VariableLengthPathPattern
 	VariableNameOpt
+	VariableReferenceList
 	VariableSpec
 	VertexPattern
 	VertexPatternOpt
+	WhenClause
+	WhenClauseList
 	WhereClauseOpt
 
 %precedence empty
@@ -356,23 +402,41 @@ Statement:
 
 EmptyStmt:
 	/* EMPTY */
-	{}
+	{
+		$$ = nil
+	}
 
 BeginStmt:
 	"BEGIN"
-	{}
+	{
+		$$ = &ast.BeginStmt{}
+	}
 
 CommitStmt:
 	"COMMIT"
-	{}
+	{
+		$$ = &ast.CommitStmt{}
+	}
 
 CreateGraphStmt:
 	"CREATE" "GRAPH" IfNotExists GraphName
-	{}
+	{
+		$$ = &ast.CreateGraphStmt{
+			IfNotExists: $3.(bool),
+			GraphName:   $4.(model.CIStr),
+		}
+	}
 
 CreateIndexStmt:
-	"CREATE" IndexKeyTypeOpt "INDEX" IfNotExists "ON" GraphName GraphName '(' PropertyNameList ')'
-	{}
+	"CREATE" IndexKeyTypeOpt "INDEX" IfNotExists "ON" LabelName '(' PropertyNameList ')'
+	{
+		$$ = &ast.CreateIndexStmt{
+			KeyType:     $2.(IndexKeyType),
+			IfNotExists: $4.(bool),
+			LabelName:   $6.(model.CIStr),
+			Properties:  $8.([]model.CIStr),
+		}
+	}
 
 IndexKeyTypeOpt:
 	{
@@ -391,42 +455,68 @@ IndexKeyTypeOpt:
  ******************************************************************************/
 DeleteStmt:
 	PathPatternMacroOpt "DELETE" VariableReferenceList FromClause WhereClauseOpt GroupByClauseOpt HavingClauseOpt OrderByClauseOpt LimitClauseOpt
-	{}
+	{
+		ds := &ast.DeleteStmt{
+			VariableReferences:  $3.([]*ast.VariableReference),
+			From:                $4.(*ast.MatchClauseList)
+		}
+		if $1 != nil {
+			ds.PathPatternMacros = $1.([]*ast.PathPatternMacro)
+		}
+		if $5 != nil {
+			ds.Where = $5.(ast.ExprNode)
+		}
+		if $6 != nil {
+			ds.GroupBy = $6.(*ast.GroupByClause)
+		}
+		if $7 != nil {
+			ds.Having = $7.(*ast.HavingClause)
+		}
+		if $8 != nil {
+			ds.OrderBy = $8.(*ast.OrderByClause)
+		}
+		if $9 != nil {
+			ds.Limit = $9.(*ast.LimitClause)
+		}
+		$$ = ds
+	}
 
 VariableReferenceList:
 	VariableReference
-	{}
+	{
+		$$ = $1
+	}
 |	VariableReferenceList ',' VariableReference
-	{}
-
-TableAsNameOpt:
-	%prec empty
 	{
-		$$ = model.CIStr{}
-	}
-|	TableAsName
-
-TableAsName:
-	Identifier
-	{
-		$$ = model.NewCIStr($1)
-	}
-|	"AS" Identifier
-	{
-		$$ = model.NewCIStr($2)
+		$$ = append($1.([]string), $3)
 	}
 
 DropGraphStmt:
 	"DROP" "GRAPH" IfExists GraphName
-	{}
+	{
+		$$ = &ast.DropGraphStmt{
+			IfExists:  $3.(bool),
+			GraphName: $4.(model.CIStr),
+		}
+	}
 
 DropIndexStmt:
-	"DROP" "INDEX" IfExists Identifier "ON" GraphName
-	{}
+	"DROP" "INDEX" IfExists Identifier "ON" LabelName
+	{
+		$$ = &ast.DropIndexStmt{
+			IfExists:  $3.(bool),
+			IndexName: model.NewCIStr($4),
+			LabelName: $6.(model.CIStr),
+		}
+	}
 
 ExplainStmt:
 	"EXPLAIN" SelectStmt
-	{}
+	{
+		$$ = &ast.ExplainStmt{
+			Select: $1.(*ast.ExplainStmt),
+		}
+	}
 
 /******************************************************************************
 
@@ -436,66 +526,160 @@ ExplainStmt:
  ******************************************************************************/
 InsertStmt:
 	"INSERT" IntoClauseOpt GraphElementInsertionList %prec insert
-	{}
+	{
+		is := &ast.InsertStmt{
+			Insertions: $3.([]*ast.GraphElementInsertion),
+		}
+		if $2 != nil {
+			is.IntoGraphName = $2.(*model.CIStr)
+		}
+		$$ = is
+	}
 |	PathPatternMacroOpt "INSERT" IntoClauseOpt GraphElementInsertionList FromClause WhereClauseOpt GroupByClauseOpt HavingClauseOpt OrderByClauseOpt LimitClauseOpt
-	{}
+	{
+		is := &ast.InsertStmt{
+			Insertions: $4.([]*ast.GraphElementInsertion),
+			From:       $5.(*ast.MatchClauseList)
+		}
+		if $1 != nil {
+			is.PathPatternMacros = $1.([]*ast.PathPatternMacro)
+		}
+		if $3 != nil {
+			is.IntoGraphName = $3.(*model.CIStr)
+		}
+		if $6 != nil {
+			is.Where = $6.(ast.ExprNode)
+		}
+		if $7 != nil {
+			is.GroupBy = $7.(*ast.GroupByClause)
+		}
+		if $8 != nil {
+			is.Having = $8.(*ast.HavingClause)
+		}
+		if $9 != nil {
+			is.OrderBy = $9.(*ast.OrderByClause)
+		}
+		if $10 != nil {
+			is.Limit = $10.(*ast.LimitClause)
+		}
+		$$ = is
+	}
 
 IntoClauseOpt:
-	{}
+	{
+		$$ = nil
+	}
 |	IntoClause
-	{}
 
 IntoClause:
 	"INTO" GraphName
-	{}
+	{
+		$$ = &$2.(model.CIStr)
+	}
 
 GraphElementInsertionList:
 	GraphElementInsertion
-	{}
+	{
+		$$ = []*ast.GraphElementInsertion{$1.(*ast.GraphElementInsertion)}
+	}
 |	GraphElementInsertionList ',' GraphElementInsertion
-	{}
+	{
+		$$ = append($1.([]*ast.GraphElementInsertion), $3.(*ast.GraphElementInsertion))
+	}
 
 GraphElementInsertion:
 	"VERTEX" VariableNameOpt LabelsAndProperties
-	{}
+	{
+		insertion := &ast.GraphElementInsertion{
+			InsertionType:       InsertionTypeVertex,
+			LabelsAndProperties: $3.(*ast.LabelsAndProperties),
+		}
+		if $2 != nil {
+			insertion.VariableName = $2.(*model.CIStr)
+		}
+		$$ = insertion
+	}
 |	"EDGE" VariableNameOpt "BETWEEN" VertexReference "AND" VertexReference LabelsAndProperties
-	{}
+	{
+		insertion := &ast.GraphElementInsertion{
+			InsertionType:       InsertionTypeEdge,
+			From:                $4.(string),
+			To:                  $6.(string),
+			LabelsAndProperties: $7.(*ast.LabelsAndProperties),
+		}
+		if $2 != nil {
+			insertion.VariableName = $2.(*model.CIStr)
+		}
+		$$ = insertion
+	}
 
 VertexReference:
 	Identifier
 
 LabelsAndProperties:
 	LabelSpecificationOpt PropertiesSpecificationOpt
+	{
+		lps := &ast.LabelsAndProperties{}
+		if $1 != nil {
+			lps.Labels = $1.([]model.CIStr)
+		}
+		if $2 != nil {
+			lps.Assignments = $2.([]*ast.PropertyAssignment)
+		}
+		$$ = lps
+	}
 
 LabelSpecificationOpt:
-	{}
+	{
+		$$ = nil
+	}
 |	LabelSpecification
-	{}
 
 LabelSpecification:
-	"LABELS" '(' LabelList ')'
+	"LABELS" '(' LabelNameList ')'
+	{
+		$$ = $3
+	}
 
 PropertiesSpecificationOpt:
-	{}
+	{
+		$$ = nil
+	}
 |	PropertiesSpecification
-	{}
 
 PropertiesSpecification:
 	"PROPERTIES" '(' PropertyAssignmentList ')'
+	{
+		$$ = $3
+	}
 
 PropertyAssignmentList:
 	PropertyAssignment
-	{}
+	{
+		$$ = []*ast.PropertyAssignment{$1.(ast.PropertyAssignment)}
+	}
 |	PropertyAssignmentList ',' PropertyAssignment
-	{}
+	{
+		$$ = append($1.([]*ast.PropertyAssignment), $3.(*ast.PropertyAssignment))
+	}
 
 PropertyAssignment:
 	PropertyAccess '=' ValueExpression
-	{}
+	{
+		$$ = &ast.PropertyAssignment{
+			PropertyAccess:  $1.(*ast.PropertyAccess),
+			ValueExpression: $3.(ast.ExprNode),
+		}
+	}
 
 PropertyAccess:
 	VariableReference '.' PropertyName
-	{}
+	{
+		$$ = &ast.PropertyAccess{
+			VariableName: $1.(string),
+			PropertyName: $3.(model.CIStr),
+		}
+	}
 
 ValueExpression:
 	VariableReference
@@ -522,115 +706,209 @@ ValueExpression:
 
 VariableReference:
 	VariableName
-	{}
+	{
+		$$ = &ast.VariableReference{
+			Name: $1.(string),
+		}
+	}
 
 Literal:
 	StringLiteral
-	{}
 |	NumericLiteral
-	{}
 |	BooleanLiteral
-	{}
 |	DateLiteral
-	{}
 |	TimeLiteral
-	{}
 |	TimestampLiteral
-	{}
 |	IntervalLiteral
-	{}
 
 StringLiteral:
 	stringLit
-	{}
+	{
+		$$ = &ast.StringLiteral{
+			Value: $1.(string),
+		}
+	}
 
 NumericLiteral:
 	intLit
+	{
+		$$ = &ast.IntegerLiteral{
+			Value: $1.(int64),
+		}
+	}
 |	decLit
+	{
+		$$ = &ast.DecimalLiteral{
+			Value: $1,
+		}
+	}
 
 BooleanLiteral:
 	"FALSE"
-	{}
+	{
+		$$ = &ast.BooleanLiteral{
+			Value: false,
+		}
+	}
 |	"TRUE"
-	{}
+	{
+		$$ = &ast.BooleanLiteral{
+			Value: true,
+		}
+	}
 
 DateLiteral:
 	"DATE" stringLit
-	{}
+	{
+		$$ = &ast.DateLiteral{
+			Value: time.Parse($2.(string)),
+		}
+	}
 
 TimeLiteral:
 	"TIME" stringLit
-	{}
+	{
+		$$ = &ast.TimeLiteral{
+			Value: time.Parse($2.(string)),
+		}
+	}
 
 TimestampLiteral:
 	"TIMESTAMP" stringLit
-	{}
+	{
+		$$ = &ast.TimestampLiteral{
+			Value: time.Parse($2.(string)),
+		}
+	}
 
 IntervalLiteral:
 	"INTERVAL" stringLit DateTimeField
-	{}
+	{
+		$$ = &ast.IntervalLiteral{
+			Value: strconv.Parse($2.(string)),
+			Unit:  $3.(ast.DateTimeField),
+		}
+	}
 
 DateTimeField:
 	"YEAR"
+	{
+		$$ = DateTimeFieldYear
+	}
 |	"MONTH"
+	{
+		$$ = DateTimeFieldMonth
+	}
 |	"DAY"
+	{
+		$$ = DateTimeFieldDay
+	}
 |	"HOUR"
+	{
+		$$ = DateTimeFieldHour
+	}
 |	"MINUTE"
+	{
+		$$ = DateTimeFieldMinite
+	}
 |	"SECOND"
+	{
+		$$ = DateTimeFieldSecond
+	}
 
 BindVariable:
 	'?'
-	{}
+	{
+		$$ = &ast.BindVariable{}
+	}
 
 ArithmeticExpression:
 	'-' ValueExpression %prec neg
-	{}
+	{
+		$$ = &ast.UnaryOperationExpr{ Op: opcode.Minus, V:  $2}
+	}
 |	ValueExpression '*' ValueExpression %prec '*'
-	{}
+	{
+		$$ = &ast.BinaryOperationExpr{Op: opcode.Mul, L: $1, R: $3}
+	}
 |	ValueExpression '/' ValueExpression %prec '/'
-	{}
+	{
+		$$ = &ast.BinaryOperationExpr{Op: opcode.Div, L: $1, R: $3}
+	}
 |	ValueExpression '%' ValueExpression %prec '%'
-	{}
+	{
+		$$ = &ast.BinaryOperationExpr{Op: opcode.Mod, L: $1, R: $3}
+	}
 |	ValueExpression '+' ValueExpression %prec '+'
-	{}
+	{
+		$$ = &ast.BinaryOperationExpr{Op: opcode.Plus, L: $1, R: $3}
+	}
 |	ValueExpression '-' ValueExpression %prec '-'
-	{}
+	{
+		$$ = &ast.BinaryOperationExpr{Op: opcode.Minus, L: $1, R: $3}
+	}
 
 RelationalExpression:
 	ValueExpression eq ValueExpression
-	{}
+	{
+		$$ = &ast.BinaryOperationExpr{Op: opcode.EQ, L: $1, R: $3}
+	}
 |	ValueExpression neqSynonym ValueExpression
-	{}
+	{
+		$$ = &ast.BinaryOperationExpr{Op: opcode.NE, L: $1, R: $3}
+	}
 |	ValueExpression '>' ValueExpression
-	{}
+	{
+		$$ = &ast.BinaryOperationExpr{Op: opcode.GT, L: $1, R: $3}
+	}
 |	ValueExpression '<' ValueExpression
-	{}
+	{
+		$$ = &ast.BinaryOperationExpr{Op: opcode.LT, L: $1, R: $3}
+	}
 |	ValueExpression ge ValueExpression
-	{}
+	{
+		$$ = &ast.BinaryOperationExpr{Op: opcode.GE, L: $1, R: $3}
+	}
 |	ValueExpression le ValueExpression
-	{}
+	{
+		$$ = &ast.BinaryOperationExpr{Op: opcode.LE, L: $1, R: $3}
+	}
 
 LogicalExpression:
 	ValueExpression "OR" ValueExpression %prec pipes
-	{}
+	{
+		$$ = &ast.BinaryOperationExpr{Op: opcode.LogicOr, L: $1, R: $3}
+	}
 |	ValueExpression "XOR" ValueExpression %prec xor
-	{}
+	{
+		$$ = &ast.BinaryOperationExpr{Op: opcode.LogicXor, L: $1, R: $3}
+	}
 |	ValueExpression "AND" ValueExpression %prec andand
-	{}
+	{
+		$$ = &ast.BinaryOperationExpr{Op: opcode.LogicAnd, L: $1, R: $3}
+	}
 |	"NOT" ValueExpression %prec not
-	{}
-
-Assignment:
-	singleAtIdentifier assignmentEq ValueExpression %prec assignmentEq
-	{}
+	{
+		v, ok := $2.(*ast.ExistsSubqueryExpr)
+		if ok {
+			v.Not = true
+			$$ = $2
+		} else {
+			$$ = &ast.UnaryOperationExpr{ Op: opcode.Not, V:  $2}
+		}
+	}
 
 StringConcat:
 	ValueExpression pipes ValueExpression
-	{}
+	{
+		$$ = &ast.BinaryOperationExpr{Op: opcode.Concat, L: $1, R: $3}
+	}
 
 BracketedValueExpression:
 	'(' ValueExpression ')'
-	{}
+	{
+		$$ &ast.ParenthesesExpr{Expr: $2}
+	}
 
 /******************************************************************************
 
@@ -658,7 +936,12 @@ BracketedValueExpression:
  ******************************************************************************/
 FunctionInvocation:
 	FunctionName '(' ArgumentList ')'
-	{}
+	{
+		$$ = &ast.FuncCallExpr{
+			FnName: model.NewCIStr($1),
+			Args:   $3.([]ast.ExprNode),
+		}
+	}
 
 FunctionName:
 	"LOWER"
@@ -679,163 +962,348 @@ FunctionName:
 
 ArgumentList:
 	ValueExpression
-	{}
+	{
+		$$ = []ast.ExprNode{$1}
+	}
 |	ArgumentList ',' ValueExpression
-	{}
+	{
+		$$ = append($1.([]ast.ExprNode), $3)
+	}
 
 CharacterSubstring:
 	"SUBSTRING" '(' ValueExpression "FROM" StartPosition ForStringLengthOpt ')'
-	{}
+	{
+		$$ = &ast.SubstrFuncExpr{
+			Expr:  $3,
+			Start: $5,
+			For:   $6,
+		}
+	}
 
 StartPosition:
 	ValueExpression
 
 ForStringLengthOpt:
-	{}
+	{
+		$$ = nil
+	}
 |	"FOR" ValueExpression
-	{}
+	{
+		$$ = $2
+	}
 
 Aggregation:
 	"COUNT" '(' '*' ')'
-	{}
+	{
+		$$ = &ast.AggregateFuncExpr{
+			F:    $1,
+			Args: []ast.ExprNode{
+				&ast.IntegerLiteral{Value: 1},
+			},
+		}
+	}
 |	"COUNT" '(' DistinctOpt ValueExpression ')'
-	{}
+	{
+		$$ = &ast.AggregateFuncExpr{
+			F:        $1,
+			Args:     []ast.ExprNode{$4},
+			Distinct: $3.(bool),
+		}
+	}
 |	"MIN" '(' DistinctOpt ValueExpression ')'
-	{}
+	{
+		$$ = &ast.AggregateFuncExpr{
+			F:        $1,
+			Args:     []ast.ExprNode{$4},
+			Distinct: $3.(bool),
+		}
+	}
 |	"MAX" '(' DistinctOpt ValueExpression ')'
-	{}
+	{
+		$$ = &ast.AggregateFuncExpr{
+			F:        $1,
+			Args:     []ast.ExprNode{$4},
+			Distinct: $3.(bool),
+		}
+	}
 |	"AVG" '(' DistinctOpt ValueExpression ')'
-	{}
+	{
+		$$ = &ast.AggregateFuncExpr{
+			F:        $1,
+			Args:     []ast.ExprNode{$4},
+			Distinct: $3.(bool),
+		}
+	}
 |	"SUM" '(' DistinctOpt ValueExpression ')'
-	{}
+	{
+		$$ = &ast.AggregateFuncExpr{
+			F:        $1,
+			Args:     []ast.ExprNode{$4},
+			Distinct: $3.(bool),
+		}
+	}
 |	"ARRAY_AGG" '(' DistinctOpt ValueExpression ')'
-	{}
+	{
+		$$ = &ast.AggregateFuncExpr{
+			F:        $1,
+			Args:     []ast.ExprNode{$4},
+			Distinct: $3.(bool),
+		}
+	}
 |	"LISTAGG" '(' DistinctOpt ValueExpression ListaggSeparatorOpt')'
-	{}
+	{
+		expr := &ast.AggregateFuncExpr{
+			F:        $1,
+			Args:     []ast.ExprNode{$4},
+			Distinct: $3.(bool),
+		}
+		if $5 != nil {
+			expr.Args = append(expr.Args, $5)
+		}
+		$$ = expr
+	}
 
 DistinctOpt:
-	{}
+	{
+		$$ = false
+	}
 |	"DISTINCT"
-	{}
+	{
+		$$ = true
+	}
 
 ListaggSeparatorOpt:
-	{}
+	{
+		$$ = ""
+	}
 |	',' StringLiteral
-	{}
+	{
+		$$ = $2
+	}
 
 ExtractFunction:
 	"EXTRACT" '(' ExtractField "FROM" ValueExpression ')'
-	{}
+	{
+		$$ = &ast.ExtractFuncExpr{
+			ExtractField: $3.(ast.ExtractField),
+			Expr:         $5,
+		}
+	}
 
 ExtractField:
 	"YEAR"
-	{}
+	{
+		$$ = ast.ExtractFieldYear
+	}
 |	"MONTH"
-	{}
+	{
+		$$ = ast.ExtractFieldMonth
+	}
 |	"DAY"
-	{}
+	{
+		$$ = ast.ExtractFieldDay
+	}
 |	"HOUR"
-	{}
+	{
+		$$ = ast.ExtractFieldHour
+	}
 |	"MINUTE"
-	{}
+	{
+		$$ = ast.ExtractFieldMinute
+	}
 |	"SECOND"
-	{}
+	{
+		$$ = ast.ExtractFieldSecond
+	}
 |	"TIMEZONE_HOUR"
-	{}
+	{
+		$$ = ast.ExtractFieldTimezoneHour
+	}
 |	"TIMEZONE_MINUTE"
+	{
+		$$ = ast.ExtractFieldTimezoneMinute
+	}
 
 IsNullPredicate:
 	ValueExpression "IS" "NULL"
-	{}
+	{
+		$$ = &ast.IsNullExpr{
+			Expr: $1,
+		}
+	}
 
 IsNotNullPredicate:
 	ValueExpression "IS" "NOT" "NULL"
-	{}
+	{
+		$$ = &ast.IsNullExpr{
+			Expr: $1,
+			Not:  true,
+		}
+	}
 
 CastSpecification:
 	"CAST" '(' ValueExpression "AS" DataType ')'
-	{}
+	{
+		$$ = &ast.CastFuncExpr{
+			Expr:     $3,
+			DataType: $5.(ast.DataType),
+		}
+	}
 
 DataType:
 	"STRING"
-	{}
+	{
+		$$ = ast.DataTypeString
+	}
 |	"BOOLEAN"
-	{}
+	{
+		$$ = ast.DataTypeBoolean
+	}
 |	"INTEGER"
-	{}
+	{
+		$$ = ast.DataTypeInteger
+	}
 |	"INT"
-	{}
+	{
+		$$ = ast.DataTypeInt
+	}
 |	"LONG"
-	{}
+	{
+		$$ = ast.DataTypeLong
+	}
 |	"FLOAT"
-	{}
+	{
+		$$ = ast.DataTypeFloat
+	}
 |	"DOUBLE"
-	{}
+	{
+		$$ = ast.DataTypeDouble
+	}
 |	"DATE"
-	{}
+	{
+		$$ = ast.DataTypeDouble
+	}
 |	"TIME"
-	{}
+	{
+		$$ = ast.DataTypeTime
+	}
 |	"TIME" "WITH" "TIME" "ZONE"
-	{}
+	{
+		$$ = ast.DataTypeTimeWithZone
+	}
 |	"TIMESTAMP"
-	{}
+	{
+		$$ = ast.DataTypeTimestamp
+	}
 |	"TIMESTAMP" "WITH" "TIME" "ZONE"
-	{}
+	{
+		$$ = ast.DataTypeTimestampWithZone
+	}
 
 CaseExpression:
 	SimpleCase
-	{}
 |	SearchedCase
-	{}
 
 SimpleCase:
-	"CASE" ValueExpression WhenCaluseList ElseClauseOpt "END"
+	"CASE" ValueExpression WhenClauseList ElseClauseOpt "END"
+	{
+		$$ = &ast.CaseExpr{
+			Value:       $2,
+			WhenClauses: $3.([]*ast.WhenClause),
+			ElseClause:  $4,
+		}
+	}
 
 SearchedCase:
-	"CASE" WhenCaluseList ElseClauseOpt "END"
+	"CASE" WhenClauseList ElseClauseOpt "END"
+	{
+		$$ = &ast.CaseExpr{
+			WhenClauses: $2.([]*ast.WhenClause),
+			ElseClause:  $3,
+		}
+	}
 
-WhenCaluseList:
+WhenClauseList:
 	WhenClause
-	{}
-|	WhenCaluseList WhenClause
-	{}
+	{
+		$$ = []*ast.WhenClause{$1.(*ast.WhenClause)}
+	}
+|	WhenClauseList WhenClause
+	{
+		$$ = append($1.([]*ast.WhenClause), $2.(*ast.WhenClause))
+	}
 
 WhenClause:
 	"WHEN" ValueExpression "THEN" ValueExpression
-	{}
+	{
+		$$ = &ast.WhenClause{
+			Expr:   $2,
+			Result: $4,
+		}
+	}
 
 ElseClauseOpt:
-	{}
+	{
+		$$ = nil
+	}
 |	"ELSE" ValueExpression
-	{}
+	{
+		$$ = $2
+	}
 
 InPredicate:
 	ValueExpression "IN" InValueList
-	{}
+	{
+		$$ = &ast.PatternInExpr{
+			Expr: $1,
+			List: $3.([]ast.ExprNode),
+		}
+	}
 
 NotInPredicate:
 	ValueExpression "NOT" "IN" InValueList
-	{}
+	{
+		$$ = &ast.PatternInExpr{
+			Expr: $1,
+			List: $3.([]ast.ExprNode),
+			Not:  true,
+		}
+	}
 
 InValueList:
 	'(' ValueExpressionList ')'
-	{}
-|	BindVariable
-	{}
+	{
+		$$ = $2
+	}
 
 ValueExpressionList:
 	ValueExpression
-	{}
+	{
+		$$ = []ast.ExprNode{$1}
+	}
 |	ValueExpressionList ',' ValueExpression
-	{}
+	{
+		$$ = append($1.([]ast.ExprNode), $3)
+	}
 
 ExistsPredicate:
-	"EXISTS" SubSelect
-	{}
+	"EXISTS" Subquery
+	{
+		$$ = &ast.ExistsSubqueryExpr{
+			Sel: $2,
+		}
+	}
+
+Subquery:
+	'(' SelectStmt ')'
+	{
+		$$ = &ast.SubqueryExpr{
+			Query: $2,
+		}
+	}
 
 ScalarSubquery:
-	SubSelect
-	{}
+	Subquery
 
 /******************************************************************************
 
@@ -847,66 +1315,128 @@ RollbackStmt:
 	{}
 
 /*************************************Select Statement***************************************/
-SubSelect:
-	'(' SelectStmt ')'
-	{}
-
 SelectStmt:
 	PathPatternMacroOpt SelectClause FromClause WhereClauseOpt GroupByClauseOpt HavingClauseOpt OrderByClauseOpt LimitClauseOpt
-	{}
+	{
+		ss := &ast.SelectStmt{
+			Select: $2.(*ast.SelectStmt),
+			From:   $3.(*ast.MatchClauseList),
+		}
+		if $1 != nil {
+			ss.PathPatternMacros = $1.([]*ast.PathPatternMacro)
+		}
+		if $4 != nil {
+			ss.Where = $4.(ast.ExprNode)
+		}
+		if $5 != nil {
+			ss.GroupBy = $5.(*ast.GroupByClause)
+		}
+		if $6 != nil {
+			ss.Having = $6.(*ast.HavingClause)
+		}
+		if $7 != nil {
+			ss.OrderBy = $7.(*ast.OrderByClause)
+		}
+		if $8 != nil {
+			ss.Limit = $8.(*ast.LimitClause)
+		}
+		$$ = ss
+	}
 
 SelectClause:
 	"SELECT" DistinctOpt SelectElementList
-	{}
+	{
+		$$ = &ast.SelectClause{
+			Distinct: $2.(bool),
+			Elements: $3.([]*ast.SelectElement),
+		}
+	}
 |	"SELECT" '*' %prec '*'
-	{}
+	{
+		$$ = &ast.SelectClause{
+			Start: true,
+		}
+	}
 
 SelectElementList:
-	Field
-	{}
-|	SelectElementList ',' Field
-	{}
+	SelectEelement
+	{
+		$$ = []*ast.SelectEelement{$1.(*ast.SelectEelement)}
+	}
+|	SelectElementList ',' SelectEelement
+	{
+		$$ = append($1.([]*ast.SelectEelement), $3.(*ast.SelectEelement))
+	}
 
-Field:
+SelectEelement:
 	ExpAsVar
-	{}
+	{
+		$$ = &ast.SelectEelement{
+			ExpAsVar: $1.(*ast.ExpAsVar),
+		}
+	}
 |	Identifier allProp AllPropertiesPrefixOpt %prec '*'
-	{}
+	{
+		$$ = &ast.SelectEelement{
+			Identifier: $1,
+			Prefix:     $3.(string),
+		}
+	}
 
 ExpAsVar:
 	ValueExpression FieldAsNameOpt
-	{}
+	{
+		ev := &ast.ExpAsVar{
+			Expr: $1.(ast.ExprNode),
+		}
+		if $2 != nil {
+			ev.AsName = $2.(*model.CIStr)
+		}
+		$$ = ev
+	}
 
 AllPropertiesPrefixOpt:
 	%prec empty
-	{}
+	{
+		$$ = ""
+	}
 |	"PREFIX" StringLiteral
-	{}
+	{
+		$$ = $1
+	}
 
 FieldAsNameOpt:
 	/* EMPTY */
 	{
-		$$ = ""
+		$$ = nil
 	}
 |	FieldAsName
-	{}
+	{
+		$$ = &$1.(model.CIStr)
+	}
 
 FieldAsName:
-	Identifier
-|	"AS" Identifier
-	{}
-|	stringLit
+	"AS" Identifier
+	{
+		$$ = model.NewCIStr($2)
+	}
 |	"AS" stringLit
-	{}
+	{
+		$$ = model.NewCIStr($2)
+	}
 
 FromClause:
 	"FROM" MatchClauseList
-	{}
+	{
+		$$ = $2.(*ast.MatchClauseList)
+	}
 
 MatchClauseList:
 	MatchClause
 	{
-		$$ = &ast.MatchClauseList{Matches: []*ast.MatchClause{$1.(*ast.MatchClause)}}
+		$$ = &ast.MatchClauseList{
+			Matches: []*ast.MatchClause{$1.(*ast.MatchClause)},
+		}
 	}
 |	MatchClauseList ',' MatchClause
 	{
@@ -919,7 +1449,7 @@ MatchClause:
 	"MATCH" GraphPattern GraphOnClauseOpt RowsPerMatchOpt
 	{
 		$$ = &ast.MatchClause{
-			Graph: $3.(*ast.GraphName),
+			Graph: $3.(*model.CIStr),
 			Paths: $2.([]*ast.PathPattern),
 		}
 	}
@@ -927,13 +1457,13 @@ MatchClause:
 GraphOnClause:
 	"ON" GraphName
 	{
-		$$ = $2
+		$$ = &$2.(model.CIStr)
 	}
 
 GraphOnClauseOpt:
 	%prec lowerThanOn
 	{
-		$$ = (*ast.GraphName)(nil)
+		$$ = (*model.CIStr)(nil)
 	}
 |	GraphOnClause
 
@@ -1135,11 +1665,11 @@ VariableSpec:
 
 VariableNameOpt:
 	{
-		$$ = model.CIStr{}
+		$$ = nil
 	}
 |	Identifier
 	{
-		$$ = model.NewCIStr($1)
+		$$ = &model.NewCIStr($1)
 	}
 
 LabelPredicate:
@@ -1157,15 +1687,6 @@ LabelPredicateOpt:
 ColonOrIsKeyword:
 	':'
 |	"IS"
-
-LabelList:
-	Label:
-	{}
-|	LabelList ',' Label
-	{}
-
-Label:
-	Identifier
 
 LabelNameList:
 	LabelName
@@ -1253,9 +1774,10 @@ PatternQuantifierOpt:
 
 PathPatternMacroOpt:
 	%prec empty
-	{}
+	{
+		$$ = nil
+	}
 |	PathPatternMacroList
-	{}
 
 PathPatternMacroList:
 	PathPatternMacro
@@ -1281,26 +1803,44 @@ PathPatternMacro:
 	}
 
 WhereClauseOpt:
- 	{}
+ 	{
+ 		$$ = nil
+ 	}
 |	"WHERE" ValueExpression
-	{}
+	{
+		$$ = $1
+	}
 
 GroupByClauseOpt:
- 	{}
+ 	{
+ 		$$ = nil
+ 	}
 |	"GROUP" "BY" ByList
-	{}
+	{
+		$$ = $3
+	}
 
 ByList:
 	ByItem
-	{}
 |	ByList ',' ByItem
-	{}
+	{
+		$$ = append($1.([]*ast.ByItem), $3.(*ast.ByItem))
+	}
 
 ByItem:
 	ExpAsVar
-	{}
+	{
+		$$ = &ast.ByItem{
+			Expr: $1.(*ast.ExpAsVar),
+		}
+	}
 |	ExpAsVar Order
-	{}
+	{
+		$$ = &ast.ByItem{
+			Expr: $1.(*ast.ExpAsVar),
+			Desc: $2.(bool),
+		}
+	}
 
 Order:
 	"ASC"
@@ -1317,31 +1857,62 @@ HavingClauseOpt:
 		$$ = nil
 	}
 |	"HAVING" ValueExpression
-	{}
+	{
+		$$ = &ast.HavingClause{
+			Expr: $2,
+		}
+	}
 
 OrderByClauseOpt:
- 	{}
+ 	{
+ 		$$ = nil
+ 	}
 |	"ORDER" "BY" ByList
-	{}
+	{
+		$$ = &ast.OrderByClause{
+			Items: $3.([]*ast.ByItem),
+		}
+	}
 
 LimitClauseOpt:
- 	{}
+ 	{
+ 		$$ = nil
+ 	}
 |	"LIMIT" LimitOption
-	{}
+	{
+		$$ = &ast.LimitClause{
+			Count: $1.(ast.ExprNode),
+		}
+	}
 |	"LIMIT" LimitOption ',' LimitOption
-	{}
+	{
+		$$ = &ast.LimitClause{
+			Count:  $4.(ast.ExprNode),
+			Offset: $2.(ast.ExprNode),
+		}
+	}
 |	"LIMIT" LimitOption "OFFSET" LimitOption
-	{}
+	{
+		$$ = &ast.LimitClause{
+			Count:  $2.(ast.ExprNode),
+			Offset: $4.(ast.ExprNode),
+		}
+	}
 
 LimitOption:
 	LengthNum
-	{}
 |	paramMarker
-	{}
+	{
+		$$ = &ast.BindVariable{}
+	}
 
 LengthNum:
 	intLit
-	{}
+	{
+		$$ = &ast.IntegerLiteral{
+			Value: $1,
+		}
+	}
 
 /******************************************************************************
 
@@ -1351,21 +1922,56 @@ LengthNum:
  ******************************************************************************/
 UpdateStmt:
 	PathPatternMacroOpt "UPDATE" GraphElementUpdateList FromClause  WhereClauseOpt GroupByClauseOpt HavingClauseOpt OrderByClauseOpt LimitClauseOpt
-	{}
+	{
+		us := &ast.UpdateStmt{
+			Updates:  $3.([]*ast.GraphElementUpdate),
+			From:     $4.(*ast.MatchClauseList)
+		}
+		if $1 != nil {
+			us.PathPatternMacros = $1.([]*ast.PathPatternMacro)
+		}
+		if $5 != nil {
+			us.Where = $5.(ast.ExprNode)
+		}
+		if $6 != nil {
+			us.GroupBy = $6.(*ast.GroupByClause)
+		}
+		if $7 != nil {
+			us.Having = $7.(*ast.HavingClause)
+		}
+		if $8 != nil {
+			us.OrderBy = $8.(*ast.OrderByClause)
+		}
+		if $9 != nil {
+			us.Limit = $9.(*ast.LimitClause)
+		}
+		$$ = us
+	}
 
 GraphElementUpdateList:
 	GraphElementUpdate
-	{}
+	{
+		$$ = []*ast.GraphElementUpdate{$1.(*ast.GraphElementUpdate)}
+	}
 |	GraphElementUpdateList ',' GraphElementUpdate
-	{}
+	{
+		$$ = append($1.([]*ast.GraphElementUpdate), $3.(*ast.GraphElementUpdate))
+	}
 
 GraphElementUpdate:
 	VariableReference "SET" '(' PropertyAssignmentList ')'
-	{}
+	{
+		$$ = &ast.GraphElementUpdate{
+			VariableName: $1.(*ast.GraphElementUpdate),
+			Assignments:  $4.([]*ast.PropertyAssignment)
+		}
+	}
 
 UseStmt:
 	"USE" GraphName
-	{}
+	{
+		$$ = &ast.UseStmt{}
+	}
 
 IfExists:
 	{
@@ -1387,17 +1993,21 @@ IfNotExists:
 
 GraphName:
 	Identifier
+	{
+		$$ = model.NewCIStr($1)
+	}
 
 PropertyName:
 	Identifier
-	{}
-|	Identifier '.' Identifier
-	{}
+	{
+		$$ = model.NewCIStr($1)
+	}
 
 IndexName:
-	{}
-|	Identifier
-	{}
+	Identifier
+	{
+		$$ = model.NewCIStr($1)
+	}
 
 LabelName:
 	Identifier
@@ -1413,8 +2023,9 @@ Identifier:
 
 PropertyNameList:
 	PropertyName
-	{}
 |	PropertyNameList ',' PropertyName
-	{}
+	{
+		$$ = append($1.([]model.CIStr), $3.(model.CIStr))
+	}
 
 %%

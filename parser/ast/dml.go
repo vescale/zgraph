@@ -15,27 +15,37 @@
 package ast
 
 import (
-	"errors"
+	"fmt"
+
+	"github.com/pingcap/errors"
+	"github.com/vescale/zgraph/parser/format"
 	"github.com/vescale/zgraph/parser/model"
 )
 
 var (
-	_ DDLNode = &CreatePropertyGraphStmt{}
-	_ DDLNode = &DropPropertyGraphStmt{}
-
-	_ Node = &GraphTable{}
-	_ Node = &GraphName{}
-	_ Node = &KeyClause{}
-	_ Node = &LabelClause{}
-	_ Node = &PropertiesClause{}
-	_ Node = &VertexTableRef{}
-	_ Node = &Property{}
+	_ Node = &InsertStmt{}
+	_ Node = &DeleteStmt{}
+	_ Node = &UpdateStmt{}
+	_ Node = &SelectStmt{}
 	_ Node = &PathPattern{}
 	_ Node = &VariableSpec{}
 	_ Node = &VertexPattern{}
 	_ Node = &ReachabilityPathExpr{}
 	_ Node = &PatternQuantifier{}
 	_ Node = &PathPatternMacro{}
+
+	_ Node = &GraphElementInsertion{}
+	_ Node = &LabelsAndProperties{}
+	_ Node = &PropertyAssignment{}
+	_ Node = &GraphElementUpdate{}
+	_ Node = &SelectElement{}
+	_ Node = &ExpAsVar{}
+	_ Node = &ByItem{}
+	_ Node = &SelectClause{}
+	_ Node = &GroupByClause{}
+	_ Node = &HavingClause{}
+	_ Node = &OrderByClause{}
+	_ Node = &LimitClause{}
 
 	_ ResultSetNode = &MatchClause{}
 	_ ResultSetNode = &MatchClauseList{}
@@ -45,421 +55,553 @@ var (
 	_ VertexPairConnection = &QuantifiedPathExpr{}
 )
 
-type CreatePropertyGraphStmt struct {
-	ddlNode
+type InsertionType byte
 
-	Graph        *GraphName
-	VertexTables []*GraphTable
-	EdgeTables   []*GraphTable
+const (
+	InsertionTypeVertex InsertionType = 1
+	InsertionTypeEdge   InsertionType = 2
+)
+
+// String implements the fmt.Stringer interface
+func (it InsertionType) String() string {
+	switch it {
+	case InsertionTypeVertex:
+		return "VERTEX"
+	case InsertionTypeEdge:
+		return "EDGE"
+	default:
+		return fmt.Sprintf("UNKNOWN(%d)", it)
+	}
 }
 
-func (n *CreatePropertyGraphStmt) Restore(ctx *format.RestoreCtx) error {
-	ctx.WriteKeyWord("CREATE PROPERTY GRAPH ")
-	if err := n.Graph.Restore(ctx); err != nil {
-		return errors.Annotate(err, "An error occurred while restore CreatePropertyGraphStmt.GraphName")
-	}
-
-	ctx.WriteKeyWord(" VERTEX TABLES ")
-	ctx.WritePlain("(")
-	for i, tbl := range n.VertexTables {
-		if i > 0 {
-			ctx.WritePlain(",")
-		}
-		if err := tbl.Restore(ctx); err != nil {
-			return errors.Annotatef(err, "An error occurred while restore CreatePropertyGraphStmt.VertexTables[%d]", i)
-		}
-	}
-	ctx.WritePlain(")")
-
-	if len(n.EdgeTables) > 0 {
-		ctx.WriteKeyWord(" EDGE TABLES ")
-		ctx.WritePlain("(")
-		for i, tbl := range n.EdgeTables {
-			if i > 0 {
-				ctx.WritePlain(",")
-			}
-			if err := tbl.Restore(ctx); err != nil {
-				return errors.Annotatef(err, "An error occurred while restore CreatePropertyGraphStmt.EdgeTables[%d]", i)
-			}
-		}
-		ctx.WritePlain(")")
-	}
-
-	return nil
-}
-
-func (n *CreatePropertyGraphStmt) Accept(v Visitor) (Node, bool) {
-	newNode, skipChildren := v.Enter(n)
-	if skipChildren {
-		return v.Leave(newNode)
-	}
-	nn := newNode.(*CreatePropertyGraphStmt)
-	if nn.Graph != nil {
-		node, ok := nn.Graph.Accept(v)
-		if !ok {
-			return nn, false
-		}
-		nn.Graph = node.(*GraphName)
-	}
-	for i, tbl := range nn.VertexTables {
-		node, ok := tbl.Accept(v)
-		if !ok {
-			return nn, false
-		}
-		nn.VertexTables[i] = node.(*GraphTable)
-	}
-	for i, tbl := range nn.EdgeTables {
-		node, ok := tbl.Accept(v)
-		if !ok {
-			return nn, false
-		}
-		nn.EdgeTables[i] = node.(*GraphTable)
-	}
-	return v.Leave(nn)
-}
-
-type DropPropertyGraphStmt struct {
-	ddlNode
-
-	Graph *GraphName
-}
-
-func (n *DropPropertyGraphStmt) Restore(ctx *format.RestoreCtx) error {
-	ctx.WriteKeyWord("DROP PROPERTY GRAPH ")
-	if err := n.Graph.Restore(ctx); err != nil {
-		return errors.Annotate(err, "An error occurred while restore DropPropertyGraphStmt.GraphName")
-	}
-	return nil
-}
-
-func (n *DropPropertyGraphStmt) Accept(v Visitor) (Node, bool) {
-	newNode, skipChildren := v.Enter(n)
-	if skipChildren {
-		return v.Leave(newNode)
-	}
-	nn := newNode.(*DropPropertyGraphStmt)
-	if nn.Graph != nil {
-		node, ok := nn.Graph.Accept(v)
-		if !ok {
-			return nn, false
-		}
-		nn.Graph = node.(*GraphName)
-	}
-	return v.Leave(nn)
-}
-
-type GraphName struct {
+type GraphElementInsertion struct {
 	node
 
-	Schema model.CIStr
-	Name   model.CIStr
+	InsertionType       InsertionType
+	VariableName        *VariableReference
+	From                string
+	To                  string
+	LabelsAndProperties *LabelsAndProperties
 }
 
-func (n *GraphName) Restore(ctx *format.RestoreCtx) error {
-	if n.Schema.String() != "" {
-		ctx.WriteName(n.Schema.String())
-		ctx.WritePlain(".")
-	}
-	ctx.WriteName(n.Name.String())
-	return nil
+func (g *GraphElementInsertion) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
 }
 
-func (n *GraphName) Accept(v Visitor) (node Node, ok bool) {
-	newNode, _ := v.Enter(n)
-	return v.Leave(newNode)
+func (g *GraphElementInsertion) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
 }
 
-type GraphTable struct {
+type LabelsAndProperties struct {
 	node
 
-	Table      *TableName
-	AsName     model.CIStr
-	Key        *KeyClause
-	Label      *LabelClause
-	Properties *PropertiesClause
-	// For edge table only. Source and Destination must be both non-nil or both nil.
-	Source      *VertexTableRef
-	Destination *VertexTableRef
+	Labels      []model.CIStr
+	Assignments []*PropertyAssignment
 }
 
-func (n *GraphTable) Restore(ctx *format.RestoreCtx) error {
-	if err := n.Table.Restore(ctx); err != nil {
-		return errors.Annotate(err, "An error occurred while restore GraphTable.Table")
-	}
-	if asName := n.AsName.String(); asName != "" {
-		ctx.WriteKeyWord(" AS ")
-		ctx.WriteName(asName)
-	}
-	if n.Key != nil {
-		ctx.WritePlain(" ")
-		if err := n.Key.Restore(ctx); err != nil {
-			return errors.Annotate(err, "An error occurred while restore GraphTable.Key")
-		}
-	}
-
-	if (n.Source == nil) != (n.Destination == nil) {
-		return errors.New("GraphTable.Source and GraphTable.Destination must be both nil for vertex tables or both non-nil for edge tables")
-	}
-	if n.Source != nil {
-		ctx.WriteKeyWord(" SOURCE ")
-		if err := n.Source.Restore(ctx); err != nil {
-			return errors.Annotate(err, "An error occurred while restore GraphTable.Source")
-		}
-		ctx.WriteKeyWord(" DESTINATION ")
-		if err := n.Destination.Restore(ctx); err != nil {
-			return errors.Annotate(err, "An error occurred while restore GraphTable.Destination")
-		}
-	}
-
-	if n.Label != nil {
-		ctx.WritePlain(" ")
-		if err := n.Label.Restore(ctx); err != nil {
-			return errors.Annotate(err, "An error occurred while restore GraphTable.Label")
-		}
-	}
-	if n.Properties != nil {
-		ctx.WritePlain(" ")
-		if err := n.Properties.Restore(ctx); err != nil {
-			return errors.Annotate(err, "An error occurred while restore GraphTable.Properties")
-		}
-	}
-	return nil
+func (l *LabelsAndProperties) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
 }
 
-func (n *GraphTable) Accept(v Visitor) (Node, bool) {
-	newNode, skipChildren := v.Enter(n)
-	if skipChildren {
-		return v.Leave(newNode)
-	}
-	nn := newNode.(*GraphTable)
-	node, ok := nn.Table.Accept(v)
-	if !ok {
-		return nn, false
-	}
-	nn.Table = node.(*TableName)
-	if nn.Key != nil {
-		node, ok = nn.Key.Accept(v)
-		if !ok {
-			return nn, false
-		}
-		nn.Key = node.(*KeyClause)
-	}
-	if nn.Source != nil {
-		node, ok = nn.Source.Accept(v)
-		if !ok {
-			return nn, false
-		}
-		nn.Source = node.(*VertexTableRef)
-	}
-	if nn.Destination != nil {
-		node, ok = nn.Destination.Accept(v)
-		if !ok {
-			return nn, false
-		}
-		nn.Destination = node.(*VertexTableRef)
-	}
-	if nn.Label != nil {
-		node, ok = nn.Label.Accept(v)
-		if !ok {
-			return nn, false
-		}
-		nn.Label = node.(*LabelClause)
-	}
-	if nn.Properties != nil {
-		node, ok = nn.Properties.Accept(v)
-		if !ok {
-			return nn, false
-		}
-		nn.Properties = node.(*PropertiesClause)
-	}
-	return v.Leave(nn)
+func (l *LabelsAndProperties) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
 }
 
-type KeyClause struct {
+type PropertyAssignment struct {
 	node
 
-	Cols []*ColumnName
+	PropertyAccess  *PropertyAccess
+	ValueExpression ExprNode
 }
 
-func (n *KeyClause) Restore(ctx *format.RestoreCtx) error {
-	ctx.WriteKeyWord("KEY ")
-	ctx.WritePlain("(")
-	for i, col := range n.Cols {
-		if i > 0 {
-			ctx.WritePlain(",")
-		}
-		if err := col.Restore(ctx); err != nil {
-			return errors.Annotatef(err, "An error occurred while restore KeyClause.Cols[%d]", i)
-		}
-	}
-	ctx.WritePlain(")")
-	return nil
+func (p *PropertyAssignment) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
 }
 
-func (n *KeyClause) Accept(v Visitor) (node Node, ok bool) {
-	newNode, _ := v.Enter(n)
-	return v.Leave(newNode)
+func (p *PropertyAssignment) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
 }
 
-type VertexTableRef struct {
-	node
+type GraphElementUpdate struct {
+	dmlNode
 
-	Key   *KeyClause
-	Table *TableName
+	VariableName *VariableReference
+	Assignments  []*PropertyAssignment
 }
 
-func (n *VertexTableRef) Restore(ctx *format.RestoreCtx) error {
-	if n.Key != nil {
-		if err := n.Key.Restore(ctx); err != nil {
-			return errors.Annotate(err, "An error occurred while restore VertexTableRef.Key")
-		}
-		ctx.WriteKeyWord(" REFERENCES ")
-	}
-	if err := n.Table.Restore(ctx); err != nil {
-		return errors.Annotate(err, "An error occurred while restore VertexTableRef.Table")
-	}
-	return nil
+func (g *GraphElementUpdate) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
 }
 
-func (n *VertexTableRef) Accept(v Visitor) (Node, bool) {
-	newNode, skipChildren := v.Enter(n)
-	if skipChildren {
-		return v.Leave(newNode)
-	}
-	nn := newNode.(*VertexTableRef)
-	if nn.Key != nil {
-		node, ok := nn.Key.Accept(v)
-		if !ok {
-			return nn, false
-		}
-		nn.Key = node.(*KeyClause)
-	}
-	node, ok := nn.Table.Accept(v)
-	if !ok {
-		return nn, false
-	}
-	nn.Table = node.(*TableName)
-	return v.Leave(nn)
+func (g *GraphElementUpdate) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
 }
 
-type LabelClause struct {
-	node
-
-	Name model.CIStr
-}
-
-func (n *LabelClause) Restore(ctx *format.RestoreCtx) error {
-	ctx.WriteKeyWord("LABEL ")
-	ctx.WriteName(n.Name.String())
-	return nil
-}
-
-func (n *LabelClause) Accept(v Visitor) (Node, bool) {
-	newNode, _ := v.Enter(n)
-	return v.Leave(newNode)
-}
-
-type PropertiesClause struct {
-	node
-
-	AllCols      bool
-	ExceptCols   []*ColumnName
-	Properties   []*Property
-	NoProperties bool
-}
-
-func (n *PropertiesClause) Restore(ctx *format.RestoreCtx) error {
-	switch {
-	case n.AllCols:
-		ctx.WriteKeyWord("PROPERTIES ARE ALL COLUMNS")
-		if len(n.ExceptCols) > 0 {
-			ctx.WriteKeyWord(" EXCEPT ")
-			ctx.WritePlain("(")
-			for i, col := range n.ExceptCols {
-				if i > 0 {
-					ctx.WritePlain(",")
-				}
-				if err := col.Restore(ctx); err != nil {
-					return errors.Annotatef(err, "An error occurred while restore PropertiesClause.ExceptCols[%d]", i)
-				}
-			}
-			ctx.WritePlain(")")
-		}
-	case len(n.Properties) > 0:
-		ctx.WriteKeyWord("PROPERTIES ")
-		ctx.WritePlain("(")
-		for i, prop := range n.Properties {
-			if i > 0 {
-				ctx.WritePlain(",")
-			}
-			if err := prop.Restore(ctx); err != nil {
-				return errors.Annotatef(err, "An error occurred while restore PropertiesClause.Properties[%d]", i)
-			}
-		}
-		ctx.WritePlain(")")
-	case n.NoProperties:
-		ctx.WriteKeyWord("NO PROPERTIES")
-	}
-	return nil
-}
-
-func (n *PropertiesClause) Accept(v Visitor) (Node, bool) {
-	newNode, skipChildren := v.Enter(n)
-	if skipChildren {
-		return v.Leave(newNode)
-	}
-	nn := newNode.(*PropertiesClause)
-	switch {
-	case nn.AllCols:
-		for i, col := range n.ExceptCols {
-			node, ok := col.Accept(v)
-			if !ok {
-				return nn, false
-			}
-			nn.ExceptCols[i] = node.(*ColumnName)
-		}
-	case len(nn.Properties) > 0:
-		for i, prop := range nn.Properties {
-			node, ok := prop.Accept(v)
-			if !ok {
-				return nn, false
-			}
-			nn.Properties[i] = node.(*Property)
-		}
-	}
-	return v.Leave(nn)
-}
-
-type Property struct {
+type ExpAsVar struct {
 	node
 
 	Expr   ExprNode
-	AsName model.CIStr
+	AsName *model.CIStr
 }
 
-func (n *Property) Restore(ctx *format.RestoreCtx) error {
-	if err := n.Expr.Restore(ctx); err != nil {
-		return errors.Annotate(err, "An error occurred while restore Property.Expr")
+func (e *ExpAsVar) Restore(ctx *format.RestoreCtx) error {
+	if err := e.Expr.Restore(ctx); err != nil {
+		return errors.Annotate(err, "An error occurred while restore ByItem.Expr")
 	}
-	if asName := n.AsName.String(); asName != "" {
+	if e.AsName != nil {
 		ctx.WriteKeyWord(" AS ")
-		ctx.WriteName(asName)
+		ctx.WriteName(e.AsName.String())
 	}
 	return nil
 }
 
-func (n *Property) Accept(v Visitor) (Node, bool) {
+func (e *ExpAsVar) Accept(v Visitor) (node Node, ok bool) {
+	newNode, skipChildren := v.Enter(e)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	n := newNode.(*ExpAsVar)
+	nn, ok := n.Expr.Accept(v)
+	if !ok {
+		return n, false
+	}
+	n.Expr = nn.(ExprNode)
+	return v.Leave(n)
+}
+
+// ByItem represents an item in order by or group by.
+type ByItem struct {
+	node
+
+	Expr *ExpAsVar
+	Desc bool
+}
+
+// Restore implements Node interface.
+func (n *ByItem) Restore(ctx *format.RestoreCtx) error {
+	if err := n.Expr.Restore(ctx); err != nil {
+		return errors.Annotate(err, "An error occurred while restore ByItem.Expr")
+	}
+	if n.Desc {
+		ctx.WriteKeyWord(" DESC")
+	}
+	return nil
+}
+
+// Accept implements Node Accept interface.
+func (n *ByItem) Accept(v Visitor) (Node, bool) {
 	newNode, skipChildren := v.Enter(n)
 	if skipChildren {
 		return v.Leave(newNode)
 	}
-	nn := newNode.(*Property)
+	n = newNode.(*ByItem)
 	node, ok := n.Expr.Accept(v)
 	if !ok {
-		return nn, false
+		return n, false
 	}
-	nn.Expr = node.(ExprNode)
-	return v.Leave(nn)
+	n.Expr = node.(*ExpAsVar)
+	return v.Leave(n)
+}
+
+type GroupByClause struct {
+	node
+	Items []*ByItem
+}
+
+// Restore implements Node interface.
+func (n *GroupByClause) Restore(ctx *format.RestoreCtx) error {
+	ctx.WriteKeyWord("GROUP BY ")
+	for i, v := range n.Items {
+		if i != 0 {
+			ctx.WritePlain(",")
+		}
+		if err := v.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore GroupByClause.Items[%d]", i)
+		}
+	}
+	return nil
+}
+
+// Accept implements Node Accept interface.
+func (n *GroupByClause) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	n = newNode.(*GroupByClause)
+	for i, val := range n.Items {
+		node, ok := val.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Items[i] = node.(*ByItem)
+	}
+	return v.Leave(n)
+}
+
+// HavingClause represents having clause.
+type HavingClause struct {
+	node
+	Expr ExprNode
+}
+
+// Restore implements Node interface.
+func (n *HavingClause) Restore(ctx *format.RestoreCtx) error {
+	ctx.WriteKeyWord("HAVING ")
+	if err := n.Expr.Restore(ctx); err != nil {
+		return errors.Annotate(err, "An error occurred while restore HavingClause.Expr")
+	}
+	return nil
+}
+
+// Accept implements Node Accept interface.
+func (n *HavingClause) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	n = newNode.(*HavingClause)
+	node, ok := n.Expr.Accept(v)
+	if !ok {
+		return n, false
+	}
+	n.Expr = node.(ExprNode)
+	return v.Leave(n)
+}
+
+// OrderByClause represents order by clause.
+type OrderByClause struct {
+	node
+	Items []*ByItem
+}
+
+// Restore implements Node interface.
+func (n *OrderByClause) Restore(ctx *format.RestoreCtx) error {
+	ctx.WriteKeyWord("ORDER BY ")
+	for i, item := range n.Items {
+		if i != 0 {
+			ctx.WritePlain(",")
+		}
+		if err := item.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore OrderByClause.Items[%d]", i)
+		}
+	}
+	return nil
+}
+
+// Accept implements Node Accept interface.
+func (n *OrderByClause) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	n = newNode.(*OrderByClause)
+	for i, val := range n.Items {
+		node, ok := val.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Items[i] = node.(*ByItem)
+	}
+	return v.Leave(n)
+}
+
+// LimitClause is the limit clause.
+type LimitClause struct {
+	node
+
+	Count  ExprNode
+	Offset ExprNode
+}
+
+// Restore implements Node interface.
+func (n *LimitClause) Restore(ctx *format.RestoreCtx) error {
+	ctx.WriteKeyWord("LIMIT ")
+	if n.Offset != nil {
+		if err := n.Offset.Restore(ctx); err != nil {
+			return errors.Annotate(err, "An error occurred while restore LimitClause.Offset")
+		}
+		ctx.WritePlain(",")
+	}
+	if err := n.Count.Restore(ctx); err != nil {
+		return errors.Annotate(err, "An error occurred while restore LimitClause.Count")
+	}
+	return nil
+}
+
+// Accept implements Node Accept interface.
+func (n *LimitClause) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	if n.Count != nil {
+		node, ok := n.Count.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Count = node.(ExprNode)
+	}
+	if n.Offset != nil {
+		node, ok := n.Offset.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Offset = node.(ExprNode)
+	}
+
+	n = newNode.(*LimitClause)
+	return v.Leave(n)
+}
+
+type InsertStmt struct {
+	dmlNode
+
+	PathPatternMacros []*PathPatternMacro
+	IntoGraphName     *model.CIStr
+	Insertions        []*GraphElementInsertion
+
+	// Full modify query
+	// ref: https://pgql-lang.org/spec/1.5/#insert
+	From    *MatchClauseList
+	Where   ExprNode
+	GroupBy *GroupByClause
+	Having  *HavingClause
+	OrderBy *OrderByClause
+	Limit   *LimitClause
+}
+
+func (i *InsertStmt) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (i *InsertStmt) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+type DeleteStmt struct {
+	dmlNode
+
+	PathPatternMacros  []*PathPatternMacro
+	VariableReferences []string
+	From               *MatchClauseList
+	Where              ExprNode
+	GroupBy            *GroupByClause
+	Having             *HavingClause
+	OrderBy            *OrderByClause
+	Limit              *LimitClause
+}
+
+func (d *DeleteStmt) Restore(ctx *format.RestoreCtx) error {
+	if len(d.PathPatternMacros) > 0 {
+		for i, macro := range d.PathPatternMacros {
+			if i != 0 {
+				ctx.WritePlain(" ")
+			}
+			if err := macro.Restore(ctx); err != nil {
+				return errors.Annotatef(err, "An error occurred while restore DeleteStmt.PathPatternMacros[%d]", i)
+			}
+		}
+	}
+	ctx.WriteKeyWord("DELETE ")
+
+	for i, r := range d.VariableReferences {
+		if i != 0 {
+			ctx.WritePlain(",")
+		}
+		ctx.WritePlain(r)
+	}
+
+	if err := d.From.Restore(ctx); err != nil {
+		return errors.Annotatef(err, "An error occurred while restore DeleteStmt.From")
+	}
+	if d.Where != nil {
+		if err := d.Where.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore DeleteStmt.Where")
+		}
+	}
+	if d.GroupBy != nil {
+		if err := d.GroupBy.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore DeleteStmt.GroupBy")
+		}
+	}
+	if d.Having != nil {
+		if err := d.Having.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore DeleteStmt.Having")
+		}
+	}
+	if d.OrderBy != nil {
+		if err := d.OrderBy.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore DeleteStmt.OrderBy")
+		}
+	}
+	if d.Limit != nil {
+		if err := d.Limit.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore DeleteStmt.Limit")
+		}
+	}
+
+	return nil
+}
+
+func (d *DeleteStmt) Accept(v Visitor) (node Node, ok bool) {
+	newNode, skipChildren := v.Enter(d)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+
+	n := newNode.(*DeleteStmt)
+	if len(n.PathPatternMacros) > 0 {
+		for i, macro := range n.PathPatternMacros {
+			nn, ok := macro.Accept(v)
+			if !ok {
+				return n, false
+			}
+			n.PathPatternMacros[i] = nn.(*PathPatternMacro)
+		}
+	}
+
+	nn, ok := d.From.Accept(v)
+	if !ok {
+		return n, false
+	}
+	n.From = nn.(*MatchClauseList)
+	if n.Where != nil {
+		nn, ok := d.Where.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Where = nn.(ExprNode)
+	}
+	if n.GroupBy != nil {
+		nn, ok := d.GroupBy.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.GroupBy = nn.(*GroupByClause)
+	}
+	if n.Having != nil {
+		nn, ok := d.Having.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Having = nn.(*HavingClause)
+	}
+	if n.OrderBy != nil {
+		nn, ok := d.OrderBy.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.OrderBy = nn.(*OrderByClause)
+	}
+	if n.Limit != nil {
+		nn, ok := d.Limit.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Limit = nn.(*LimitClause)
+	}
+	return v.Leave(n)
+}
+
+type UpdateStmt struct {
+	dmlNode
+
+	PathPatternMacros []*PathPatternMacro
+	Updates           []*GraphElementInsertion
+
+	// Full modify query
+	// ref: https://pgql-lang.org/spec/1.5/#insert
+	From    *MatchClauseList
+	Where   ExprNode
+	GroupBy *GroupByClause
+	Having  *HavingClause
+	OrderBy *OrderByClause
+	Limit   *LimitClause
+}
+
+func (u *UpdateStmt) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u *UpdateStmt) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+// SelectElement represents a result field which can be a property from a label,
+// or an expression in select field. It is a generated property during
+// binding process. SelectElement is the key element to evaluate a PropertyNameExpr.
+type SelectElement struct {
+	node
+
+	ExpAsVar *ExpAsVar
+
+	// All Properties with optional prefix
+	Identifier string
+	Prefix     string
+}
+
+func (s *SelectElement) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *SelectElement) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+type SelectClause struct {
+	node
+
+	Star     bool
+	Distinct bool
+	Elements []*SelectElement
+}
+
+func (s *SelectClause) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *SelectClause) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+type SelectStmt struct {
+	dmlNode
+
+	PathPatternMacros []*PathPatternMacro
+	Select            *SelectClause
+	From              *MatchClauseList
+	Where             ExprNode
+	GroupBy           *GroupByClause
+	Having            *HavingClause
+	OrderBy           *OrderByClause
+	Limit             *LimitClause
+}
+
+func (s *SelectStmt) Restore(ctx *format.RestoreCtx) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *SelectStmt) Accept(v Visitor) (node Node, ok bool) {
+	//TODO implement me
+	panic("implement me")
 }
 
 type MatchClauseList struct {
@@ -501,7 +643,7 @@ func (n *MatchClauseList) Accept(v Visitor) (Node, bool) {
 type MatchClause struct {
 	node
 
-	Graph *GraphName
+	Graph *model.CIStr
 	Paths []*PathPattern
 }
 
@@ -530,10 +672,9 @@ func (n *MatchClause) Restore(ctx *format.RestoreCtx) error {
 	}
 	if n.Graph != nil {
 		ctx.WriteKeyWord(" ON ")
-		if err := n.Graph.Restore(ctx); err != nil {
-			return errors.Annotate(err, "An error occurred while restore MatchClause.Graph")
-		}
+		ctx.WriteName(n.Graph.String())
 	}
+
 	return nil
 }
 
@@ -549,13 +690,6 @@ func (n *MatchClause) Accept(v Visitor) (Node, bool) {
 			return nn, false
 		}
 		nn.Paths[i] = node.(*PathPattern)
-	}
-	if nn.Graph != nil {
-		node, ok := nn.Graph.Accept(v)
-		if !ok {
-			return nn, false
-		}
-		nn.Graph = node.(*GraphName)
 	}
 	return v.Leave(nn)
 }
