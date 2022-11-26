@@ -12,7 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package catalog
+package planner
 
-type Catalog struct {
+type Plan interface {
+}
+
+type LogicalPlan interface {
+	Plan
+}
+
+type PhysicalPlan interface {
+	Plan
 }

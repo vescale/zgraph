@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package catalog
+package executor
 
-type Catalog struct {
+type ResultSet interface {
+}
+
+type Statement interface {
+	Execute() (ResultSet, error)
 }

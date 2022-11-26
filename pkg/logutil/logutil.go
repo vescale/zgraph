@@ -12,7 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package catalog
+package logutil
 
-type Catalog struct {
+var g Logger = &defaultLogger{}
+
+type Logger interface {
+}
+
+// SetLogger replaces the default logger
+func SetLogger(l Logger) {
+	g = l
+}
+
+// L returns the default global logger
+func L() Logger {
+	return g
+}
+
+type defaultLogger struct {
 }

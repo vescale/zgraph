@@ -14,51 +14,32 @@
 
 package storage
 
-import (
-	"github.com/cockroachdb/pebble"
-)
-
-type pebbleStorage struct {
-	db *pebble.DB
+type iterator struct {
 }
 
-func New() Storage {
-	return &pebbleStorage{}
-
-}
-
-func (s *pebbleStorage) Open(dirname string, options ...Option) error {
-	opt := &pebble.Options{}
-	for _, op := range options {
-		op(opt)
-	}
-	db, err := pebble.Open(dirname, opt)
-	if err != nil {
-		return err
-	}
-	s.db = db
-
-	return nil
-}
-
-func (s *pebbleStorage) Begin() (Transaction, error) {
+func (i *iterator) Valid() bool {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s *pebbleStorage) Snapshot(ver Version) (Snapshot, error) {
+func (i *iterator) Key() Key {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s *pebbleStorage) CurrentVersion() (Version, error) {
+func (i *iterator) Value() []byte {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s *pebbleStorage) Close() error {
-	if s.db == nil {
-		return nil
-	}
-	return s.db.Close()
+func (i *iterator) Next() error {
+	//TODO implement me
+	panic("implement me")
 }
+
+func (i *iterator) Close() {
+	//TODO implement me
+	panic("implement me")
+}
+
+

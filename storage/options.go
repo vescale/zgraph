@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package catalog
+package storage
 
-type Catalog struct {
-}
+import "github.com/cockroachdb/pebble"
+
+type Option func(options *pebble.Options)

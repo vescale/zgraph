@@ -12,7 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package catalog
+package planner
 
-type Catalog struct {
+import "github.com/vescale/zgraph/parser/ast"
+
+type Builder struct {
+}
+
+// Build builds a statement AST node into a Plan.
+func (b *Builder) Build(stmt ast.StmtNode) (Plan, error) {
+	return nil, nil
 }

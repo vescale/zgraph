@@ -15,50 +15,32 @@
 package storage
 
 import (
+	"context"
+
 	"github.com/cockroachdb/pebble"
 )
 
-type pebbleStorage struct {
-	db *pebble.DB
+type snapshot struct {
+	ver Version
+	db  *pebble.DB
 }
 
-func New() Storage {
-	return &pebbleStorage{}
-
-}
-
-func (s *pebbleStorage) Open(dirname string, options ...Option) error {
-	opt := &pebble.Options{}
-	for _, op := range options {
-		op(opt)
-	}
-	db, err := pebble.Open(dirname, opt)
-	if err != nil {
-		return err
-	}
-	s.db = db
-
-	return nil
-}
-
-func (s *pebbleStorage) Begin() (Transaction, error) {
+func (s *snapshot) Get(ctx context.Context, k Key) ([]byte, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s *pebbleStorage) Snapshot(ver Version) (Snapshot, error) {
+func (s *snapshot) Iter(k Key, upperBound Key) (Iterator, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s *pebbleStorage) CurrentVersion() (Version, error) {
+func (s *snapshot) IterReverse(k Key) (Iterator, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s *pebbleStorage) Close() error {
-	if s.db == nil {
-		return nil
-	}
-	return s.db.Close()
+func (s *snapshot) BatchGet(ctx context.Context, keys []Key) (map[string][]byte, error) {
+	//TODO implement me
+	panic("implement me")
 }

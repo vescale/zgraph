@@ -12,7 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package catalog
+package compiler
 
-type Catalog struct {
+import (
+	"github.com/vescale/zgraph/executor"
+	"github.com/vescale/zgraph/parser/ast"
+)
+
+// Compile compiles the statement AST node into an executable statement.
+func Compile(stmt ast.StmtNode) (executor.Statement, error) {
+	return nil, nil
 }
