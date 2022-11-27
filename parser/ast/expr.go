@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/parser/format"
@@ -186,7 +185,7 @@ func (b *BooleanLiteral) Format(w io.Writer) {
 type DateLiteral struct {
 	exprNode
 
-	Value time.Date
+	Value string
 }
 
 func (d *DateLiteral) Restore(ctx *format.RestoreCtx) error {
@@ -207,7 +206,7 @@ func (d *DateLiteral) Format(w io.Writer) {
 type TimeLiteral struct {
 	exprNode
 
-	Value time.Time
+	Value string
 }
 
 func (t *TimeLiteral) Restore(ctx *format.RestoreCtx) error {
@@ -228,7 +227,7 @@ func (t *TimeLiteral) Format(w io.Writer) {
 type TimestampLiteral struct {
 	exprNode
 
-	Value int64
+	Value string
 }
 
 func (t *TimestampLiteral) Restore(ctx *format.RestoreCtx) error {
@@ -260,7 +259,7 @@ const (
 type IntervalLiteral struct {
 	exprNode
 
-	Value int64
+	Value string
 	Unit  DateTimeField
 }
 
@@ -457,10 +456,18 @@ func (n *ParenthesesExpr) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+type FuncCallExprType int8
+
+const (
+	FuncCallExprTypeKeyword FuncCallExprType = iota
+	FuncCallExprTypeGeneric
+)
+
 // FuncCallExpr is for function expression.
 type FuncCallExpr struct {
 	funcNode
 
+	Tp FuncCallExprType
 	// FnName is the function name.
 	FnName model.CIStr
 	// Args is the function args.
@@ -500,6 +507,20 @@ func (n *FuncCallExpr) Format(w io.Writer) {
 		}
 	}
 	fmt.Fprint(w, ")")
+}
+
+// specialFormatArgs formats argument list for some special functions.
+func (n *FuncCallExpr) specialFormatArgs(w io.Writer) bool {
+	switch n.FnName.L {
+	//case DateAdd, DateSub, AddDate, SubDate:
+	//	n.Args[0].Format(w)
+	//	fmt.Fprint(w, ", INTERVAL ")
+	//	n.Args[1].Format(w)
+	//	fmt.Fprint(w, " ")
+	//	n.Args[2].Format(w)
+	//	return true
+	}
+	return false
 }
 
 // Accept implements Node interface.
@@ -714,12 +735,24 @@ const (
 	DataTypeTimestampWithZone
 )
 
+// CastFunctionType is the type for cast function.
+type CastFunctionType int
+
+// CastFunction types
+const (
+	CastFunction CastFunctionType = iota + 1
+	CastConvertFunction
+	CastBinaryOperator
+)
+
 // CastFuncExpr is the cast function converting value to another type, e.g, cast(expr AS signed).
 // See https://dev.mysql.com/doc/refman/5.7/en/cast-functions.html
 type CastFuncExpr struct {
 	funcNode
 	// Expr is the expression to be converted.
 	Expr ExprNode
+	// FunctionType is either Cast, Convert or Binary.
+	FunctionType CastFunctionType
 	// DataType is the conversion type.
 	DataType DataType
 }
@@ -734,7 +767,7 @@ func (n *CastFuncExpr) Restore(ctx *format.RestoreCtx) error {
 			return errors.Annotatef(err, "An error occurred while restore CastFuncExpr.Expr")
 		}
 		ctx.WriteKeyWord(" AS ")
-		n.Tp.RestoreAsCastType(ctx, n.ExplicitCharSet)
+		//n.Tp.RestoreAsCastType(ctx, n.ExplicitCharSet)
 		ctx.WritePlain(")")
 	case CastConvertFunction:
 		ctx.WriteKeyWord("CONVERT")
@@ -743,7 +776,7 @@ func (n *CastFuncExpr) Restore(ctx *format.RestoreCtx) error {
 			return errors.Annotatef(err, "An error occurred while restore CastFuncExpr.Expr")
 		}
 		ctx.WritePlain(", ")
-		n.Tp.RestoreAsCastType(ctx, n.ExplicitCharSet)
+		//n.Tp.RestoreAsCastType(ctx, n.ExplicitCharSet)
 		ctx.WritePlain(")")
 	case CastBinaryOperator:
 		ctx.WriteKeyWord("BINARY ")
@@ -761,13 +794,13 @@ func (n *CastFuncExpr) Format(w io.Writer) {
 		fmt.Fprint(w, "CAST(")
 		n.Expr.Format(w)
 		fmt.Fprint(w, " AS ")
-		n.Tp.FormatAsCastType(w, n.ExplicitCharSet)
+		//n.Tp.FormatAsCastType(w, n.ExplicitCharSet)
 		fmt.Fprint(w, ")")
 	case CastConvertFunction:
 		fmt.Fprint(w, "CONVERT(")
 		n.Expr.Format(w)
 		fmt.Fprint(w, ", ")
-		n.Tp.FormatAsCastType(w, n.ExplicitCharSet)
+		//n.Tp.FormatAsCastType(w, n.ExplicitCharSet)
 		fmt.Fprint(w, ")")
 	case CastBinaryOperator:
 		fmt.Fprint(w, "BINARY ")
@@ -1034,11 +1067,11 @@ func (n *SubqueryExpr) Accept(v Visitor) (Node, bool) {
 		return v.Leave(newNode)
 	}
 	n = newNode.(*SubqueryExpr)
-	node, ok := n.Query.Accept(v)
-	if !ok {
-		return n, false
-	}
-	n.Query = node.(ResultSetNode)
+	//node, ok := n.Query.Accept(v)
+	//if !ok {
+	//	return n, false
+	//}
+	//n.Query = node.(ResultSetNode)
 	return v.Leave(n)
 }
 

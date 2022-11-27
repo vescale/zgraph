@@ -77,6 +77,7 @@ func init() {
 	ruleTable.token = invalid
 	initTokenByte('/', int('/'))
 	initTokenByte('+', int('+'))
+	initTokenByte('-', int('-'))
 	initTokenByte('>', int('>'))
 	initTokenByte('<', int('<'))
 	initTokenByte('(', int('('))
@@ -109,13 +110,22 @@ func init() {
 	initTokenString("<>", neqSynonym)
 	initTokenString(".*", allProp)
 	initTokenString("\\N", null)
+	initTokenString("<-", leftArrow)
+	initTokenString("->", rightArrow)
+	initTokenString("-[", edgeOutgoingLeft)
+	initTokenString("]->", edgeOutgoingRight)
+	initTokenString("<-[", edgeIncomingLeft)
+	initTokenString("]-", edgeIncomingRight)
+	initTokenString("-/", reachOutgoingLeft)
+	initTokenString("/->", reachOutgoingRight)
+	initTokenString("<-/", reachIncomingLeft)
+	initTokenString("/-", reachIncomingRight)
 
 	initTokenFunc("@", startWithAt)
 	initTokenFunc("*", startWithStar)
-	initTokenFunc("-", startWithDash)
 	initTokenFunc("#", startWithSharp)
 	initTokenFunc(".", startWithDot)
-	initTokenFunc("_$ACDEFGHIJKLMOPQRSTUVWYZacdefghijklmopqrstuvwyz", scanIdentifier)
+	initTokenFunc("_$ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", scanIdentifier)
 	initTokenFunc("`", scanQuotedIdent)
 	initTokenFunc("0123456789", startWithNumber)
 	initTokenFunc("'\"", startString)
@@ -143,7 +153,10 @@ var tokenMap = map[string]int{
 	"BY":          by,
 	"CASE":        caseKwd,
 	"CAST":        cast,
+	"CHEAPEST":    cheapest,
 	"COMMIT":      commit,
+	"COST":        cost,
+	"COUNT":       count,
 	"CREATE":      create,
 	"DATE":        dateType,
 	"DAY":         day,
@@ -163,8 +176,10 @@ var tokenMap = map[string]int{
 	"FALSE":       falseKwd,
 	"FLOAT":       floatType,
 	"FROM":        from,
+	"GRAPH":       graph,
 	"GROUP":       group,
 	"HAVING":      having,
+	"HAS_LABEL":   hasLabel,
 	"HOUR":        hour,
 	"IF":          ifKwd,
 	"IN":          in,
@@ -175,8 +190,10 @@ var tokenMap = map[string]int{
 	"INTERVAL":    interval,
 	"INTO":        into,
 	"IS":          is,
+	"LABEL":       label,
 	"LABELS":      labels,
 	"LIMIT":       limit,
+	"LISTAGG":     listagg,
 	"LONG":        long,
 	"MATCH":       match,
 	"MAX":         max,
@@ -190,12 +207,15 @@ var tokenMap = map[string]int{
 	"ON":          on,
 	"OR":          or,
 	"ORDER":       order,
+	"PATH":        path,
 	"PRECISION":   precisionType,
 	"PRIMARY":     primary,
+	"PROPERTIES":  properties,
 	"ROLLBACK":    rollback,
 	"SECOND":      second,
 	"SELECT":      selectKwd,
 	"SET":         set,
+	"SHORTEST":    shortest,
 	"SUBSTR":      substring,
 	"SUBSTRING":   substring,
 	"SUM":         sum,
@@ -207,6 +227,7 @@ var tokenMap = map[string]int{
 	"UNIQUE":      unique,
 	"UPDATE":      update,
 	"USE":         use,
+	"VERTEX":      vertex,
 	"WHEN":        when,
 	"WHERE":       where,
 	"WITH":        with,

@@ -23,7 +23,6 @@ import (
 	"unicode"
 
 	"github.com/vescale/zgraph/datum"
-	"github.com/vescale/zgraph/parser/constant"
 )
 
 var _ = yyLexer(&Lexer{})
@@ -310,41 +309,6 @@ func startWithSharp(s *Lexer) (tok int, pos Pos, lit string) {
 		return ch != '\n'
 	})
 	return s.scan()
-}
-
-func startWithDash(s *Lexer) (tok int, pos Pos, lit string) {
-	pos = s.r.pos()
-	if strings.HasPrefix(s.r.s[pos.Offset:], "--") {
-		remainLen := len(s.r.s[pos.Offset:])
-		if remainLen == 2 || (remainLen > 2 && unicode.IsSpace(rune(s.r.s[pos.Offset+2]))) {
-			s.r.incAsLongAs(func(ch byte) bool {
-				return ch != '\n'
-			})
-			return s.scan()
-		}
-	}
-	if strings.HasPrefix(s.r.s[pos.Offset:], "->>") {
-		tok = juss
-		s.r.incN(3)
-		return
-	}
-	if strings.HasPrefix(s.r.s[pos.Offset:], "->") {
-		tok = jss
-		s.r.incN(2)
-		return
-	}
-	tok = int('-')
-	lit = "-"
-	s.r.inc()
-	return
-}
-
-// ParseErrorWith returns "You have a syntax error near..." error message compatible with mysql.
-func ParseErrorWith(errstr string, lineno int) error {
-	if len(errstr) > constant.ErrTextLength {
-		errstr = errstr[:constant.ErrTextLength]
-	}
-	return fmt.Errorf("near '%-.80s' at line %d", errstr, lineno)
 }
 
 func startWithStar(s *Lexer) (tok int, pos Pos, lit string) {

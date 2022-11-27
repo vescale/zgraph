@@ -15,5 +15,5 @@
 package datum
 
 func NewDecimal(str string) (interface{}, error) {
-	panic("not implemented")
+	return str, nil // TODO: implement it.
 }
