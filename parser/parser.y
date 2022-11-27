@@ -32,8 +32,6 @@
 package parser
 
 import (
-	"time"
-
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/parser/model"
 	"github.com/vescale/zgraph/parser/opcode"
@@ -142,7 +140,7 @@ import (
         second                "SECOND"
         substring             "SUBSTRING"
         forkKwd               "FOR"
-        array_agg             "ARRAY_AGG"
+        arrayAgg              "ARRAY_AGG"
         avg                   "AVG"
         count                 "COUNT"
         listagg               "LISTAGG"
@@ -151,8 +149,8 @@ import (
         sum                   "SUM"
         distinct              "DISTINCT"
         extract               "EXTRACT"
-        timezone_hour         "TIMEZONE_HOUR"
-        timezone_minute       "TIMEZONE_MINUTE"
+        timezoneHour          "TIMEZONE_HOUR"
+        timezoneMinute       "TIMEZONE_MINUTE"
         cast                  "CAST"
         long                  "LONG"
         stringKwd             "STRING"
@@ -164,17 +162,17 @@ import (
 	/* Functions */
 	lower                 "LOWER"
 	uppper                "UPPER"
-	in_degree             "IN_DEGREE"
-	java_regexp_like      "JAVA_REGEXP_LIKE"
+	inDegree              "IN_DEGREE"
+	javaRegexpLike        "JAVA_REGEXP_LIKE"
 	label                 "LABEL"
 	match_number          "MATCH_NUMBER"
 	out_degree            "OUT_DEGREE"
 	abs                   "ABS"
 	ceil                  "CEIL"
 	ceiling               "CEILING"
-	element_number        "ELEMENT_NUMBER"
+	elementNumber         "ELEMENT_NUMBER"
 	floor                 "FLOOR"
-	has_label             "HAS_LABEL"
+	hasLabel              "HAS_LABEL"
 	id                    "ID"
 
 %token	<item>
@@ -190,22 +188,22 @@ import (
 	eq           "="
 	ge           ">="
 	le           "<="
-	jss          "->"
-	juss         "->>"
 	neq          "!="
 	neqSynonym   "<>"
 	nulleq       "<=>"
 	paramMarker  "?"
-	leftArrow    "<-"
-	dashSlash    "-/"
-	slashDash    "/-"
-	dashBracket  "-["
-	bracketDash  "]-"
-	bLeftArrow   "<-["
-	bRightArrow  "]->"
-	sLeftArrow   "<-/"
-	sRightArrow  "/->"
 	allProp      ".*"
+
+	leftArrow           "<-"
+	rightArrow          "->"
+	edgeOutgoingLeft    "-["
+	edgeOutgoingRight   "]->"
+	edgeIncomingLeft    "<-["
+	edgeIncomingRight   "]-"
+	reachOutgoingLeft   "-/"
+	reachOutgoingRight  "/->"
+	reachIncomingLeft   "<-/"
+	reachIncomingRight  "/-"
 
 %type	<expr>
 	Aggregation
@@ -379,10 +377,16 @@ Entry:
 StatementList:
 	Statement
 	{
-		$$ = $1
+		if $1 != nil {
+			parser.result = append(parser.result, $1)
+		}
 	}
 |	StatementList ';' Statement
-	{}
+	{
+		if $3 != nil {
+			parser.result = append(parser.result, $3)
+		}
+	}
 
 Statement:
 	EmptyStmt
@@ -761,7 +765,7 @@ DateLiteral:
 	"DATE" stringLit
 	{
 		$$ = &ast.DateLiteral{
-			Value: time.Parse($2.(string)),
+			Value: $2,
 		}
 	}
 
@@ -769,7 +773,7 @@ TimeLiteral:
 	"TIME" stringLit
 	{
 		$$ = &ast.TimeLiteral{
-			Value: time.Parse($2.(string)),
+			Value: $2,
 		}
 	}
 
@@ -777,7 +781,7 @@ TimestampLiteral:
 	"TIMESTAMP" stringLit
 	{
 		$$ = &ast.TimestampLiteral{
-			Value: time.Parse($2.(string)),
+			Value: $2,
 		}
 	}
 
@@ -785,7 +789,7 @@ IntervalLiteral:
 	"INTERVAL" stringLit DateTimeField
 	{
 		$$ = &ast.IntervalLiteral{
-			Value: strconv.Parse($2.(string)),
+			Value: $2,
 			Unit:  $3.(ast.DateTimeField),
 		}
 	}
@@ -1668,7 +1672,7 @@ VariableSpec:
 
 VariableNameOpt:
 	{
-		$$ = nil
+		$$ = model.CIStr{}
 	}
 |	Identifier
 	{
@@ -1820,11 +1824,14 @@ GroupByClauseOpt:
  	}
 |	"GROUP" "BY" ByList
 	{
-		$$ = $3
+		$$ = &ast.GroupByClause{Items: $3.([]*ast.ByItem)}
 	}
 
 ByList:
 	ByItem
+	{
+		$$ = []*ast.ByItem{$1.(*ast.ByItem)}
+	}
 |	ByList ',' ByItem
 	{
 		$$ = append($1.([]*ast.ByItem), $3.(*ast.ByItem))

@@ -20,5 +20,8 @@ parser: goyacc
 	@echo "bin/goyacc -o parser/parser.y.go"
 	@tools/bin/goyacc -o parser/parser.y.go parser/parser.y
 
-goyacc:
-	test -e tools/bin/goyacc || ($(GO) build -o tools/bin/goyacc ./parser/goyacc/)
+goyacc: tools/bin/goyacc
+	$(GO) build -o tools/bin/goyacc ./parser/goyacc/
+
+test:
+	$(GO) test -v ./...

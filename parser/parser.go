@@ -39,6 +39,7 @@ func yySetOffset(yyVAL *yySymType, offset int) {
 func New() *Parser {
 	return &Parser{
 		lexer: NewLexer(""),
+		cache: make([]yySymType, 200),
 	}
 }
 

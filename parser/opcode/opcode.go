@@ -148,16 +148,16 @@ var ops = [...]struct {
 		literal:   "not ",
 		isKeyword: true,
 	},
-	Not2: {
-		name:      "!",
-		literal:   "!",
-		isKeyword: false,
-	},
-	BitNeg: {
-		name:      "bitneg",
-		literal:   "~",
-		isKeyword: false,
-	},
+	//Not2: {
+	//	name:      "!",
+	//	literal:   "!",
+	//	isKeyword: false,
+	//},
+	//BitNeg: {
+	//	name:      "bitneg",
+	//	literal:   "~",
+	//	isKeyword: false,
+	//},
 	IntDiv: {
 		name:      "intdiv",
 		literal:   "DIV",
@@ -173,11 +173,11 @@ var ops = [...]struct {
 		literal:   "IN",
 		isKeyword: true,
 	},
-	Like: {
-		name:      "like",
-		literal:   "LIKE",
-		isKeyword: true,
-	},
+	//Like: {
+	//	name:      "like",
+	//	literal:   "LIKE",
+	//	isKeyword: true,
+	//},
 	Case: {
 		name:      "case",
 		literal:   "CASE",
