@@ -12,14 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package mvcc
 
 import (
-	"github.com/pingcap/errors"
+	"bytes"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-var (
-	// ErrTxnConflicts indicates the current transaction contains some vertex/edge/index
-	// conflicts with others.
-	ErrTxnConflicts = errors.New("transaction conflicts")
-)
+func TestNewKey(t *testing.T) {
+	x := []byte("test")
+	ex := NewKey(x)
+	k, v, err := Decode(ex)
+	assert.Nil(t, err)
+	assert.True(t, bytes.Equal(x, k))
+	assert.Zero(t, v)
+}

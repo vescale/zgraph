@@ -16,23 +16,27 @@ package storage
 
 import (
 	"context"
+
+	"github.com/vescale/zgraph/storage/mvcc"
 )
 
 type transaction struct {
-	snapshot Snapshot
+	version    mvcc.Version
+	memManager MemManager
+	snapshot   Snapshot
 }
 
+// Get implements the Transaction interface.
 func (t *transaction) Get(ctx context.Context, k Key) ([]byte, error) {
+	return t.memManager.UnionGet(ctx, t.snapshot, k)
+}
+
+func (t *transaction) Iter(lowerBound Key, upperBound Key) (Iterator, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (t *transaction) Iter(k Key, upperBound Key) (Iterator, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *transaction) IterReverse(k Key) (Iterator, error) {
+func (t *transaction) IterReverse(lowerBound Key, upperBound Key) (Iterator, error) {
 	//TODO implement me
 	panic("implement me")
 }
@@ -52,9 +56,9 @@ func (t *transaction) Snapshot() Snapshot {
 	return t.snapshot
 }
 
+// BatchGet implements the Transaction interface.
 func (t *transaction) BatchGet(ctx context.Context, keys []Key) (map[string][]byte, error) {
-	//TODO implement me
-	panic("implement me")
+	return t.memManager.UnionBatchGet(ctx, t.snapshot, keys)
 }
 
 func (t *transaction) Size() int {

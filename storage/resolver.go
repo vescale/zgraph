@@ -13,13 +13,3 @@
 // limitations under the License.
 
 package storage
-
-import (
-	"github.com/pingcap/errors"
-)
-
-var (
-	// ErrTxnConflicts indicates the current transaction contains some vertex/edge/index
-	// conflicts with others.
-	ErrTxnConflicts = errors.New("transaction conflicts")
-)

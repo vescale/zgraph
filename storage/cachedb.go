@@ -1,4 +1,4 @@
-// Copyright 2020 PingCAP, Inc.
+// Copyright 2022 zGraph Authors. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ import (
 
 type (
 	cacheDB struct {
-		mu        sync.RWMutex
-		memTables map[int64]*freecache.Cache
+		mu    sync.RWMutex
+		cache *freecache.Cache
 	}
 
 	// MemManager adds a cache between transaction buffer and the storage to reduce requests to the storage.
@@ -33,39 +33,33 @@ type (
 	MemManager interface {
 		// UnionGet gets the value from cacheDB first, if it not exists,
 		// it gets the value from the snapshot, then caches the value in cacheDB.
-		UnionGet(ctx context.Context, tid int64, snapshot Snapshot, key Key) ([]byte, error)
-		// Delete releases the cache by tableID.
-		Delete(tableID int64)
+		UnionGet(ctx context.Context, snapshot Snapshot, key Key) ([]byte, error)
+		// UnionBatchGet gets the values from cacheDB first, if it not exists,
+		// it gets the value from the snapshot, then caches the value in cacheDB.
+		UnionBatchGet(ctx context.Context, snapshot Snapshot, key []Key) (map[string][]byte, error)
 	}
 )
 
-// Set set the key/value in cacheDB.
-func (c *cacheDB) set(tableID int64, key Key, value []byte) error {
+// Set sets the key/value in cacheDB.
+func (c *cacheDB) set(key Key, value []byte) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	table, ok := c.memTables[tableID]
-	if !ok {
-		table = freecache.NewCache(100 * 1024 * 1024)
-		c.memTables[tableID] = table
-	}
-	return table.Set(key, value, 0)
+	return c.cache.Set(key, value, 0)
 }
 
 // Get gets the value from cacheDB.
-func (c *cacheDB) get(tableID int64, key Key) []byte {
+func (c *cacheDB) get(key Key) []byte {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	if table, ok := c.memTables[tableID]; ok {
-		if val, err := table.Get(key); err == nil {
-			return val
-		}
+	if val, err := c.cache.Get(key); err == nil {
+		return val
 	}
 	return nil
 }
 
 // UnionGet implements MemManager UnionGet interface.
-func (c *cacheDB) UnionGet(ctx context.Context, tid int64, snapshot Snapshot, key Key) (val []byte, err error) {
-	val = c.get(tid, key)
+func (c *cacheDB) UnionGet(ctx context.Context, snapshot Snapshot, key Key) (val []byte, err error) {
+	val = c.get(key)
 	// key does not exist then get from snapshot and set to cache
 	if val == nil {
 		val, err = snapshot.Get(ctx, key)
@@ -73,7 +67,7 @@ func (c *cacheDB) UnionGet(ctx context.Context, tid int64, snapshot Snapshot, ke
 			return nil, err
 		}
 
-		err = c.set(tid, key, val)
+		err = c.set(key, val)
 		if err != nil {
 			return nil, err
 		}
@@ -81,19 +75,39 @@ func (c *cacheDB) UnionGet(ctx context.Context, tid int64, snapshot Snapshot, ke
 	return val, nil
 }
 
-// Delete delete and reset table from tables in cacheDB by tableID
-func (c *cacheDB) Delete(tableID int64) {
-	c.mu.Lock()
-	if k, ok := c.memTables[tableID]; ok {
-		k.Clear()
-		delete(c.memTables, tableID)
+// UnionBatchGet implements MemManager UnionBatchGet interface.
+func (c *cacheDB) UnionBatchGet(ctx context.Context, snapshot Snapshot, keys []Key) (values map[string][]byte, err error) {
+	values = map[string][]byte{}
+	// Retrieve from cache first.
+	var missing []Key
+	for _, key := range keys {
+		val := c.get(key)
+		if val == nil {
+			missing = append(missing, key)
+		} else {
+			values[string(key)] = val
+		}
 	}
-	c.mu.Unlock()
+	// key does not exist then get from snapshot and set to cache.
+	if len(missing) > 0 {
+		vs, err := snapshot.BatchGet(ctx, missing)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range vs {
+			values[k] = v
+			err := c.set(Key(k), v)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return values, nil
 }
 
 // NewCacheDB news the cacheDB.
 func NewCacheDB() MemManager {
 	mm := new(cacheDB)
-	mm.memTables = make(map[int64]*freecache.Cache)
+	mm.cache = freecache.NewCache(100 * 1024 * 1024)
 	return mm
 }

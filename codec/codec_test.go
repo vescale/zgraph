@@ -12,14 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package codec
 
 import (
-	"github.com/pingcap/errors"
+	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
-var (
-	// ErrTxnConflicts indicates the current transaction contains some vertex/edge/index
-	// conflicts with others.
-	ErrTxnConflicts = errors.New("transaction conflicts")
-)
+func TestFastSlowFastReverse(t *testing.T) {
+	if !supportsUnaligned {
+		return
+	}
+	b := []byte{1, 2, 3, 4, 5, 6, 7, 8, 255, 0, 0, 0, 0, 0, 0, 0, 0, 247}
+	r1 := b
+	fastReverseBytes(b)
+	r2 := b
+	reverseBytes(r2)
+	require.Equal(t, r1, r2)
+}

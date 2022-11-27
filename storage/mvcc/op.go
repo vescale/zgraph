@@ -12,14 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package mvcc
 
-import (
-	"github.com/pingcap/errors"
-)
+type Op int32
 
-var (
-	// ErrTxnConflicts indicates the current transaction contains some vertex/edge/index
-	// conflicts with others.
-	ErrTxnConflicts = errors.New("transaction conflicts")
+const (
+	Op_Put      Op = 0
+	Op_Del      Op = 1
+	Op_Lock     Op = 2
+	Op_Rollback Op = 3
+	// insert operation has a constraint that key should not exist before.
+	Op_Insert         Op = 4
+	Op_CheckNotExists Op = 5
 )

@@ -15,19 +15,23 @@
 package storage
 
 import (
+	"time"
+
 	"github.com/cockroachdb/pebble"
+	"github.com/vescale/zgraph/storage/mvcc"
 )
 
-type pebbleStorage struct {
+type mvccStorage struct {
 	db *pebble.DB
 }
 
+// New returns a new storage instance.
 func New() Storage {
-	return &pebbleStorage{}
-
+	return &mvccStorage{}
 }
 
-func (s *pebbleStorage) Open(dirname string, options ...Option) error {
+// Open implements the Storage interface.
+func (s *mvccStorage) Open(dirname string, options ...Option) error {
 	opt := &pebble.Options{}
 	for _, op := range options {
 		op(opt)
@@ -41,22 +45,42 @@ func (s *pebbleStorage) Open(dirname string, options ...Option) error {
 	return nil
 }
 
-func (s *pebbleStorage) Begin() (Transaction, error) {
-	//TODO implement me
-	panic("implement me")
+// Begin implements the Storage interface
+func (s *mvccStorage) Begin() (Transaction, error) {
+	curVer, err := s.CurrentVersion()
+	if err != nil {
+		return nil, err
+	}
+	snap, err := s.Snapshot(curVer)
+	if err != nil {
+		return nil, err
+	}
+	txn := &transaction{
+		memManager: NewCacheDB(),
+		snapshot:   snap,
+	}
+	return txn, nil
 }
 
-func (s *pebbleStorage) Snapshot(ver Version) (Snapshot, error) {
-	//TODO implement me
-	panic("implement me")
+// Snapshot implements the Storage interface.
+func (s *mvccStorage) Snapshot(ver mvcc.Version) (Snapshot, error) {
+	snap := &snapshot{
+		db:  s.db,
+		ver: ver,
+	}
+	return snap, nil
 }
 
-func (s *pebbleStorage) CurrentVersion() (Version, error) {
-	//TODO implement me
-	panic("implement me")
+// CurrentVersion implements the VersionProvider interface.
+// Currently, we use the system time as our version, and we cannot tolerant
+// the system time rewind.
+func (s *mvccStorage) CurrentVersion() (mvcc.Version, error) {
+	now := time.Now().Nanosecond()
+	return mvcc.Version{Ver: uint64(now)}, nil
 }
 
-func (s *pebbleStorage) Close() error {
+// Close implements the Storage interface.
+func (s *mvccStorage) Close() error {
 	if s.db == nil {
 		return nil
 	}

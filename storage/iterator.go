@@ -14,32 +14,174 @@
 
 package storage
 
+import (
+	"bytes"
+
+	"github.com/cockroachdb/pebble"
+	"github.com/vescale/zgraph/storage/mvcc"
+)
+
 type iterator struct {
+	inner   *pebble.Iterator
+	ver     mvcc.Version
+	key     Key
+	val     []byte
+	nextKey Key
+	valid   bool
 }
 
+// Valid implements the Iterator interface.
 func (i *iterator) Valid() bool {
-	//TODO implement me
-	panic("implement me")
+	return i.valid
 }
 
+// Key implements the Iterator interface.
 func (i *iterator) Key() Key {
-	//TODO implement me
-	panic("implement me")
+	return i.key
 }
 
+// Value implements the Iterator interface.
 func (i *iterator) Value() []byte {
-	//TODO implement me
-	panic("implement me")
+	return i.val
 }
 
+// Next implements the Iterator interface.
 func (i *iterator) Next() error {
-	//TODO implement me
-	panic("implement me")
+	i.valid = i.inner.Valid()
+	for ok := true; ok; {
+		// TODO: handle LockedError and reset the resolvedLocks.
+		val, err := getValue(i.inner, i.nextKey, i.ver.Ver, nil)
+		if err != nil {
+			return err
+		}
+
+		// We cannot early return here because we must skip the remained
+		// versions and set the next key properly.
+		if val != nil {
+			i.key = i.nextKey
+			i.val = val
+		}
+
+		// Skip the remained multiple versions if we found a valid value.
+		// Or seek to the next valid key.
+		skip := mvcc.SkipDecoder{CurrKey: i.nextKey}
+		ok, err = skip.Decode(i.inner)
+		if err != nil {
+			return err
+		}
+		i.nextKey = skip.CurrKey
+
+		// Found a valid value.
+		if val != nil {
+			return nil
+		}
+	}
+	return nil
 }
 
+// Close implements the Iterator interface.
 func (i *iterator) Close() {
-	//TODO implement me
-	panic("implement me")
+	_ = i.inner.Close()
 }
 
+type reverseIterator struct {
+	inner   *pebble.Iterator
+	ver     mvcc.Version
+	key     Key
+	val     []byte
+	nextKey Key
+	entry   mvcc.Entry
+	valid   bool
+}
 
+// Valid implements the Iterator interface.
+func (r *reverseIterator) Valid() bool {
+	return r.valid
+}
+
+// Key implements the Iterator interface.
+func (r *reverseIterator) Key() Key {
+	return r.key
+}
+
+// Value implements the Iterator interface.
+func (r *reverseIterator) Value() []byte {
+	return r.val
+}
+
+// Next implements the Iterator interface.
+func (r *reverseIterator) Next() error {
+	r.valid = r.inner.Valid()
+	for hasPrev := true; hasPrev; {
+		key, ver, err := mvcc.Decode(r.inner.Key())
+		if err != nil {
+			return err
+		}
+		if !bytes.Equal(key, r.nextKey) {
+			err := r.finishEntry()
+			if err != nil {
+				return err
+			}
+			r.key = r.nextKey
+			r.nextKey = key
+			// Found a valid value.
+			if len(r.val) > 0 {
+				return nil
+			}
+		}
+		val, err := r.inner.ValueAndErr()
+		if err != nil {
+			return err
+		}
+		if ver == mvcc.LockVer {
+			var lock mvcc.Lock
+			err = lock.UnmarshalBinary(val)
+		} else {
+			var value mvcc.Value
+			err = value.UnmarshalBinary(val)
+			r.entry.Values = append(r.entry.Values, value)
+		}
+		if err != nil {
+			return err
+		}
+		hasPrev = r.inner.Prev()
+
+		// Set the key/value to properly value if there is no previous key/value.
+		if !hasPrev {
+			err := r.finishEntry()
+			if err != nil {
+				return err
+			}
+			r.key = r.nextKey
+		}
+	}
+
+	return nil
+}
+
+func reverse(values []mvcc.Value) {
+	i, j := 0, len(values)-1
+	for i < j {
+		values[i], values[j] = values[j], values[i]
+		i++
+		j--
+	}
+}
+
+func (r *reverseIterator) finishEntry() error {
+	reverse(r.entry.Values)
+	r.entry.Key = mvcc.NewKey(r.nextKey)
+	// TODO: resolvedLocks
+	val, err := r.entry.Get(r.ver.Ver, nil)
+	if err != nil {
+		return err
+	}
+	r.val = val
+	r.entry = mvcc.Entry{}
+	return nil
+}
+
+// Close implements the Iterator interface.
+func (r *reverseIterator) Close() {
+	_ = r.inner.Close()
+}

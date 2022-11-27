@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Copyright 2016 PingCAP, Inc.
+// Copyright 2015 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,21 +26,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package mvcc
 
-import (
-	"testing"
+import "math"
 
-	"github.com/stretchr/testify/assert"
+// VersionProvider provides increasing IDs.
+type VersionProvider interface {
+	CurrentVersion() (Version, error)
+}
+
+// Version is the wrapper of KV's version.
+type Version struct {
+	Ver uint64
+}
+
+var (
+	// MaxVersion is the maximum version, notice that it's not a valid version.
+	MaxVersion = Version{Ver: math.MaxUint64}
+	// MinVersion is the minimum version, it's not a valid version, too.
+	MinVersion = Version{Ver: 0}
 )
 
-func TestVersion(t *testing.T) {
-	le := NewVersion(42).Cmp(NewVersion(43))
-	gt := NewVersion(42).Cmp(NewVersion(41))
-	eq := NewVersion(42).Cmp(NewVersion(42))
+// NewVersion creates a new Version struct.
+func NewVersion(v uint64) Version {
+	return Version{
+		Ver: v,
+	}
+}
 
-	assert.True(t, le < 0)
-	assert.True(t, gt > 0)
-	assert.True(t, eq == 0)
-	assert.True(t, MinVersion.Cmp(MaxVersion) < 0)
+// Cmp returns the comparison result of two versions.
+// The result will be 0 if a==b, -1 if a < b, and +1 if a > b.
+func (v Version) Cmp(another Version) int {
+	if v.Ver > another.Ver {
+		return 1
+	} else if v.Ver < another.Ver {
+		return -1
+	}
+	return 0
 }

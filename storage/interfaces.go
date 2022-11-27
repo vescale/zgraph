@@ -14,17 +14,22 @@
 
 package storage
 
-import "context"
+import (
+	"context"
+
+	"github.com/vescale/zgraph/storage/mvcc"
+)
 
 type Storage interface {
+	mvcc.VersionProvider
+
 	Open(dirname string, options ...Option) error
 	Begin() (Transaction, error)
-	Snapshot(ver Version) (Snapshot, error)
-	CurrentVersion() (Version, error)
+	Snapshot(ver mvcc.Version) (Snapshot, error)
 	Close() error
 }
 
-// Iterator is the interface for a iterator on KV store.
+// Iterator is the interface for a iterator on KV db.
 type Iterator interface {
 	Valid() bool
 	Key() Key
@@ -35,7 +40,7 @@ type Iterator interface {
 
 // Getter is the interface for the Get method.
 type Getter interface {
-	// Get gets the value for key k from kv store.
+	// Get gets the value for key k from kv db.
 	// If corresponding kv pair does not exist, it returns nil and ErrNotExist.
 	Get(ctx context.Context, k Key) ([]byte, error)
 }
@@ -53,21 +58,21 @@ type Retriever interface {
 	// If such entry is not found, it returns an invalid Iterator with no error.
 	// It yields only keys that < upperBound. If upperBound is nil, it means the upperBound is unbounded.
 	// The Iterator must be Closed after use.
-	Iter(k Key, upperBound Key) (Iterator, error)
+	Iter(lowerBound Key, upperBound Key) (Iterator, error)
 
 	// IterReverse creates a reversed Iterator positioned on the first entry which key is less than k.
 	// The returned iterator will iterate from greater key to smaller key.
 	// If k is nil, the returned iterator will be positioned at the last key.
 	// TODO: Add lower bound limit
-	IterReverse(k Key) (Iterator, error)
+	IterReverse(lowerBound Key, upperBound Key) (Iterator, error)
 }
 
 // Mutator is the interface wraps the basic Set and Delete methods.
 type Mutator interface {
-	// Set sets the value for key k as v into kv store.
+	// Set sets the value for key k as v into kv db.
 	// v must NOT be nil or empty, otherwise it returns ErrCannotSetNilValue.
 	Set(k Key, v []byte) error
-	// Delete removes the entry for key k from kv store.
+	// Delete removes the entry for key k from kv db.
 	Delete(k Key) error
 }
 
@@ -87,15 +92,15 @@ type Transaction interface {
 	Len() int
 	// Reset reset the Transaction to initial states.
 	Reset()
-	// Commit commits the transaction operations to KV store.
+	// Commit commits the transaction operations to KV db.
 	Commit(context.Context) error
-	// Rollback undoes the transaction operations to KV store.
+	// Rollback undoes the transaction operations to KV db.
 	Rollback() error
 	// String implements fmt.Stringer interface.
 	String() string
 }
 
-// Snapshot defines the interface for the snapshot fetched from KV store.
+// Snapshot defines the interface for the snapshot fetched from KV db.
 type Snapshot interface {
 	Retriever
 	BatchGetter

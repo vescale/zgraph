@@ -15,11 +15,23 @@
 package storage
 
 import (
-	"github.com/pingcap/errors"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-var (
-	// ErrTxnConflicts indicates the current transaction contains some vertex/edge/index
-	// conflicts with others.
-	ErrTxnConflicts = errors.New("transaction conflicts")
-)
+func TestMVCCStorage_Open(t *testing.T) {
+	tempDir := t.TempDir()
+	storage := New()
+	err := storage.Open(tempDir)
+	assert.Nil(t, err)
+	err = storage.Close()
+	assert.Nil(t, err)
+}
+
+func TestMVCCStorage_CurrentVersion(t *testing.T) {
+	storage := New()
+	ver, err := storage.CurrentVersion()
+	assert.Nil(t, err)
+	assert.NotZero(t, ver.Ver)
+}

@@ -12,14 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package mvcc
 
-import (
-	"github.com/pingcap/errors"
-)
+import "fmt"
 
-var (
-	// ErrTxnConflicts indicates the current transaction contains some vertex/edge/index
-	// conflicts with others.
-	ErrTxnConflicts = errors.New("transaction conflicts")
-)
+// LockedError is returned when trying to Read/Write on a locked key. Caller should
+// backoff or cleanup the lock then retry.
+type LockedError struct {
+	Key     Key
+	Primary []byte
+	StartTS uint64
+	TTL     uint64
+}
+
+// Error formats the lock to a string.
+func (e *LockedError) Error() string {
+	return fmt.Sprintf("key is locked, key: %q, primary: %q, txnStartTS: %v",
+		e.Key, e.Primary, e.StartTS)
+}

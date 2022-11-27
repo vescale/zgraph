@@ -12,14 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package mvcc
 
-import (
-	"github.com/pingcap/errors"
-)
+import "github.com/vescale/zgraph/codec"
 
-var (
-	// ErrTxnConflicts indicates the current transaction contains some vertex/edge/index
-	// conflicts with others.
-	ErrTxnConflicts = errors.New("transaction conflicts")
-)
+// Key is the encoded key type with timestamp.
+type Key []byte
+
+// NewKey encodes a key into MvccKey.
+func NewKey(key []byte) Key {
+	if len(key) == 0 {
+		return nil
+	}
+	return codec.EncodeBytes(nil, key)
+}
+
+// Raw decodes a MvccKey to original key.
+func (key Key) Raw() []byte {
+	if len(key) == 0 {
+		return nil
+	}
+	_, k, err := codec.DecodeBytes(key, nil)
+	if err != nil {
+		panic(err)
+	}
+	return k
+}
