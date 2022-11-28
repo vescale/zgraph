@@ -311,6 +311,77 @@ func startWithSharp(s *Lexer) (tok int, pos Pos, lit string) {
 	return s.scan()
 }
 
+func startWithSlash(s *Lexer) (tok int, pos Pos, lit string) {
+	pos = s.r.pos()
+	s.r.inc()
+	if ch := s.r.peek(); ch != '*' {
+		if ch != '-' {
+			tok = int('/')
+			lit = "/"
+			return
+		}
+		s.r.inc()
+		if ch = s.r.peek(); ch == '>' {
+			tok = rightArrow
+			s.r.inc()
+		} else {
+			tok = reachIncomingRight
+		}
+		return
+	}
+
+	currentCharIsStar := false
+
+	s.r.inc() // we see '/*' so far.
+	switch s.r.readByte() {
+	case '!': // '/*!' MySQL-specific comments
+		// See http://dev.mysql.com/doc/refman/5.7/en/comments.html
+		// in '/*!', which we always recognize regardless of version.
+		s.scanVersionDigits(5, 5)
+		s.inBangComment = true
+		return s.scan()
+
+	case 'M': // '/*M' maybe MariaDB-specific comments
+		// no special treatment for now.
+		break
+
+	case '*': // '/**' if the next char is '/' it would close the comment.
+		currentCharIsStar = true
+
+	default:
+		break
+	}
+
+	// standard C-like comment. read until we see '*/' then drop it.
+	for {
+		if currentCharIsStar || s.r.incAsLongAs(func(ch byte) bool { return ch != '*' }) == '*' {
+			switch s.r.readByte() {
+			case '/':
+				return s.scan()
+			case '*':
+				currentCharIsStar = true
+				continue
+			default:
+				currentCharIsStar = false
+				continue
+			}
+		}
+		// unclosed comment or other errors.
+		s.errs = append(s.errs, parseErrorWith(s.r.data(&pos), s.r.p.Line))
+		return
+	}
+}
+
+const errTextLength = 80
+
+// parseErrorWith returns "You have a syntax error near..." error message compatible with mysql.
+func parseErrorWith(errstr string, lineno int) error {
+	if len(errstr) > errTextLength {
+		errstr = errstr[:errTextLength]
+	}
+	return fmt.Errorf("near '%-.80s' at line %d", errstr, lineno)
+}
+
 func startWithStar(s *Lexer) (tok int, pos Pos, lit string) {
 	pos = s.r.pos()
 	s.r.inc()
@@ -413,46 +484,6 @@ func scanQuotedIdent(s *Lexer) (tok int, pos Pos, lit string) {
 
 func startString(s *Lexer) (tok int, pos Pos, lit string) {
 	return s.scanString()
-}
-
-// lazyBuf is used to avoid allocation if possible.
-// it has a useBuf field indicates whether bytes.Buffer is necessary. if
-// useBuf is false, we can avoid calling bytes.Buffer.String(), which
-// make a copy of data and cause allocation.
-type lazyBuf struct {
-	useBuf bool
-	r      *reader
-	b      *bytes.Buffer
-	p      *Pos
-}
-
-func (mb *lazyBuf) setUseBuf(str string) {
-	if !mb.useBuf {
-		mb.useBuf = true
-		mb.b.Reset()
-		mb.b.WriteString(str)
-	}
-}
-
-func (mb *lazyBuf) writeRune(r rune, w int) {
-	if mb.useBuf {
-		if w > 1 {
-			mb.b.WriteRune(r)
-		} else {
-			mb.b.WriteByte(byte(r))
-		}
-	}
-}
-
-func (mb *lazyBuf) data() string {
-	var lit string
-	if mb.useBuf {
-		lit = mb.b.String()
-	} else {
-		lit = mb.r.data(mb.p)
-		lit = lit[1 : len(lit)-1]
-	}
-	return lit
 }
 
 func (l *Lexer) scanString() (tok int, pos Pos, lit string) {
@@ -666,52 +697,6 @@ func (l *Lexer) scanVersionDigits(min, max int) {
 	}
 }
 
-func (l *Lexer) scanFeatureIDs() (featureIDs []string) {
-	pos := l.r.pos()
-	const init, expectChar, obtainChar = 0, 1, 2
-	state := init
-	var b strings.Builder
-	for !l.r.eof() {
-		ch := l.r.peek()
-		l.r.inc()
-		switch state {
-		case init:
-			if ch == '[' {
-				state = expectChar
-				break
-			}
-			l.r.updatePos(pos)
-			return nil
-		case expectChar:
-			if isIdentChar(ch) {
-				b.WriteByte(ch)
-				state = obtainChar
-				break
-			}
-			l.r.updatePos(pos)
-			return nil
-		case obtainChar:
-			if isIdentChar(ch) {
-				b.WriteByte(ch)
-				state = obtainChar
-				break
-			} else if ch == ',' {
-				featureIDs = append(featureIDs, b.String())
-				b.Reset()
-				state = expectChar
-				break
-			} else if ch == ']' {
-				featureIDs = append(featureIDs, b.String())
-				return featureIDs
-			}
-			l.r.updatePos(pos)
-			return nil
-		}
-	}
-	l.r.updatePos(pos)
-	return nil
-}
-
 func (l *Lexer) lastErrorAsWarn() {
 	if len(l.errs) == 0 {
 		return
@@ -725,8 +710,6 @@ type reader struct {
 	p Pos
 	l int
 }
-
-var eof = Pos{-1, -1, -1}
 
 func (r *reader) eof() bool {
 	return r.p.Offset >= r.l

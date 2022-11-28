@@ -1,17 +1,5 @@
 // Copyright 2022 zGraph Authors. All rights reserved.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 // Copyright 2016 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,8 +39,7 @@ func TestSingleChar(t *testing.T) {
 		l := NewLexer(string(tok))
 		var v yySymType
 		tok1 := l.Lex(&v)
-		t.Log(tok1, int(tok))
-		//require.Equal(t, tok1, int(tok))
+		require.Equal(t, tok1, int(tok))
 	}
 }
 
@@ -210,27 +197,14 @@ func runLiteralTest(t *testing.T, table []testLiteralValue) {
 }
 
 func TestComment(t *testing.T) {
-	t.Skip()
 	table := []testCaseItem{
-		{"-- select --\n1", intLit},
+		//{"-- select --\n1", intLit},
 		{"/*!40101 SET character_set_client = utf8 */;", set},
 		{"/* SET character_set_client = utf8 */;", int(';')},
 		{"/* some comments */ SELECT ", selectKwd},
-		{`-- comment continues to the end of line
-SELECT`, selectKwd},
 		{`# comment continues to the end of line
 SELECT`, selectKwd},
 		{"#comment\n123", intLit},
-		{"--5", int('-')},
-		{"--\nSELECT", selectKwd},
-		{"--\tSELECT", 0},
-		{"--\r\nSELECT", selectKwd},
-		{"--", 0},
-
-		// The odd behavior of '*/' inside conditional comment is the same as
-		// that of MySQL.
-		{"/*T![unsupported] '*/0 -- ' */", intLit},  // equivalent to 0
-		{"/*T![auto_rand] '*/0 -- ' */", stringLit}, // equivalent to '*/0 -- '
 	}
 	runTest(t, table)
 }
@@ -429,78 +403,6 @@ func TestVersionDigits(t *testing.T) {
 	for _, test := range tests {
 		scanner.reset(test.input)
 		scanner.scanVersionDigits(test.min, test.max)
-		nextChar := scanner.r.readByte()
-		require.Equalf(t, test.nextChar, nextChar, "input = %s", test.input)
-	}
-}
-
-func TestFeatureIDs(t *testing.T) {
-	tests := []struct {
-		input      string
-		featureIDs []string
-		nextChar   byte
-	}{
-		{
-			input:      "[feature]",
-			featureIDs: []string{"feature"},
-			nextChar:   0,
-		},
-		{
-			input:      "[feature] xx",
-			featureIDs: []string{"feature"},
-			nextChar:   ' ',
-		},
-		{
-			input:      "[feature1,feature2]",
-			featureIDs: []string{"feature1", "feature2"},
-			nextChar:   0,
-		},
-		{
-			input:      "[feature1,feature2,feature3]",
-			featureIDs: []string{"feature1", "feature2", "feature3"},
-			nextChar:   0,
-		},
-		{
-			input:      "[id_en_ti_fier]",
-			featureIDs: []string{"id_en_ti_fier"},
-			nextChar:   0,
-		},
-		{
-			input:      "[invalid,    whitespace]",
-			featureIDs: nil,
-			nextChar:   '[',
-		},
-		{
-			input:      "[unclosed_brac",
-			featureIDs: nil,
-			nextChar:   '[',
-		},
-		{
-			input:      "unclosed_brac]",
-			featureIDs: nil,
-			nextChar:   'u',
-		},
-		{
-			input:      "[invalid_comma,]",
-			featureIDs: nil,
-			nextChar:   '[',
-		},
-		{
-			input:      "[,]",
-			featureIDs: nil,
-			nextChar:   '[',
-		},
-		{
-			input:      "[]",
-			featureIDs: nil,
-			nextChar:   '[',
-		},
-	}
-	scanner := NewLexer("")
-	for _, test := range tests {
-		scanner.reset(test.input)
-		featureIDs := scanner.scanFeatureIDs()
-		require.Equalf(t, test.featureIDs, featureIDs, "input = %s", test.input)
 		nextChar := scanner.r.readByte()
 		require.Equalf(t, test.nextChar, nextChar, "input = %s", test.input)
 	}

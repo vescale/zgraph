@@ -75,7 +75,6 @@ func init() {
 	// set root trie node's token to invalid, so when input match nothing
 	// in the trie, invalid will be the default return token.
 	ruleTable.token = invalid
-	initTokenByte('/', int('/'))
 	initTokenByte('+', int('+'))
 	initTokenByte('-', int('-'))
 	initTokenByte('>', int('>'))
@@ -117,10 +116,9 @@ func init() {
 	initTokenString("<-[", edgeIncomingLeft)
 	initTokenString("]-", edgeIncomingRight)
 	initTokenString("-/", reachOutgoingLeft)
-	initTokenString("/->", reachOutgoingRight)
 	initTokenString("<-/", reachIncomingLeft)
-	initTokenString("/-", reachIncomingRight)
 
+	initTokenFunc("/", startWithSlash)
 	initTokenFunc("@", startWithAt)
 	initTokenFunc("*", startWithStar)
 	initTokenFunc("#", startWithSharp)
