@@ -39,7 +39,7 @@ func TestSnapshot_Get(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ts  uint64
+		ts  mvcc.Version
 	}{
 		{key: []byte("test"), val: []byte("test1"), ts: 100},
 		{key: []byte("test"), val: []byte("test3"), ts: 300},
@@ -78,7 +78,7 @@ func TestSnapshot_Get(t *testing.T) {
 		{"test1", "test7", 750},
 	}
 	for _, e := range expected {
-		snapshot, err := s.Snapshot(mvcc.Version{Ver: e.ts})
+		snapshot, err := s.Snapshot(mvcc.Version(e.ts))
 		assert.Nil(t, err)
 		val, err := snapshot.Get(context.Background(), []byte(e.key))
 		assert.Nil(t, err)
@@ -100,7 +100,7 @@ func TestSnapshot_BatchGet(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ts  uint64
+		ts  mvcc.Version
 	}{
 		{key: []byte("test"), val: []byte("test1"), ts: 100},
 		{key: []byte("test"), val: []byte("test3"), ts: 300},
@@ -160,7 +160,7 @@ func TestSnapshot_BatchGet(t *testing.T) {
 		},
 	}
 	for _, e := range expected {
-		snapshot, err := s.Snapshot(mvcc.Version{Ver: e.ts})
+		snapshot, err := s.Snapshot(mvcc.Version(e.ts))
 		assert.Nil(t, err)
 		var keys []kv.Key
 		for _, k := range e.keys {

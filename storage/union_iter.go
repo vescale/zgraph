@@ -22,7 +22,7 @@ import (
 	"github.com/vescale/zgraph/storage/kv"
 )
 
-// UnionIter is the iterator on an UnionStore.
+// UnionIter is the SnapshotIter on an UnionStore.
 type UnionIter struct {
 	dirtyIt    Iterator
 	snapshotIt Iterator
@@ -35,7 +35,7 @@ type UnionIter struct {
 	reverse    bool
 }
 
-// NewUnionIter returns a union iterator for BufferStore.
+// NewUnionIter returns a union SnapshotIter for BufferStore.
 func NewUnionIter(dirtyIt Iterator, snapshotIt Iterator, reverse bool) (*UnionIter, error) {
 	it := &UnionIter{
 		dirtyIt:       dirtyIt,

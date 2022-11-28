@@ -136,7 +136,7 @@ func TestDiscard(t *testing.T) {
 		assert.NotNil(err)
 	}
 	it1, _ := db.Iter(nil, nil)
-	it := it1.(*MemdbIterator)
+	it := it1.(*MemDBIter)
 	it.seekToFirst()
 	assert.False(it.Valid())
 	it.seekToLast()
@@ -351,7 +351,7 @@ func TestEmptyDB(t *testing.T) {
 	_, err := db.Get(context.Background(), []byte{0})
 	assert.NotNil(err)
 	it1, _ := db.Iter(nil, nil)
-	it := it1.(*MemdbIterator)
+	it := it1.(*MemDBIter)
 	it.seekToFirst()
 	assert.False(it.Valid())
 	it.seekToLast()
@@ -367,7 +367,7 @@ func TestReset(t *testing.T) {
 	_, err := db.Get(context.Background(), []byte{0, 0, 0, 0})
 	assert.NotNil(err)
 	it1, _ := db.Iter(nil, nil)
-	it := it1.(*MemdbIterator)
+	it := it1.(*MemDBIter)
 	it.seekToFirst()
 	assert.False(it.Valid())
 	it.seekToLast()
@@ -499,7 +499,7 @@ func TestFlags(t *testing.T) {
 	assert.Equal(db.Size(), 20000)
 
 	it1, _ := db.Iter(nil, nil)
-	it := it1.(*MemdbIterator)
+	it := it1.(*MemDBIter)
 	assert.False(it.Valid())
 
 	it.includeFlags = true
@@ -586,7 +586,7 @@ func checkNewIterator(t *testing.T, buffer *MemDB) {
 		iter.Close()
 	}
 
-	// Test iterator Next()
+	// Test SnapshotIter Next()
 	for i := startIndex; i < testCount-1; i++ {
 		val := encodeInt(i * indexStep)
 		iter, err := buffer.Iter(val, nil)
@@ -648,11 +648,11 @@ func TestNewIterator(t *testing.T) {
 	checkNewIterator(t, buffer)
 }
 
-// FnKeyCmp is the function for iterator the keys
+// FnKeyCmp is the function for SnapshotIter the keys
 type FnKeyCmp func(key []byte) bool
 
-// NextUntil applies FnKeyCmp to each entry of the iterator until meets some condition.
-// It will stop when fn returns true, or iterator is invalid or an error occurs.
+// NextUntil applies FnKeyCmp to each entry of the SnapshotIter until meets some condition.
+// It will stop when fn returns true, or SnapshotIter is invalid or an error occurs.
 func NextUntil(it Iterator, fn FnKeyCmp) error {
 	var err error
 	for it.Valid() && !fn(it.Key()) {

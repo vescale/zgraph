@@ -30,7 +30,7 @@ type Storage interface {
 	Close() error
 }
 
-// Iterator is the interface for a iterator on KV db.
+// Iterator is the interface for a SnapshotIter on KV db.
 type Iterator interface {
 	Valid() bool
 	Key() kv.Key
@@ -62,8 +62,8 @@ type Retriever interface {
 	Iter(lowerBound kv.Key, upperBound kv.Key) (Iterator, error)
 
 	// IterReverse creates a reversed Iterator positioned on the first entry which key is less than k.
-	// The returned iterator will iterate from greater key to smaller key.
-	// If k is nil, the returned iterator will be positioned at the last key.
+	// The returned SnapshotIter will iterate from greater key to smaller key.
+	// If k is nil, the returned SnapshotIter will be positioned at the last key.
 	IterReverse(lowerBound kv.Key, upperBound kv.Key) (Iterator, error)
 }
 

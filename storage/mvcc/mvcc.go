@@ -35,13 +35,13 @@ const (
 
 type Value struct {
 	Type     ValueType
-	StartTS  uint64
-	CommitTS uint64
+	StartTS  Version
+	CommitTS Version
 	Value    []byte
 }
 
 type Lock struct {
-	StartTS uint64
+	StartTS Version
 	Primary []byte
 	Value   []byte
 	Op      Op
@@ -189,7 +189,7 @@ func (l *Lock) lockErr(key []byte) error {
 	}
 }
 
-func (l *Lock) Check(ts uint64, key []byte, resolvedLocks []uint64) (uint64, error) {
+func (l *Lock) Check(ts Version, key []byte, resolvedLocks []Version) (Version, error) {
 	// ignore when ts is older than lock or lock's type is Lock.
 	if l.StartTS > ts || l.Op == Op_Lock {
 		return ts, nil
@@ -211,7 +211,7 @@ func (e *Entry) Less(than btree.Item) bool {
 	return bytes.Compare(e.Key, than.(*Entry).Key) < 0
 }
 
-func (e *Entry) Get(ts uint64, resolvedLocks []uint64) ([]byte, error) {
+func (e *Entry) Get(ts Version, resolvedLocks []Version) ([]byte, error) {
 	if e.Lock != nil {
 		var err error
 		ts, err = e.Lock.Check(ts, e.Key.Raw(), resolvedLocks)

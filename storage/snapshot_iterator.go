@@ -22,7 +22,7 @@ import (
 	"github.com/vescale/zgraph/storage/mvcc"
 )
 
-type iterator struct {
+type SnapshotIter struct {
 	inner   *pebble.Iterator
 	ver     mvcc.Version
 	key     kv.Key
@@ -32,26 +32,26 @@ type iterator struct {
 }
 
 // Valid implements the Iterator interface.
-func (i *iterator) Valid() bool {
+func (i *SnapshotIter) Valid() bool {
 	return i.valid
 }
 
 // Key implements the Iterator interface.
-func (i *iterator) Key() kv.Key {
+func (i *SnapshotIter) Key() kv.Key {
 	return i.key
 }
 
 // Value implements the Iterator interface.
-func (i *iterator) Value() []byte {
+func (i *SnapshotIter) Value() []byte {
 	return i.val
 }
 
 // Next implements the Iterator interface.
-func (i *iterator) Next() error {
+func (i *SnapshotIter) Next() error {
 	i.valid = i.inner.Valid()
 	for ok := true; ok; {
 		// TODO: handle LockedError and reset the resolvedLocks.
-		val, err := getValue(i.inner, i.nextKey, i.ver.Ver, nil)
+		val, err := getValue(i.inner, i.nextKey, i.ver, nil)
 		if err != nil {
 			return err
 		}
@@ -81,11 +81,11 @@ func (i *iterator) Next() error {
 }
 
 // Close implements the Iterator interface.
-func (i *iterator) Close() {
+func (i *SnapshotIter) Close() {
 	_ = i.inner.Close()
 }
 
-type reverseIterator struct {
+type SnapshotReverseIter struct {
 	inner   *pebble.Iterator
 	ver     mvcc.Version
 	key     kv.Key
@@ -96,22 +96,22 @@ type reverseIterator struct {
 }
 
 // Valid implements the Iterator interface.
-func (r *reverseIterator) Valid() bool {
+func (r *SnapshotReverseIter) Valid() bool {
 	return r.valid
 }
 
 // Key implements the Iterator interface.
-func (r *reverseIterator) Key() kv.Key {
+func (r *SnapshotReverseIter) Key() kv.Key {
 	return r.key
 }
 
 // Value implements the Iterator interface.
-func (r *reverseIterator) Value() []byte {
+func (r *SnapshotReverseIter) Value() []byte {
 	return r.val
 }
 
 // Next implements the Iterator interface.
-func (r *reverseIterator) Next() error {
+func (r *SnapshotReverseIter) Next() error {
 	r.valid = r.inner.Valid()
 	for hasPrev := true; hasPrev; {
 		key, ver, err := mvcc.Decode(r.inner.Key())
@@ -169,11 +169,11 @@ func reverse(values []mvcc.Value) {
 	}
 }
 
-func (r *reverseIterator) finishEntry() error {
+func (r *SnapshotReverseIter) finishEntry() error {
 	reverse(r.entry.Values)
 	r.entry.Key = mvcc.NewKey(r.nextKey)
 	// TODO: resolvedLocks
-	val, err := r.entry.Get(r.ver.Ver, nil)
+	val, err := r.entry.Get(r.ver, nil)
 	if err != nil {
 		return err
 	}
@@ -183,6 +183,6 @@ func (r *reverseIterator) finishEntry() error {
 }
 
 // Close implements the Iterator interface.
-func (r *reverseIterator) Close() {
+func (r *SnapshotReverseIter) Close() {
 	_ = r.inner.Close()
 }

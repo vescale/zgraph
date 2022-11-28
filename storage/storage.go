@@ -80,8 +80,7 @@ func (s *mvccStorage) Snapshot(ver mvcc.Version) (Snapshot, error) {
 // Currently, we use the system time as our startTS, and we cannot tolerant
 // the system time rewind.
 func (s *mvccStorage) CurrentVersion() (mvcc.Version, error) {
-	now := time.Now().Nanosecond()
-	return mvcc.Version{Ver: uint64(now)}, nil
+	return mvcc.Version(time.Now().UnixNano()), nil
 }
 
 // Close implements the Storage interface.

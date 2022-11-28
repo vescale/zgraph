@@ -25,13 +25,13 @@ var (
 )
 
 // Encode encodes a user defined key with timestamp.
-func Encode(key []byte, ver uint64) Key {
-	return codec.EncodeUintDesc(codec.EncodeBytes(nil, key), ver)
+func Encode(key []byte, ver Version) Key {
+	return codec.EncodeUintDesc(codec.EncodeBytes(nil, key), uint64(ver))
 }
 
 // Decode parses the origin key and version of an encoded key.
 // Will return the original key if the encoded key is a meta key.
-func Decode(encodedKey []byte) ([]byte, uint64, error) {
+func Decode(encodedKey []byte) ([]byte, Version, error) {
 	// Skip DataPrefix
 	remainBytes, key, err := codec.DecodeBytes(encodedKey, nil)
 	if err != nil {
@@ -51,5 +51,5 @@ func Decode(encodedKey []byte) ([]byte, uint64, error) {
 	if len(remainBytes) != 0 {
 		return nil, 0, errors.Trace(ErrInvalidEncodedKey)
 	}
-	return key, ver, nil
+	return key, Version(ver), nil
 }

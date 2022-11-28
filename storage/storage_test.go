@@ -33,5 +33,5 @@ func TestMVCCStorage_CurrentVersion(t *testing.T) {
 	storage := New()
 	ver, err := storage.CurrentVersion()
 	assert.Nil(t, err)
-	assert.NotZero(t, ver.Ver)
+	assert.NotZero(t, ver)
 }

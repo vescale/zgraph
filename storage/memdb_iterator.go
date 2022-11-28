@@ -22,8 +22,8 @@ import (
 	"github.com/vescale/zgraph/storage/kv"
 )
 
-// MemdbIterator is an Iterator with KeyFlags related functions.
-type MemdbIterator struct {
+// MemDBIter is an Iterator with KeyFlags related functions.
+type MemDBIter struct {
 	db           *MemDB
 	curr         memdbNodeAddr
 	start        []byte
@@ -37,7 +37,7 @@ type MemdbIterator struct {
 // It yields only keys that < upperBound. If upperBound is nil, it means the upperBound is unbounded.
 // The Iterator must be Closed after use.
 func (db *MemDB) Iter(lowerBound, upperBound kv.Key) (Iterator, error) {
-	i := &MemdbIterator{
+	i := &MemDBIter{
 		db:    db,
 		start: lowerBound,
 		end:   upperBound,
@@ -47,11 +47,11 @@ func (db *MemDB) Iter(lowerBound, upperBound kv.Key) (Iterator, error) {
 }
 
 // IterReverse creates a reversed Iterator positioned on the first entry which key is less than k.
-// The returned iterator will iterate from greater key to smaller key.
-// If k is nil, the returned iterator will be positioned at the last key.
+// The returned SnapshotIter will iterate from greater key to smaller key.
+// If k is nil, the returned SnapshotIter will be positioned at the last key.
 // TODO: Add lower bound limit
 func (db *MemDB) IterReverse(lowerBound, upperBound kv.Key) (Iterator, error) {
-	i := &MemdbIterator{
+	i := &MemDBIter{
 		db:      db,
 		start:   lowerBound,
 		end:     upperBound,
@@ -61,9 +61,9 @@ func (db *MemDB) IterReverse(lowerBound, upperBound kv.Key) (Iterator, error) {
 	return i, nil
 }
 
-// IterWithFlags returns a MemdbIterator.
-func (db *MemDB) IterWithFlags(k []byte, upperBound []byte) *MemdbIterator {
-	i := &MemdbIterator{
+// IterWithFlags returns a MemDBIter.
+func (db *MemDB) IterWithFlags(k []byte, upperBound []byte) *MemDBIter {
+	i := &MemDBIter{
 		db:           db,
 		start:        k,
 		end:          upperBound,
@@ -73,9 +73,9 @@ func (db *MemDB) IterWithFlags(k []byte, upperBound []byte) *MemdbIterator {
 	return i
 }
 
-// IterReverseWithFlags returns a reversed MemdbIterator.
-func (db *MemDB) IterReverseWithFlags(k []byte) *MemdbIterator {
-	i := &MemdbIterator{
+// IterReverseWithFlags returns a reversed MemDBIter.
+func (db *MemDB) IterReverseWithFlags(k []byte) *MemDBIter {
+	i := &MemDBIter{
 		db:           db,
 		end:          k,
 		reverse:      true,
@@ -85,7 +85,7 @@ func (db *MemDB) IterReverseWithFlags(k []byte) *MemdbIterator {
 	return i
 }
 
-func (i *MemdbIterator) init() {
+func (i *MemDBIter) init() {
 	if i.reverse {
 		if len(i.end) == 0 {
 			i.seekToLast()
@@ -106,38 +106,38 @@ func (i *MemdbIterator) init() {
 	}
 }
 
-// Valid returns true if the current iterator is valid.
-func (i *MemdbIterator) Valid() bool {
+// Valid returns true if the current SnapshotIter is valid.
+func (i *MemDBIter) Valid() bool {
 	if !i.reverse {
 		return !i.curr.isNull() && (i.end == nil || bytes.Compare(i.Key(), i.end) < 0)
 	}
 	return !i.curr.isNull()
 }
 
-// Flags returns flags belong to current iterator.
-func (i *MemdbIterator) Flags() kv.KeyFlags {
+// Flags returns flags belong to current SnapshotIter.
+func (i *MemDBIter) Flags() kv.KeyFlags {
 	return i.curr.getKeyFlags()
 }
 
 // UpdateFlags updates and apply with flagsOp.
-func (i *MemdbIterator) UpdateFlags(ops ...kv.FlagsOp) {
+func (i *MemDBIter) UpdateFlags(ops ...kv.FlagsOp) {
 	origin := i.curr.getKeyFlags()
 	n := kv.ApplyFlagsOps(origin, ops...)
 	i.curr.setKeyFlags(n)
 }
 
 // HasValue returns false if it is flags only.
-func (i *MemdbIterator) HasValue() bool {
+func (i *MemDBIter) HasValue() bool {
 	return !i.isFlagsOnly()
 }
 
 // Key returns current key.
-func (i *MemdbIterator) Key() kv.Key {
+func (i *MemDBIter) Key() kv.Key {
 	return i.curr.getKey()
 }
 
 // Handle returns MemKeyHandle with the current position.
-func (i *MemdbIterator) Handle() MemKeyHandle {
+func (i *MemDBIter) Handle() MemKeyHandle {
 	return MemKeyHandle{
 		idx: uint16(i.curr.addr.idx),
 		off: i.curr.addr.off,
@@ -145,12 +145,12 @@ func (i *MemdbIterator) Handle() MemKeyHandle {
 }
 
 // Value returns the value.
-func (i *MemdbIterator) Value() []byte {
+func (i *MemDBIter) Value() []byte {
 	return i.db.vlog.getValue(i.curr.vptr)
 }
 
 // Next goes the next position.
-func (i *MemdbIterator) Next() error {
+func (i *MemDBIter) Next() error {
 	for {
 		if i.reverse {
 			i.curr = i.db.predecessor(i.curr)
@@ -166,10 +166,10 @@ func (i *MemdbIterator) Next() error {
 	return nil
 }
 
-// Close closes the current iterator.
-func (i *MemdbIterator) Close() {}
+// Close closes the current SnapshotIter.
+func (i *MemDBIter) Close() {}
 
-func (i *MemdbIterator) seekToFirst() {
+func (i *MemDBIter) seekToFirst() {
 	y := memdbNodeAddr{nil, nullAddr}
 	x := i.db.getNode(i.db.root)
 
@@ -181,7 +181,7 @@ func (i *MemdbIterator) seekToFirst() {
 	i.curr = y
 }
 
-func (i *MemdbIterator) seekToLast() {
+func (i *MemDBIter) seekToLast() {
 	y := memdbNodeAddr{nil, nullAddr}
 	x := i.db.getNode(i.db.root)
 
@@ -193,7 +193,7 @@ func (i *MemdbIterator) seekToLast() {
 	i.curr = y
 }
 
-func (i *MemdbIterator) seek(key []byte) {
+func (i *MemDBIter) seek(key []byte) {
 	y := memdbNodeAddr{nil, nullAddr}
 	x := i.db.getNode(i.db.root)
 
@@ -228,6 +228,6 @@ func (i *MemdbIterator) seek(key []byte) {
 	i.curr = y
 }
 
-func (i *MemdbIterator) isFlagsOnly() bool {
+func (i *MemDBIter) isFlagsOnly() bool {
 	return !i.curr.isNull() && i.curr.vptr.isNull()
 }

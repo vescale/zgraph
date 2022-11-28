@@ -33,7 +33,7 @@ func (db *MemDB) SnapshotGetter() Getter {
 // SnapshotIter returns a Iterator for a snapshot of MemBuffer.
 func (db *MemDB) SnapshotIter(start, end []byte) Iterator {
 	it := &memdbSnapIter{
-		MemdbIterator: &MemdbIterator{
+		MemDBIter: &MemDBIter{
 			db:    db,
 			start: start,
 			end:   end,
@@ -73,7 +73,7 @@ func (snap *memdbSnapGetter) Get(_ context.Context, key kv.Key) ([]byte, error) 
 }
 
 type memdbSnapIter struct {
-	*MemdbIterator
+	*MemDBIter
 	value []byte
 	cp    MemDBCheckpoint
 }
@@ -85,7 +85,7 @@ func (i *memdbSnapIter) Value() []byte {
 func (i *memdbSnapIter) Next() error {
 	i.value = nil
 	for i.Valid() {
-		if err := i.MemdbIterator.Next(); err != nil {
+		if err := i.MemDBIter.Next(); err != nil {
 			return err
 		}
 		if i.setValue() {

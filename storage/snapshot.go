@@ -59,14 +59,14 @@ func (s *snapshot) Iter(lowerBound kv.Key, upperBound kv.Key) (Iterator, error) 
 	if inner.Valid() {
 		key, _, err := mvcc.Decode(inner.Key())
 		if err != nil {
-			// Close the inner iterator if error encountered.
+			// Close the inner SnapshotIter if error encountered.
 			_ = inner.Close()
 			return nil, err
 		}
 		lowerBound = key
 	}
 
-	iter := &iterator{
+	iter := &SnapshotIter{
 		inner:   inner,
 		ver:     s.ver,
 		nextKey: lowerBound,
@@ -101,7 +101,7 @@ func (s *snapshot) IterReverse(lowerBound kv.Key, upperBound kv.Key) (Iterator, 
 		_ = inner.Close()
 		return nil, err
 	}
-	iter := &reverseIterator{
+	iter := &SnapshotReverseIter{
 		inner:   inner,
 		ver:     s.ver,
 		nextKey: key,
@@ -129,19 +129,19 @@ func (s *snapshot) BatchGet(_ context.Context, keys []kv.Key) (map[string][]byte
 	return results, nil
 }
 
-func (s *snapshot) get(key kv.Key, resolvedLocks []uint64) ([]byte, error) {
+func (s *snapshot) get(key kv.Key, resolvedLocks []mvcc.Version) ([]byte, error) {
 	iter := s.db.NewIter(&pebble.IterOptions{LowerBound: mvcc.Encode(key, mvcc.LockVer)})
 	defer iter.Close()
 
-	// NewIter returns an iterator that is unpositioned (Iterator.Valid() will
-	// return false). We must to call First or Last to position the iterator.
+	// NewIter returns an SnapshotIter that is unpositioned (Iterator.Valid() will
+	// return false). We must to call First or Last to position the SnapshotIter.
 	if ok := iter.First(); !ok {
 		return nil, errors.New("invalid key")
 	}
-	return getValue(iter, key, s.ver.Ver, resolvedLocks)
+	return getValue(iter, key, s.ver, resolvedLocks)
 }
 
-func getValue(iter *pebble.Iterator, key kv.Key, startTS uint64, resolvedLocks []uint64) ([]byte, error) {
+func getValue(iter *pebble.Iterator, key kv.Key, startTS mvcc.Version, resolvedLocks []mvcc.Version) ([]byte, error) {
 	dec1 := mvcc.LockDecoder{ExpectKey: key}
 	ok, err := dec1.Decode(iter)
 	if ok {

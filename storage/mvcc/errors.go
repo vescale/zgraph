@@ -21,7 +21,7 @@ import "fmt"
 type LockedError struct {
 	Key     Key
 	Primary []byte
-	StartTS uint64
+	StartTS Version
 	TTL     uint64
 }
 
