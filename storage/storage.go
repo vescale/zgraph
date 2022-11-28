@@ -56,8 +56,9 @@ func (s *mvccStorage) Begin() (Transaction, error) {
 		return nil, err
 	}
 	txn := &transaction{
-		memManager: NewCacheDB(),
-		snapshot:   snap,
+		startTS:  curVer,
+		us:       NewUnionStore(snap),
+		snapshot: snap,
 	}
 	return txn, nil
 }
@@ -72,7 +73,7 @@ func (s *mvccStorage) Snapshot(ver mvcc.Version) (Snapshot, error) {
 }
 
 // CurrentVersion implements the VersionProvider interface.
-// Currently, we use the system time as our version, and we cannot tolerant
+// Currently, we use the system time as our startTS, and we cannot tolerant
 // the system time rewind.
 func (s *mvccStorage) CurrentVersion() (mvcc.Version, error) {
 	now := time.Now().Nanosecond()

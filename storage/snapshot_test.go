@@ -22,6 +22,7 @@ import (
 
 	"github.com/cockroachdb/pebble"
 	"github.com/stretchr/testify/assert"
+	"github.com/vescale/zgraph/storage/kv"
 	"github.com/vescale/zgraph/storage/mvcc"
 )
 
@@ -161,9 +162,9 @@ func TestSnapshot_BatchGet(t *testing.T) {
 	for _, e := range expected {
 		snapshot, err := s.Snapshot(mvcc.Version{Ver: e.ts})
 		assert.Nil(t, err)
-		var keys []Key
+		var keys []kv.Key
 		for _, k := range e.keys {
-			keys = append(keys, Key(k))
+			keys = append(keys, kv.Key(k))
 		}
 		values, err := snapshot.BatchGet(context.Background(), keys)
 		assert.Nil(t, err)

@@ -23,7 +23,7 @@ import (
 	"github.com/vescale/zgraph/storage/mvcc"
 )
 
-func TestIterator(t *testing.T) {
+func TestIterator_Basic(t *testing.T) {
 	tmpDir := t.TempDir()
 	s := New()
 	err := s.Open(tmpDir)

@@ -18,15 +18,16 @@ import (
 	"bytes"
 
 	"github.com/cockroachdb/pebble"
+	"github.com/vescale/zgraph/storage/kv"
 	"github.com/vescale/zgraph/storage/mvcc"
 )
 
 type iterator struct {
 	inner   *pebble.Iterator
 	ver     mvcc.Version
-	key     Key
+	key     kv.Key
 	val     []byte
-	nextKey Key
+	nextKey kv.Key
 	valid   bool
 }
 
@@ -36,7 +37,7 @@ func (i *iterator) Valid() bool {
 }
 
 // Key implements the Iterator interface.
-func (i *iterator) Key() Key {
+func (i *iterator) Key() kv.Key {
 	return i.key
 }
 
@@ -87,9 +88,9 @@ func (i *iterator) Close() {
 type reverseIterator struct {
 	inner   *pebble.Iterator
 	ver     mvcc.Version
-	key     Key
+	key     kv.Key
 	val     []byte
-	nextKey Key
+	nextKey kv.Key
 	entry   mvcc.Entry
 	valid   bool
 }
@@ -100,7 +101,7 @@ func (r *reverseIterator) Valid() bool {
 }
 
 // Key implements the Iterator interface.
-func (r *reverseIterator) Key() Key {
+func (r *reverseIterator) Key() kv.Key {
 	return r.key
 }
 

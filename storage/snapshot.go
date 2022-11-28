@@ -19,6 +19,7 @@ import (
 
 	"github.com/cockroachdb/pebble"
 	"github.com/pingcap/errors"
+	"github.com/vescale/zgraph/storage/kv"
 	"github.com/vescale/zgraph/storage/mvcc"
 )
 
@@ -28,14 +29,14 @@ type snapshot struct {
 }
 
 // Get implements the Snapshot interface.
-func (s *snapshot) Get(_ context.Context, key Key) ([]byte, error) {
+func (s *snapshot) Get(_ context.Context, key kv.Key) ([]byte, error) {
 	return s.get(key, nil)
 }
 
 // Iter implements the Snapshot interface.
-func (s *snapshot) Iter(lowerBound Key, upperBound Key) (Iterator, error) {
+func (s *snapshot) Iter(lowerBound kv.Key, upperBound kv.Key) (Iterator, error) {
 	// The lower-level database stored key-value with versions. We need
-	// to append the version to the raw keys.
+	// to append the startTS to the raw keys.
 	var start, end mvcc.Key
 	if len(lowerBound) > 0 {
 		start = mvcc.Encode(lowerBound, mvcc.LockVer)
@@ -75,7 +76,7 @@ func (s *snapshot) Iter(lowerBound Key, upperBound Key) (Iterator, error) {
 }
 
 // IterReverse implements the Snapshot interface.
-func (s *snapshot) IterReverse(lowerBound Key, upperBound Key) (Iterator, error) {
+func (s *snapshot) IterReverse(lowerBound kv.Key, upperBound kv.Key) (Iterator, error) {
 	var start, end mvcc.Key
 	if len(lowerBound) > 0 {
 		start = mvcc.Encode(lowerBound, mvcc.LockVer)
@@ -108,7 +109,7 @@ func (s *snapshot) IterReverse(lowerBound Key, upperBound Key) (Iterator, error)
 	return iter, iter.Next()
 }
 
-func (s *snapshot) BatchGet(_ context.Context, keys []Key) (map[string][]byte, error) {
+func (s *snapshot) BatchGet(_ context.Context, keys []kv.Key) (map[string][]byte, error) {
 	results := map[string][]byte{}
 	for _, key := range keys {
 		value, err := s.get(key, nil)
@@ -128,7 +129,7 @@ func (s *snapshot) BatchGet(_ context.Context, keys []Key) (map[string][]byte, e
 	return results, nil
 }
 
-func (s *snapshot) get(key Key, resolvedLocks []uint64) ([]byte, error) {
+func (s *snapshot) get(key kv.Key, resolvedLocks []uint64) ([]byte, error) {
 	iter := s.db.NewIter(&pebble.IterOptions{LowerBound: mvcc.Encode(key, mvcc.LockVer)})
 	defer iter.Close()
 
@@ -140,7 +141,7 @@ func (s *snapshot) get(key Key, resolvedLocks []uint64) ([]byte, error) {
 	return getValue(iter, key, s.ver.Ver, resolvedLocks)
 }
 
-func getValue(iter *pebble.Iterator, key Key, startTS uint64, resolvedLocks []uint64) ([]byte, error) {
+func getValue(iter *pebble.Iterator, key kv.Key, startTS uint64, resolvedLocks []uint64) ([]byte, error) {
 	dec1 := mvcc.LockDecoder{ExpectKey: key}
 	ok, err := dec1.Decode(iter)
 	if ok {
