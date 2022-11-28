@@ -24,7 +24,7 @@ import (
 	"github.com/vescale/zgraph/storage/kv"
 )
 
-var baseTso = uint64(time.Now().Nanosecond())
+var baseTso = uint64(time.Now().UnixNano())
 
 func getTso() uint64 {
 	return atomic.AddUint64(&baseTso, uint64(1))
@@ -135,7 +135,7 @@ func TestRecycle(t *testing.T) {
 	}
 	assert.False(allEmpty)
 
-	currentTS := uint64(time.Now().Add(expireDuration).Nanosecond()) + 3
+	currentTS := uint64(time.Now().Add(expireDuration).UnixNano()) + 3
 	latches.recycle(currentTS)
 
 	for i := 0; i < len(latches.slots); i++ {
