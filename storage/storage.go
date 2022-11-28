@@ -59,7 +59,7 @@ func (s *mvccStorage) Begin() (Transaction, error) {
 	if err != nil {
 		return nil, err
 	}
-	txn := &transaction{
+	txn := &Txn{
 		startTS:  curVer,
 		us:       NewUnionStore(snap),
 		snapshot: snap,

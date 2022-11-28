@@ -24,7 +24,8 @@ import (
 	"github.com/vescale/zgraph/storage/mvcc"
 )
 
-type transaction struct {
+// Txn represents a transaction implemented beyond the low-level key/value storage.
+type Txn struct {
 	mu        sync.Mutex // For thread-safe LockKeys function.
 	valid     bool
 	snapshot  Snapshot
@@ -38,7 +39,7 @@ type transaction struct {
 }
 
 // Get implements the Transaction interface.
-func (txn *transaction) Get(ctx context.Context, k kv.Key) ([]byte, error) {
+func (txn *Txn) Get(ctx context.Context, k kv.Key) ([]byte, error) {
 	return txn.us.Get(ctx, k)
 }
 
@@ -46,30 +47,30 @@ func (txn *transaction) Get(ctx context.Context, k kv.Key) ([]byte, error) {
 // If such entry is not found, it returns an invalid Iterator with no error.
 // It yields only keys that < upperBound. If upperBound is nil, it means the upperBound is unbounded.
 // The Iterator must be Closed after use.
-func (txn *transaction) Iter(lowerBound, upperBound kv.Key) (Iterator, error) {
+func (txn *Txn) Iter(lowerBound, upperBound kv.Key) (Iterator, error) {
 	return txn.us.Iter(lowerBound, upperBound)
 }
 
 // IterReverse creates a reversed Iterator positioned on the first entry which key is less than k.
-func (txn *transaction) IterReverse(lowerBound, upperBound kv.Key) (Iterator, error) {
+func (txn *Txn) IterReverse(lowerBound, upperBound kv.Key) (Iterator, error) {
 	return txn.us.IterReverse(lowerBound, upperBound)
 }
 
 // Set implements the Transaction interface.
 // It sets the value for key k as v into kv store.
 // v must NOT be nil or empty, otherwise it returns ErrCannotSetNilValue.
-func (txn *transaction) Set(k kv.Key, v []byte) error {
+func (txn *Txn) Set(k kv.Key, v []byte) error {
 	txn.setCnt++
 	return txn.us.MemBuffer().Set(k, v)
 }
 
 // Delete implements the Transaction interface. It removes the entry for key k from kv store.
-func (txn *transaction) Delete(k kv.Key) error {
+func (txn *Txn) Delete(k kv.Key) error {
 	return txn.us.MemBuffer().Delete(k)
 }
 
 // Snapshot implements the Transaction interface.
-func (txn *transaction) Snapshot() Snapshot {
+func (txn *Txn) Snapshot() Snapshot {
 	return txn.snapshot
 }
 
@@ -77,32 +78,32 @@ func (txn *transaction) Snapshot() Snapshot {
 // It gets kv from the memory buffer of statement and transaction, and the kv storage.
 // Do not use len(value) == 0 or value == nil to represent non-exist.
 // If a key doesn't exist, there shouldn't be any corresponding entry in the result map.
-func (txn *transaction) BatchGet(ctx context.Context, keys []kv.Key) (map[string][]byte, error) {
+func (txn *Txn) BatchGet(ctx context.Context, keys []kv.Key) (map[string][]byte, error) {
 	return NewBufferBatchGetter(txn.us.MemBuffer(), txn.Snapshot()).BatchGet(ctx, keys)
 }
 
 // Size implements the Transaction interface. It returns sum of keys and values length.
-func (txn *transaction) Size() int {
+func (txn *Txn) Size() int {
 	return txn.us.MemBuffer().Size()
 }
 
 // Len implements the Transaction interface. It returns the number of entries in the DB.
-func (txn *transaction) Len() int {
+func (txn *Txn) Len() int {
 	return txn.us.MemBuffer().Len()
 }
 
 // Reset implements the Transaction interface. It resets the Transaction to initial states.
-func (txn *transaction) Reset() {
+func (txn *Txn) Reset() {
 	txn.us.MemBuffer().Reset()
 }
 
-func (txn *transaction) Commit(ctx context.Context) error {
+func (txn *Txn) Commit(ctx context.Context) error {
 	//TODO implement me
 	panic("implement me")
 }
 
 // Rollback implements the Transaction interface. It undoes the transaction operations to KV store.
-func (txn *transaction) Rollback() error {
+func (txn *Txn) Rollback() error {
 	if !txn.valid {
 		return ErrInvalidTxn
 	}
@@ -111,6 +112,6 @@ func (txn *transaction) Rollback() error {
 }
 
 // String implements fmt.Stringer interface.
-func (txn *transaction) String() string {
+func (txn *Txn) String() string {
 	return fmt.Sprintf("%d", txn.startTS)
 }

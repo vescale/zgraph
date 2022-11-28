@@ -49,7 +49,11 @@ func (i *SnapshotIter) Value() []byte {
 // Next implements the Iterator interface.
 func (i *SnapshotIter) Next() error {
 	i.valid = i.inner.Valid()
-	for ok := true; ok; {
+	if !i.valid {
+		return nil
+	}
+
+	for hasNext := true; hasNext; {
 		// TODO: handle LockedError and reset the resolvedLocks.
 		val, err := getValue(i.inner, i.nextKey, i.ver, nil)
 		if err != nil {
@@ -66,17 +70,23 @@ func (i *SnapshotIter) Next() error {
 		// Skip the remained multiple versions if we found a valid value.
 		// Or seek to the next valid key.
 		skip := mvcc.SkipDecoder{CurrKey: i.nextKey}
-		ok, err = skip.Decode(i.inner)
+		hasNext, err = skip.Decode(i.inner)
 		if err != nil {
 			return err
 		}
 		i.nextKey = skip.CurrKey
 
-		// Found a valid value.
+		// Early return if we found a valid value.
 		if val != nil {
 			return nil
 		}
 	}
+
+	// This position means we didn't find a valid value in the above loop.
+	// We should set the valid flag into false to avoid the caller read
+	// previous key/value.
+	i.valid = false
+
 	return nil
 }
 
@@ -113,6 +123,10 @@ func (r *SnapshotReverseIter) Value() []byte {
 // Next implements the Iterator interface.
 func (r *SnapshotReverseIter) Next() error {
 	r.valid = r.inner.Valid()
+	if !r.valid {
+		return nil
+	}
+
 	for hasPrev := true; hasPrev; {
 		key, ver, err := mvcc.Decode(r.inner.Key())
 		if err != nil {
@@ -125,7 +139,10 @@ func (r *SnapshotReverseIter) Next() error {
 			}
 			r.key = r.nextKey
 			r.nextKey = key
-			// Found a valid value.
+
+			// Early return if we found a valid value. The SnapshotReverseIter will
+			// continue to decode the next different key because the inner iterator
+			// had pointed to next different key.
 			if len(r.val) > 0 {
 				return nil
 			}
@@ -155,6 +172,15 @@ func (r *SnapshotReverseIter) Next() error {
 			}
 			r.key = r.nextKey
 		}
+	}
+
+	// This position means there is no previous key in the specified range of iterator.
+	// The `finishEntry` method always was called even there is no previous key remained
+	// because there maybe some old versions are stored in `entry.values`.
+	// The r.val nil means we didn't find any valid data for the current key. So, we
+	// should set the valid flag into false to avoid the caller read previous key/value.
+	if len(r.val) == 0 {
+		r.valid = false
 	}
 
 	return nil
