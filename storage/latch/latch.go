@@ -21,15 +21,15 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/cznic/mathutil"
 	"github.com/twmb/murmur3"
 	"github.com/vescale/zgraph/storage/kv"
+	"github.com/vescale/zgraph/storage/mvcc"
 )
 
 type node struct {
 	slotID      int
 	key         []byte
-	maxCommitTS uint64
+	maxCommitTS mvcc.Version
 	value       *Lock
 
 	next *node
@@ -53,9 +53,9 @@ type Lock struct {
 	// For status is stale, it include the latch whose front is current lock already.
 	acquiredCount int
 	// startTS represents current transaction's.
-	startTS uint64
+	startTS mvcc.Version
 	// commitTS represents current transaction's.
-	commitTS uint64
+	commitTS mvcc.Version
 
 	wg      sync.WaitGroup
 	isStale bool
@@ -86,7 +86,7 @@ func (l *Lock) isLocked() bool {
 }
 
 // SetCommitTS sets the lock's commitTS.
-func (l *Lock) SetCommitTS(commitTS uint64) {
+func (l *Lock) SetCommitTS(commitTS mvcc.Version) {
 	l.commitTS = commitTS
 }
 
@@ -122,7 +122,7 @@ func NewLatches(size uint) *Latches {
 }
 
 // genLock generates Lock for the transaction with startTS and keys.
-func (latches *Latches) genLock(startTS uint64, keys []kv.Key) *Lock {
+func (latches *Latches) genLock(startTS mvcc.Version, keys []kv.Key) *Lock {
 	sort.Sort(bytesSlice(keys))
 	return &Lock{
 		keys:          keys,
@@ -183,7 +183,7 @@ func (latches *Latches) releaseSlot(lock *Lock) (nextLock *Lock) {
 	if find.value != lock {
 		panic("releaseSlot wrong")
 	}
-	find.maxCommitTS = mathutil.MaxUint64(find.maxCommitTS, lock.commitTS)
+	find.maxCommitTS = mvcc.Max(find.maxCommitTS, lock.commitTS)
 	find.value = nil
 	// Make a copy of the key, so latch does not reference the transaction's memory.
 	// If we do not do it, transaction memory can't be recycle by GC and there will
@@ -264,7 +264,7 @@ func (latches *Latches) acquireSlot(lock *Lock) acquireResult {
 }
 
 // recycle is not thread safe, the latch should acquire its lock before executing this function.
-func (l *latch) recycle(currentTS uint64) int {
+func (l *latch) recycle(currentTS mvcc.Version) int {
 	total := 0
 	fakeHead := node{next: l.queue}
 	prev := &fakeHead
@@ -281,7 +281,7 @@ func (l *latch) recycle(currentTS uint64) int {
 	return total
 }
 
-func (latches *Latches) recycle(currentTS uint64) {
+func (latches *Latches) recycle(currentTS mvcc.Version) {
 	total := 0
 	for i := 0; i < len(latches.slots); i++ {
 		latch := &latches.slots[i]

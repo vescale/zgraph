@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/vescale/zgraph/storage/kv"
 	"github.com/vescale/zgraph/storage/latch"
@@ -30,12 +31,12 @@ type Txn struct {
 	valid     bool
 	snapshot  Snapshot
 	us        *UnionStore
+	startTime time.Time
 	startTS   mvcc.Version
 	commitTS  mvcc.Version
 	setCnt    int64
 	lockedCnt int
-	latches   *latch.Latches
-	committer *committer
+	latches   *latch.LatchesScheduler
 }
 
 // Get implements the Transaction interface.
@@ -98,8 +99,32 @@ func (txn *Txn) Reset() {
 }
 
 func (txn *Txn) Commit(ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
+	if !txn.valid {
+		return ErrInvalidTxn
+	}
+	defer txn.close()
+
+	// Sanity check for start timestamp of the current transaction.
+	if txn.startTS == mvcc.LockVer {
+		return ErrInvalidStartTS
+	}
+
+	committer := &committer{memDB: txn.us.MemBuffer()}
+	err := committer.init(txn.startTime)
+	if err != nil {
+		return err
+	}
+	if committer.length() == 0 {
+		return nil
+	}
+	lock := txn.latches.Lock(txn.startTS, committer.keys())
+	defer txn.latches.UnLock(lock)
+
+	err = committer.execute()
+	if err == nil {
+		lock.SetCommitTS(committer.commitTS)
+	}
+	return err
 }
 
 // Rollback implements the Transaction interface. It undoes the transaction operations to KV store.
@@ -107,11 +132,15 @@ func (txn *Txn) Rollback() error {
 	if !txn.valid {
 		return ErrInvalidTxn
 	}
-	txn.valid = false
+	txn.close()
 	return nil
 }
 
 // String implements fmt.Stringer interface.
 func (txn *Txn) String() string {
 	return fmt.Sprintf("%d", txn.startTS)
+}
+
+func (txn *Txn) close() {
+	txn.valid = false
 }

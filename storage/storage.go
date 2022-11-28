@@ -24,13 +24,13 @@ import (
 
 type mvccStorage struct {
 	db      *pebble.DB
-	latches *latch.Latches
+	latches *latch.LatchesScheduler
 }
 
 // New returns a new storage instance.
 func New() Storage {
 	return &mvccStorage{
-		latches: latch.NewLatches(8),
+		latches: latch.NewScheduler(8),
 	}
 }
 
@@ -60,9 +60,11 @@ func (s *mvccStorage) Begin() (Transaction, error) {
 		return nil, err
 	}
 	txn := &Txn{
-		startTS:  curVer,
-		us:       NewUnionStore(snap),
-		snapshot: snap,
+		startTime: time.Now(),
+		startTS:   curVer,
+		us:        NewUnionStore(snap),
+		snapshot:  snap,
+		latches:   s.latches,
 	}
 	return txn, nil
 }

@@ -62,10 +62,10 @@ func (db *MemDB) IterReverse(lowerBound, upperBound kv.Key) (Iterator, error) {
 }
 
 // IterWithFlags returns a MemDBIter.
-func (db *MemDB) IterWithFlags(k []byte, upperBound []byte) *MemDBIter {
+func (db *MemDB) IterWithFlags(lowerBound []byte, upperBound []byte) *MemDBIter {
 	i := &MemDBIter{
 		db:           db,
-		start:        k,
+		start:        lowerBound,
 		end:          upperBound,
 		includeFlags: true,
 	}

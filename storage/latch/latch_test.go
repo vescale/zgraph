@@ -22,12 +22,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/vescale/zgraph/storage/kv"
+	"github.com/vescale/zgraph/storage/mvcc"
 )
 
 var baseTso = uint64(time.Now().UnixNano())
 
-func getTso() uint64 {
-	return atomic.AddUint64(&baseTso, uint64(1))
+func getTso() mvcc.Version {
+	return mvcc.Version(atomic.AddUint64(&baseTso, uint64(1)))
 }
 
 func TestWakeUp(t *testing.T) {
@@ -135,7 +136,7 @@ func TestRecycle(t *testing.T) {
 	}
 	assert.False(allEmpty)
 
-	currentTS := uint64(time.Now().Add(expireDuration).UnixNano()) + 3
+	currentTS := mvcc.Version(time.Now().Add(expireDuration).UnixNano()) + 3
 	latches.recycle(currentTS)
 
 	for i := 0; i < len(latches.slots); i++ {

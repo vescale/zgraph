@@ -60,3 +60,11 @@ func (v Version) Cmp(another Version) int {
 	}
 	return 0
 }
+
+// Max returns the larger version between a and b
+func Max(a, b Version) Version {
+	if a > b {
+		return a
+	}
+	return b
+}
