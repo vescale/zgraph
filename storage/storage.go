@@ -18,16 +18,20 @@ import (
 	"time"
 
 	"github.com/cockroachdb/pebble"
+	"github.com/vescale/zgraph/storage/latch"
 	"github.com/vescale/zgraph/storage/mvcc"
 )
 
 type mvccStorage struct {
-	db *pebble.DB
+	db      *pebble.DB
+	latches *latch.Latches
 }
 
 // New returns a new storage instance.
 func New() Storage {
-	return &mvccStorage{}
+	return &mvccStorage{
+		latches: latch.NewLatches(8),
+	}
 }
 
 // Open implements the Storage interface.

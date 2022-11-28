@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/vescale/zgraph/storage/kv"
+	"github.com/vescale/zgraph/storage/latch"
 	"github.com/vescale/zgraph/storage/mvcc"
 )
 
@@ -32,6 +33,7 @@ type transaction struct {
 	commitTS  mvcc.Version
 	setCnt    int64
 	lockedCnt int
+	latches   *latch.Latches
 	committer *committer
 }
 

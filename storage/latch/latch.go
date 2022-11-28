@@ -1,17 +1,5 @@
 // Copyright 2022 zGraph Authors. All rights reserved.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 // Copyright 2018 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,8 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build ignore
-
 package latch
 
 import (
@@ -34,12 +20,10 @@ import (
 	"math/bits"
 	"sort"
 	"sync"
-	"time"
 
 	"github.com/cznic/mathutil"
-	"github.com/pingcap/tidb/store/tikv/logutil"
 	"github.com/twmb/murmur3"
-	"go.uber.org/zap"
+	"github.com/vescale/zgraph/storage/kv"
 )
 
 type node struct {
@@ -61,7 +45,7 @@ type latch struct {
 
 // Lock is the locks' information required for a transaction.
 type Lock struct {
-	keys [][]byte
+	keys []kv.Key
 	// requiredSlots represents required slots.
 	// The slot IDs of the latches(keys) that a startTS must acquire before being able to processed.
 	requiredSlots []int
@@ -113,7 +97,7 @@ type Latches struct {
 	slots []latch
 }
 
-type bytesSlice [][]byte
+type bytesSlice []kv.Key
 
 func (s bytesSlice) Len() int {
 	return len(s)
@@ -138,7 +122,7 @@ func NewLatches(size uint) *Latches {
 }
 
 // genLock generates Lock for the transaction with startTS and keys.
-func (latches *Latches) genLock(startTS uint64, keys [][]byte) *Lock {
+func (latches *Latches) genLock(startTS uint64, keys []kv.Key) *Lock {
 	sort.Sort(bytesSlice(keys))
 	return &Lock{
 		keys:          keys,
@@ -148,7 +132,7 @@ func (latches *Latches) genLock(startTS uint64, keys [][]byte) *Lock {
 	}
 }
 
-func (latches *Latches) genSlotIDs(keys [][]byte) []int {
+func (latches *Latches) genSlotIDs(keys []kv.Key) []int {
 	slots := make([]int, 0, len(keys))
 	for _, key := range keys {
 		slots = append(slots, latches.slotID(key))
@@ -305,9 +289,6 @@ func (latches *Latches) recycle(currentTS uint64) {
 		total += latch.recycle(currentTS)
 		latch.Unlock()
 	}
-	logutil.BgLogger().Debug("recycle",
-		zap.Time("start at", time.Now()),
-		zap.Int("count", total))
 }
 
 func findNode(list *node, key []byte) *node {

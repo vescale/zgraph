@@ -1,17 +1,5 @@
 // Copyright 2022 zGraph Authors. All rights reserved.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 // Copyright 2018 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,36 +13,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build ignore
-
 package latch
 
 import (
 	"bytes"
 	"math/rand"
 	"sync"
+	"testing"
 	"time"
+
+	"github.com/vescale/zgraph/storage/kv"
 )
 
-var _ = Suite(&testSchedulerSuite{})
-
-type testSchedulerSuite struct {
-}
-
-func (s *testSchedulerSuite) SetUpTest(c *C) {
-}
-
-func (s *testSchedulerSuite) TestWithConcurrency(c *C) {
+func TestWithConcurrency(t *testing.T) {
 	sched := NewScheduler(7)
 	defer sched.Close()
 	rand.Seed(time.Now().Unix())
 
-	ch := make(chan [][]byte, 100)
+	ch := make(chan []kv.Key, 100)
 	const workerCount = 10
 	var wg sync.WaitGroup
 	wg.Add(workerCount)
 	for i := 0; i < workerCount; i++ {
-		go func(ch <-chan [][]byte, wg *sync.WaitGroup) {
+		go func(ch <-chan []kv.Key, wg *sync.WaitGroup) {
 			for txn := range ch {
 				lock := sched.Lock(getTso(), txn)
 				if lock.IsStale() {
@@ -82,9 +63,9 @@ func (s *testSchedulerSuite) TestWithConcurrency(c *C) {
 // {[]byte("a"), []byte("d"), []byte("e"), []byte("f")}
 // {[]byte("e"), []byte("f"), []byte("g"), []byte("h")}
 // The data should not repeat in the sequence.
-func generate() [][]byte {
+func generate() []kv.Key {
 	table := []byte{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'}
-	ret := make([][]byte, 0, 5)
+	ret := make([]kv.Key, 0, 5)
 	chance := []int{100, 60, 40, 20}
 	for i := 0; i < len(chance); i++ {
 		needMore := rand.Intn(100) < chance[i]
@@ -98,7 +79,7 @@ func generate() [][]byte {
 	return ret
 }
 
-func contains(x []byte, set [][]byte) bool {
+func contains(x []byte, set []kv.Key) bool {
 	for _, y := range set {
 		if bytes.Equal(x, y) {
 			return true

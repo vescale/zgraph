@@ -1,17 +1,5 @@
 // Copyright 2022 zGraph Authors. All rights reserved.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 // Copyright 2018 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,15 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build ignore
-
 package latch
 
 import (
 	"sync"
 	"time"
 
-	"github.com/pingcap/tidb/store/tikv/oracle"
+	"github.com/vescale/zgraph/storage/kv"
 )
 
 const lockChanSize = 100
@@ -108,7 +94,7 @@ func (scheduler *LatchesScheduler) Close() {
 // Lock acquire the lock for transaction with startTS and keys. The caller goroutine
 // would be blocked if the lock can't be obtained now. When this function returns,
 // the lock state would be either success or stale(call lock.IsStale)
-func (scheduler *LatchesScheduler) Lock(startTS uint64, keys [][]byte) *Lock {
+func (scheduler *LatchesScheduler) Lock(startTS uint64, keys []kv.Key) *Lock {
 	lock := scheduler.latches.genLock(startTS, keys)
 	lock.wg.Add(1)
 	if scheduler.latches.acquire(lock) == acquireLocked {
@@ -130,7 +116,5 @@ func (scheduler *LatchesScheduler) UnLock(lock *Lock) {
 }
 
 func tsoSub(ts1, ts2 uint64) time.Duration {
-	t1 := oracle.GetTimeFromTS(ts1)
-	t2 := oracle.GetTimeFromTS(ts2)
-	return t1.Sub(t2)
+	return time.Nanosecond * time.Duration(ts1-ts2)
 }
