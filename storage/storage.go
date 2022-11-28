@@ -69,7 +69,7 @@ func (s *mvccStorage) Begin() (Transaction, error) {
 
 // Snapshot implements the Storage interface.
 func (s *mvccStorage) Snapshot(ver mvcc.Version) (Snapshot, error) {
-	snap := &snapshot{
+	snap := &KVSnapshot{
 		db:  s.db,
 		ver: ver,
 	}

@@ -33,7 +33,7 @@ func TestLockDecoder_Decode(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ts  uint64
+		ts  Version
 	}{
 		{key: []byte("test"), val: []byte("test1"), ts: 1},
 		{key: []byte("test"), val: []byte("test3"), ts: 3},
@@ -60,7 +60,7 @@ func TestLockDecoder_Decode(t *testing.T) {
 	locks := []struct {
 		key []byte
 		val []byte
-		ts  uint64
+		ts  Version
 	}{
 		{key: []byte("test"), val: []byte("test1"), ts: 1},
 		{key: []byte("test1"), val: []byte("test5"), ts: 5},
@@ -111,7 +111,7 @@ func TestValueDecoder_Decode(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ts  uint64
+		ts  Version
 	}{
 		{key: []byte("test"), val: []byte("test1"), ts: 1},
 		{key: []byte("test"), val: []byte("test3"), ts: 3},
@@ -174,7 +174,7 @@ func TestSkipDecoder_Decode(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ts  uint64
+		ts  Version
 	}{
 		{key: []byte("test"), val: []byte("test1"), ts: 1},
 		{key: []byte("test"), val: []byte("test3"), ts: 3},

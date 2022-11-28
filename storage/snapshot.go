@@ -23,18 +23,21 @@ import (
 	"github.com/vescale/zgraph/storage/mvcc"
 )
 
-type snapshot struct {
+// KVSnapshot represent the MVCC snapshot of the low-level key/value store.
+// All values read from the KVSnapshot will be checked via mvcc.Version.
+// And only the committed key/values can be retrieved or iterated.
+type KVSnapshot struct {
 	db  *pebble.DB
 	ver mvcc.Version
 }
 
 // Get implements the Snapshot interface.
-func (s *snapshot) Get(_ context.Context, key kv.Key) ([]byte, error) {
+func (s *KVSnapshot) Get(_ context.Context, key kv.Key) ([]byte, error) {
 	return s.get(key, nil)
 }
 
 // Iter implements the Snapshot interface.
-func (s *snapshot) Iter(lowerBound kv.Key, upperBound kv.Key) (Iterator, error) {
+func (s *KVSnapshot) Iter(lowerBound kv.Key, upperBound kv.Key) (Iterator, error) {
 	// The lower-level database stored key-value with versions. We need
 	// to append the startTS to the raw keys.
 	var start, end mvcc.Key
@@ -49,9 +52,16 @@ func (s *snapshot) Iter(lowerBound kv.Key, upperBound kv.Key) (Iterator, error) 
 		LowerBound: start,
 		UpperBound: end,
 	})
-	if ok := inner.First(); !ok {
-		_ = inner.Close()
-		return nil, errors.New("invalid bound")
+
+	// Ignore the return boolean value of positioning the cursor of the iterator
+	// to the first key/value. The inner iterator status of the field `valid` will
+	// be same as the returned value of `inner.First()`. So it will be checked
+	// while the `Next` method calling.
+	_ = inner.First()
+
+	iter := &SnapshotIter{
+		inner: inner,
+		ver:   s.ver,
 	}
 
 	// Handle startKey is nil, in this case, the real startKey
@@ -63,20 +73,14 @@ func (s *snapshot) Iter(lowerBound kv.Key, upperBound kv.Key) (Iterator, error) 
 			_ = inner.Close()
 			return nil, err
 		}
-		lowerBound = key
-	}
-
-	iter := &SnapshotIter{
-		inner:   inner,
-		ver:     s.ver,
-		nextKey: lowerBound,
+		iter.nextKey = key
 	}
 
 	return iter, iter.Next()
 }
 
 // IterReverse implements the Snapshot interface.
-func (s *snapshot) IterReverse(lowerBound kv.Key, upperBound kv.Key) (Iterator, error) {
+func (s *KVSnapshot) IterReverse(lowerBound kv.Key, upperBound kv.Key) (Iterator, error) {
 	var start, end mvcc.Key
 	if len(lowerBound) > 0 {
 		start = mvcc.Encode(lowerBound, mvcc.LockVer)
@@ -89,27 +93,32 @@ func (s *snapshot) IterReverse(lowerBound kv.Key, upperBound kv.Key) (Iterator, 
 		LowerBound: start,
 		UpperBound: end,
 	})
-	ok := inner.Last()
-	if !ok {
-		_ = inner.Close()
-		return nil, errors.New("invalid upper bound")
+
+	// Ignore the return boolean value of positioning the cursor of the iterator
+	// to the last key/value. The inner iterator status of the field `valid` will
+	// be same as the returned value of `inner.Last()`. So it will be checked
+	// while the `Next` method calling.
+	_ = inner.Last()
+
+	iter := &SnapshotReverseIter{
+		inner: inner,
+		ver:   s.ver,
 	}
 
 	// Set the next key to the last valid key between lowerBound and upperBound.
-	key, _, err := mvcc.Decode(inner.Key())
-	if err != nil {
-		_ = inner.Close()
-		return nil, err
+	if inner.Valid() {
+		key, _, err := mvcc.Decode(inner.Key())
+		if err != nil {
+			_ = inner.Close()
+			return nil, err
+		}
+		iter.nextKey = key
 	}
-	iter := &SnapshotReverseIter{
-		inner:   inner,
-		ver:     s.ver,
-		nextKey: key,
-	}
+
 	return iter, iter.Next()
 }
 
-func (s *snapshot) BatchGet(_ context.Context, keys []kv.Key) (map[string][]byte, error) {
+func (s *KVSnapshot) BatchGet(_ context.Context, keys []kv.Key) (map[string][]byte, error) {
 	results := map[string][]byte{}
 	for _, key := range keys {
 		value, err := s.get(key, nil)
@@ -129,7 +138,7 @@ func (s *snapshot) BatchGet(_ context.Context, keys []kv.Key) (map[string][]byte
 	return results, nil
 }
 
-func (s *snapshot) get(key kv.Key, resolvedLocks []mvcc.Version) ([]byte, error) {
+func (s *KVSnapshot) get(key kv.Key, resolvedLocks []mvcc.Version) ([]byte, error) {
 	iter := s.db.NewIter(&pebble.IterOptions{LowerBound: mvcc.Encode(key, mvcc.LockVer)})
 	defer iter.Close()
 
