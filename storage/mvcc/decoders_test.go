@@ -33,26 +33,26 @@ func TestLockDecoder_Decode(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ts  Version
+		ver Version
 	}{
-		{key: []byte("test"), val: []byte("test1"), ts: 1},
-		{key: []byte("test"), val: []byte("test3"), ts: 3},
-		{key: []byte("test1"), val: []byte("test5"), ts: 5},
-		{key: []byte("test1"), val: []byte("test7"), ts: 7},
-		{key: []byte("test2"), val: []byte("test9"), ts: 9},
+		{key: []byte("test"), val: []byte("test1"), ver: 1},
+		{key: []byte("test"), val: []byte("test3"), ver: 3},
+		{key: []byte("test1"), val: []byte("test5"), ver: 5},
+		{key: []byte("test1"), val: []byte("test7"), ver: 7},
+		{key: []byte("test2"), val: []byte("test9"), ver: 9},
 	}
 	wo := &pebble.WriteOptions{}
 	for _, d := range data {
 		v := Value{
-			Type:     ValueTypePut,
-			StartTS:  d.ts,
-			CommitTS: d.ts + 1,
-			Value:    d.val,
+			Type:      ValueTypePut,
+			StartVer:  d.ver,
+			CommitVer: d.ver + 1,
+			Value:     d.val,
 		}
 		val, err := v.MarshalBinary()
 		assert.Nil(t, err)
 		assert.NotNil(t, val)
-		err = writes.Set(Encode(d.key, d.ts+1), val, wo)
+		err = writes.Set(Encode(d.key, d.ver+1), val, wo)
 		assert.Nil(t, err)
 	}
 
@@ -60,19 +60,19 @@ func TestLockDecoder_Decode(t *testing.T) {
 	locks := []struct {
 		key []byte
 		val []byte
-		ts  Version
+		ver Version
 	}{
-		{key: []byte("test"), val: []byte("test1"), ts: 1},
-		{key: []byte("test1"), val: []byte("test5"), ts: 5},
-		{key: []byte("test2"), val: []byte("test9"), ts: 9},
+		{key: []byte("test"), val: []byte("test1"), ver: 1},
+		{key: []byte("test1"), val: []byte("test5"), ver: 5},
+		{key: []byte("test2"), val: []byte("test9"), ver: 9},
 	}
 	for _, d := range locks {
 		l := Lock{
-			Primary: []byte("test"),
-			StartTS: d.ts,
-			Op:      Op_Put,
-			Value:   d.val,
-			TTL:     5,
+			Primary:  []byte("test"),
+			StartVer: d.ver,
+			Op:       Op_Put,
+			Value:    d.val,
+			TTL:      5,
 		}
 		val, err := l.MarshalBinary()
 		assert.Nil(t, err)
@@ -111,26 +111,26 @@ func TestValueDecoder_Decode(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ts  Version
+		ver Version
 	}{
-		{key: []byte("test"), val: []byte("test1"), ts: 1},
-		{key: []byte("test"), val: []byte("test3"), ts: 3},
-		{key: []byte("test1"), val: []byte("test5"), ts: 5},
-		{key: []byte("test1"), val: []byte("test7"), ts: 7},
-		{key: []byte("test2"), val: []byte("test9"), ts: 9},
+		{key: []byte("test"), val: []byte("test1"), ver: 1},
+		{key: []byte("test"), val: []byte("test3"), ver: 3},
+		{key: []byte("test1"), val: []byte("test5"), ver: 5},
+		{key: []byte("test1"), val: []byte("test7"), ver: 7},
+		{key: []byte("test2"), val: []byte("test9"), ver: 9},
 	}
 	wo := &pebble.WriteOptions{}
 	for _, d := range data {
 		v := Value{
-			Type:     ValueTypePut,
-			StartTS:  d.ts,
-			CommitTS: d.ts + 1,
-			Value:    d.val,
+			Type:      ValueTypePut,
+			StartVer:  d.ver,
+			CommitVer: d.ver + 1,
+			Value:     d.val,
 		}
 		val, err := v.MarshalBinary()
 		assert.Nil(t, err)
 		assert.NotNil(t, val)
-		err = writes.Set(Encode(d.key, d.ts+1), val, wo)
+		err = writes.Set(Encode(d.key, d.ver+1), val, wo)
 		assert.Nil(t, err)
 	}
 
@@ -174,26 +174,26 @@ func TestSkipDecoder_Decode(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ts  Version
+		ver Version
 	}{
-		{key: []byte("test"), val: []byte("test1"), ts: 1},
-		{key: []byte("test"), val: []byte("test3"), ts: 3},
-		{key: []byte("test1"), val: []byte("test5"), ts: 5},
-		{key: []byte("test1"), val: []byte("test7"), ts: 7},
-		{key: []byte("test2"), val: []byte("test9"), ts: 9},
+		{key: []byte("test"), val: []byte("test1"), ver: 1},
+		{key: []byte("test"), val: []byte("test3"), ver: 3},
+		{key: []byte("test1"), val: []byte("test5"), ver: 5},
+		{key: []byte("test1"), val: []byte("test7"), ver: 7},
+		{key: []byte("test2"), val: []byte("test9"), ver: 9},
 	}
 	wo := &pebble.WriteOptions{}
 	for _, d := range data {
 		v := Value{
-			Type:     ValueTypePut,
-			StartTS:  d.ts,
-			CommitTS: d.ts + 1,
-			Value:    d.val,
+			Type:      ValueTypePut,
+			StartVer:  d.ver,
+			CommitVer: d.ver + 1,
+			Value:     d.val,
 		}
 		val, err := v.MarshalBinary()
 		assert.Nil(t, err)
 		assert.NotNil(t, val)
-		err = writes.Set(Encode(d.key, d.ts+1), val, wo)
+		err = writes.Set(Encode(d.key, d.ver+1), val, wo)
 		assert.Nil(t, err)
 	}
 

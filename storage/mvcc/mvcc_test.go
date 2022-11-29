@@ -23,11 +23,11 @@ import (
 
 func TestLock_MarshalBinary(t *testing.T) {
 	lock := &Lock{
-		StartTS: 100,
-		Primary: []byte("primary"),
-		Value:   []byte("value"),
-		Op:      Op_Lock,
-		TTL:     1000,
+		StartVer: 100,
+		Primary:  []byte("primary"),
+		Value:    []byte("value"),
+		Op:       Op_Lock,
+		TTL:      1000,
 	}
 	bytes, err := lock.MarshalBinary()
 	assert.Nil(t, err)
@@ -41,10 +41,10 @@ func TestLock_MarshalBinary(t *testing.T) {
 
 func TestValue_MarshalBinary(t *testing.T) {
 	value := &Value{
-		Type:     ValueTypeLock,
-		StartTS:  100,
-		CommitTS: 1001,
-		Value:    []byte("value"),
+		Type:      ValueTypeLock,
+		StartVer:  100,
+		CommitVer: 1001,
+		Value:     []byte("value"),
 	}
 	bytes, err := value.MarshalBinary()
 	assert.Nil(t, err)

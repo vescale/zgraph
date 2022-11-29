@@ -175,7 +175,7 @@ func getValue(iter *pebble.Iterator, key kv.Key, startTS mvcc.Version, resolvedL
 			continue
 		}
 		// Read the first committed value that can be seen at startTS.
-		if value.CommitTS <= startTS {
+		if value.CommitVer <= startTS {
 			if value.Type == mvcc.ValueTypeDelete {
 				return nil, nil
 			}

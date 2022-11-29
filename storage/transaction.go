@@ -122,7 +122,7 @@ func (txn *Txn) Commit(ctx context.Context) error {
 
 	err = committer.execute()
 	if err == nil {
-		lock.SetCommitTS(committer.commitTS)
+		lock.SetCommitTS(committer.commitVer)
 	}
 	return err
 }

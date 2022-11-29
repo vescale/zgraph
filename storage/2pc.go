@@ -16,7 +16,7 @@ type committer struct {
 	memDB      *MemDB
 	primaryKey kv.Key
 	lockTTL    uint64
-	commitTS   mvcc.Version
+	commitVer  mvcc.Version
 
 	// The format to put to the UserData of the handles:
 	// MSB									                                                                  LSB
@@ -33,16 +33,6 @@ type committer struct {
 		undeterminedErr error // undeterminedErr saves the rpc error we encounter when commit primary key.
 		committed       bool
 	}
-}
-
-// Prepare implements the first stage of 2PC transaction model.
-func (c *committer) Prepare() error {
-	return nil
-}
-
-// Commit implements the second stage of 2PC transaction model.
-func (*committer) Commit() error {
-	return nil
 }
 
 // init initializes the keys and mutations.
@@ -153,6 +143,16 @@ func (c *committer) execute() error {
 	panic("implement me!")
 }
 
+// prepare implements the first stage of 2PC transaction model.
+func (c *committer) prepare() error {
+	return nil
+}
+
+// commit implements the second stage of 2PC transaction model.
+func (c *committer) commit() error {
+	return nil
+}
+
 const bytesPerMiB = 1024 * 1024
 
 // ttl = ttlFactor * sqrt(writeSizeInMiB)
@@ -193,7 +193,7 @@ func txnLockTTL(startTime time.Time, txnSize int) uint64 {
 	}
 
 	// Increase lockTTL by the transaction's read time.
-	// When resolving a lock, we compare current ts and startTS+lockTTL to decide whether to clean up. If a txn
+	// When resolving a lock, we compare current ver and startTS+lockTTL to decide whether to clean up. If a txn
 	// takes a long time to read, increasing its TTL will help to prevent it from been aborted soon after prewrite.
 	elapsed := time.Since(startTime) / time.Millisecond
 	return lockTTL + uint64(elapsed)

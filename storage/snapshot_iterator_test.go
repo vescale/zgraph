@@ -36,26 +36,26 @@ func TestIterator_Basic(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ts  mvcc.Version
+		ver mvcc.Version
 	}{
-		{key: []byte("test"), val: []byte("test1"), ts: 100},
-		{key: []byte("test"), val: []byte("test3"), ts: 300},
-		{key: []byte("test1"), val: []byte("test5"), ts: 500},
-		{key: []byte("test1"), val: []byte("test7"), ts: 700},
-		{key: []byte("test2"), val: []byte("test9"), ts: 900},
+		{key: []byte("test"), val: []byte("test1"), ver: 100},
+		{key: []byte("test"), val: []byte("test3"), ver: 300},
+		{key: []byte("test1"), val: []byte("test5"), ver: 500},
+		{key: []byte("test1"), val: []byte("test7"), ver: 700},
+		{key: []byte("test2"), val: []byte("test9"), ver: 900},
 	}
 	wo := &pebble.WriteOptions{}
 	for _, d := range data {
 		v := mvcc.Value{
-			Type:     mvcc.ValueTypePut,
-			StartTS:  d.ts,
-			CommitTS: d.ts + 10,
-			Value:    d.val,
+			Type:      mvcc.ValueTypePut,
+			StartVer:  d.ver,
+			CommitVer: d.ver + 10,
+			Value:     d.val,
 		}
 		val, err := v.MarshalBinary()
 		assert.Nil(t, err)
 		assert.NotNil(t, val)
-		err = writes.Set(mvcc.Encode(d.key, d.ts+1), val, wo)
+		err = writes.Set(mvcc.Encode(d.key, d.ver+1), val, wo)
 		assert.Nil(t, err)
 	}
 
@@ -67,23 +67,23 @@ func TestIterator_Basic(t *testing.T) {
 		v string
 	}
 	expected := []struct {
-		ts      uint64
+		ver     uint64
 		results []kv
 	}{
 		{
-			ts: 200,
+			ver: 200,
 			results: []kv{
 				{"test", "test1"},
 			},
 		},
 		{
-			ts: 320,
+			ver: 320,
 			results: []kv{
 				{"test", "test3"},
 			},
 		},
 		{
-			ts: 1000,
+			ver: 1000,
 			results: []kv{
 				{"test", "test3"},
 				{"test1", "test7"},
@@ -92,7 +92,7 @@ func TestIterator_Basic(t *testing.T) {
 		},
 	}
 	for _, e := range expected {
-		snapshot, err := s.Snapshot(mvcc.Version(e.ts))
+		snapshot, err := s.Snapshot(mvcc.Version(e.ver))
 		assert.Nil(t, err)
 		iter, err := snapshot.Iter([]byte("t"), []byte("u"))
 		assert.Nil(t, err)
@@ -105,8 +105,8 @@ func TestIterator_Basic(t *testing.T) {
 			err = iter.Next()
 			assert.Nil(t, err)
 		}
-		assert.True(t, reflect.DeepEqual(results, e.results), "expected: %v, got: %v (ts:%d)",
-			e.results, results, e.ts)
+		assert.True(t, reflect.DeepEqual(results, e.results), "expected: %v, got: %v (ver:%d)",
+			e.results, results, e.ver)
 
 		iter.Close()
 	}
@@ -125,26 +125,26 @@ func TestReverseIterator(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ts  mvcc.Version
+		ver mvcc.Version
 	}{
-		{key: []byte("test"), val: []byte("test1"), ts: 100},
-		{key: []byte("test"), val: []byte("test3"), ts: 300},
-		{key: []byte("test1"), val: []byte("test5"), ts: 500},
-		{key: []byte("test1"), val: []byte("test7"), ts: 700},
-		{key: []byte("test2"), val: []byte("test9"), ts: 900},
+		{key: []byte("test"), val: []byte("test1"), ver: 100},
+		{key: []byte("test"), val: []byte("test3"), ver: 300},
+		{key: []byte("test1"), val: []byte("test5"), ver: 500},
+		{key: []byte("test1"), val: []byte("test7"), ver: 700},
+		{key: []byte("test2"), val: []byte("test9"), ver: 900},
 	}
 	wo := &pebble.WriteOptions{}
 	for _, d := range data {
 		v := mvcc.Value{
-			Type:     mvcc.ValueTypePut,
-			StartTS:  d.ts,
-			CommitTS: d.ts + 10,
-			Value:    d.val,
+			Type:      mvcc.ValueTypePut,
+			StartVer:  d.ver,
+			CommitVer: d.ver + 10,
+			Value:     d.val,
 		}
 		val, err := v.MarshalBinary()
 		assert.Nil(t, err)
 		assert.NotNil(t, val)
-		err = writes.Set(mvcc.Encode(d.key, d.ts+1), val, wo)
+		err = writes.Set(mvcc.Encode(d.key, d.ver+1), val, wo)
 		assert.Nil(t, err)
 	}
 
@@ -156,23 +156,23 @@ func TestReverseIterator(t *testing.T) {
 		v string
 	}
 	expected := []struct {
-		ts      uint64
+		ver     uint64
 		results []kv
 	}{
 		{
-			ts: 200,
+			ver: 200,
 			results: []kv{
 				{"test", "test1"},
 			},
 		},
 		{
-			ts: 320,
+			ver: 320,
 			results: []kv{
 				{"test", "test3"},
 			},
 		},
 		{
-			ts: 1000,
+			ver: 1000,
 			results: []kv{
 				{"test2", "test9"},
 				{"test1", "test7"},
@@ -181,7 +181,7 @@ func TestReverseIterator(t *testing.T) {
 		},
 	}
 	for _, e := range expected {
-		snapshot, err := s.Snapshot(mvcc.Version(e.ts))
+		snapshot, err := s.Snapshot(mvcc.Version(e.ver))
 		assert.Nil(t, err)
 		iter, err := snapshot.IterReverse([]byte("t"), []byte("u"))
 		assert.Nil(t, err)
@@ -194,8 +194,8 @@ func TestReverseIterator(t *testing.T) {
 			err = iter.Next()
 			assert.Nil(t, err)
 		}
-		assert.True(t, reflect.DeepEqual(results, e.results), "expected: %v, got: %v (ts:%d)",
-			e.results, results, e.ts)
+		assert.True(t, reflect.DeepEqual(results, e.results), "expected: %v, got: %v (ver:%d)",
+			e.results, results, e.ver)
 
 		iter.Close()
 	}

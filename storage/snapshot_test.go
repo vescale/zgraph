@@ -39,26 +39,26 @@ func TestSnapshot_Get(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ts  mvcc.Version
+		ver mvcc.Version
 	}{
-		{key: []byte("test"), val: []byte("test1"), ts: 100},
-		{key: []byte("test"), val: []byte("test3"), ts: 300},
-		{key: []byte("test1"), val: []byte("test5"), ts: 500},
-		{key: []byte("test1"), val: []byte("test7"), ts: 700},
-		{key: []byte("test2"), val: []byte("test9"), ts: 900},
+		{key: []byte("test"), val: []byte("test1"), ver: 100},
+		{key: []byte("test"), val: []byte("test3"), ver: 300},
+		{key: []byte("test1"), val: []byte("test5"), ver: 500},
+		{key: []byte("test1"), val: []byte("test7"), ver: 700},
+		{key: []byte("test2"), val: []byte("test9"), ver: 900},
 	}
 	wo := &pebble.WriteOptions{}
 	for _, d := range data {
 		v := mvcc.Value{
-			Type:     mvcc.ValueTypePut,
-			StartTS:  d.ts,
-			CommitTS: d.ts + 10,
-			Value:    d.val,
+			Type:      mvcc.ValueTypePut,
+			StartVer:  d.ver,
+			CommitVer: d.ver + 10,
+			Value:     d.val,
 		}
 		val, err := v.MarshalBinary()
 		assert.Nil(t, err)
 		assert.NotNil(t, val)
-		err = writes.Set(mvcc.Encode(d.key, d.ts+1), val, wo)
+		err = writes.Set(mvcc.Encode(d.key, d.ver+1), val, wo)
 		assert.Nil(t, err)
 	}
 
@@ -68,7 +68,7 @@ func TestSnapshot_Get(t *testing.T) {
 	expected := []struct {
 		key string
 		val string
-		ts  uint64
+		ver mvcc.Version
 	}{
 		{"test", "test1", 200},
 		{"test", "test1", 300},
@@ -78,12 +78,12 @@ func TestSnapshot_Get(t *testing.T) {
 		{"test1", "test7", 750},
 	}
 	for _, e := range expected {
-		snapshot, err := s.Snapshot(mvcc.Version(e.ts))
+		snapshot, err := s.Snapshot(e.ver)
 		assert.Nil(t, err)
 		val, err := snapshot.Get(context.Background(), []byte(e.key))
 		assert.Nil(t, err)
-		assert.True(t, bytes.Equal(val, []byte(e.val)), "expected: %v, got: %v (key: %s, ts:%d)",
-			e.val, string(val), e.key, e.ts)
+		assert.True(t, bytes.Equal(val, []byte(e.val)), "expected: %v, got: %v (key: %s, ver:%d)",
+			e.val, string(val), e.key, e.ver)
 	}
 }
 
@@ -100,26 +100,26 @@ func TestSnapshot_BatchGet(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ts  mvcc.Version
+		ver mvcc.Version
 	}{
-		{key: []byte("test"), val: []byte("test1"), ts: 100},
-		{key: []byte("test"), val: []byte("test3"), ts: 300},
-		{key: []byte("test1"), val: []byte("test5"), ts: 500},
-		{key: []byte("test1"), val: []byte("test7"), ts: 700},
-		{key: []byte("test2"), val: []byte("test9"), ts: 900},
+		{key: []byte("test"), val: []byte("test1"), ver: 100},
+		{key: []byte("test"), val: []byte("test3"), ver: 300},
+		{key: []byte("test1"), val: []byte("test5"), ver: 500},
+		{key: []byte("test1"), val: []byte("test7"), ver: 700},
+		{key: []byte("test2"), val: []byte("test9"), ver: 900},
 	}
 	wo := &pebble.WriteOptions{}
 	for _, d := range data {
 		v := mvcc.Value{
-			Type:     mvcc.ValueTypePut,
-			StartTS:  d.ts,
-			CommitTS: d.ts + 10,
-			Value:    d.val,
+			Type:      mvcc.ValueTypePut,
+			StartVer:  d.ver,
+			CommitVer: d.ver + 10,
+			Value:     d.val,
 		}
 		val, err := v.MarshalBinary()
 		assert.Nil(t, err)
 		assert.NotNil(t, val)
-		err = writes.Set(mvcc.Encode(d.key, d.ts+1), val, wo)
+		err = writes.Set(mvcc.Encode(d.key, d.ver+1), val, wo)
 		assert.Nil(t, err)
 	}
 
@@ -129,7 +129,7 @@ func TestSnapshot_BatchGet(t *testing.T) {
 	expected := []struct {
 		keys   []string
 		values map[string][]byte
-		ts     uint64
+		ver    mvcc.Version
 	}{
 		{
 			keys: []string{"test", "test1", "test2"},
@@ -138,7 +138,7 @@ func TestSnapshot_BatchGet(t *testing.T) {
 				"test1": nil,
 				"test2": nil,
 			},
-			ts: 200,
+			ver: 200,
 		},
 		{
 			keys: []string{"test", "test1", "test2"},
@@ -147,7 +147,7 @@ func TestSnapshot_BatchGet(t *testing.T) {
 				"test1": []byte("test5"),
 				"test2": nil,
 			},
-			ts: 510,
+			ver: 510,
 		},
 		{
 			keys: []string{"test", "test1", "test2"},
@@ -156,11 +156,11 @@ func TestSnapshot_BatchGet(t *testing.T) {
 				"test1": []byte("test7"),
 				"test2": []byte("test9"),
 			},
-			ts: 1000,
+			ver: 1000,
 		},
 	}
 	for _, e := range expected {
-		snapshot, err := s.Snapshot(mvcc.Version(e.ts))
+		snapshot, err := s.Snapshot(mvcc.Version(e.ver))
 		assert.Nil(t, err)
 		var keys []kv.Key
 		for _, k := range e.keys {
@@ -168,7 +168,7 @@ func TestSnapshot_BatchGet(t *testing.T) {
 		}
 		values, err := snapshot.BatchGet(context.Background(), keys)
 		assert.Nil(t, err)
-		assert.True(t, reflect.DeepEqual(values, e.values), "expected: %v, got: %v (key: %s, ts:%d)",
-			e.values, values, e.keys, e.ts)
+		assert.True(t, reflect.DeepEqual(values, e.values), "expected: %v, got: %v (key: %s, ver:%d)",
+			e.values, values, e.keys, e.ver)
 	}
 }
