@@ -555,14 +555,37 @@ type SelectElement struct {
 	Prefix     string
 }
 
-func (s *SelectElement) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
+func (n *SelectElement) Restore(ctx *format.RestoreCtx) error {
+	if n.ExpAsVar != nil {
+		if err := n.ExpAsVar.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore SelectElement.ExpAsVar")
+		}
+		return nil
+	}
+
+	ctx.WritePlain(n.Identifier + ".*")
+	if n.Prefix != "" {
+		ctx.WriteKeyWord(" PREFIX ")
+		ctx.WritePlain(n.Prefix)
+	}
+	return nil
 }
 
-func (s *SelectElement) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
+func (n *SelectElement) Accept(v Visitor) (node Node, ok bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+
+	nn := newNode.(*SelectElement)
+	if nn.ExpAsVar != nil {
+		node, ok := nn.ExpAsVar.Accept(v)
+		if !ok {
+			return nn, false
+		}
+		nn.ExpAsVar = node.(*ExpAsVar)
+	}
+	return v.Leave(nn)
 }
 
 type SelectClause struct {
@@ -573,14 +596,41 @@ type SelectClause struct {
 	Elements []*SelectElement
 }
 
-func (s *SelectClause) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
+func (n *SelectClause) Restore(ctx *format.RestoreCtx) error {
+	ctx.WriteKeyWord("SELECT ")
+	if n.Star {
+		ctx.WritePlain("*")
+		return nil
+	}
+	if n.Distinct {
+		ctx.WriteKeyWord("DISTINCT ")
+	}
+	for i, e := range n.Elements {
+		if i != 0 {
+			ctx.WritePlain(",")
+		}
+		if err := e.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore SelectClause.Elements[%d]", i)
+		}
+	}
+	return nil
 }
 
-func (s *SelectClause) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
+func (n *SelectClause) Accept(v Visitor) (node Node, ok bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+
+	nn := newNode.(*SelectClause)
+	for i, e := range nn.Elements {
+		node, ok := e.Accept(v)
+		if !ok {
+			return nn, false
+		}
+		nn.Elements[i] = node.(*SelectElement)
+	}
+	return v.Leave(nn)
 }
 
 type SelectStmt struct {
@@ -596,14 +646,105 @@ type SelectStmt struct {
 	Limit             *LimitClause
 }
 
-func (s *SelectStmt) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
+func (n *SelectStmt) Restore(ctx *format.RestoreCtx) error {
+	for _, p := range n.PathPatternMacros {
+		if err := p.Restore(ctx); err != nil {
+			return errors.New("An error occurred while restore SelectStmt.PathPatternMacros")
+		}
+		ctx.WritePlain(" ")
+	}
+	if err := n.Select.Restore(ctx); err != nil {
+		return errors.New("An error occurred while restore SelectStmt.Select")
+	}
+	ctx.WriteKeyWord(" FROM ")
+	if err := n.From.Restore(ctx); err != nil {
+		return errors.New("An error occurred while restore SelectStmt.From")
+	}
+	if n.Where != nil {
+		ctx.WriteKeyWord(" WHERE ")
+		if err := n.Where.Restore(ctx); err != nil {
+			return errors.New("An error occurred while restore SelectStmt.Where")
+		}
+	}
+	if n.GroupBy != nil {
+		if err := n.GroupBy.Restore(ctx); err != nil {
+			return errors.New("An error occurred while restore SelectStmt.GroupBy")
+		}
+	}
+	if n.Having != nil {
+		if err := n.Having.Restore(ctx); err != nil {
+			return errors.New("An error occurred while restore SelectStmt.Having")
+		}
+	}
+	if n.OrderBy != nil {
+		if err := n.OrderBy.Restore(ctx); err != nil {
+			return errors.New("An error occurred while restore SelectStmt.OrderBy")
+		}
+	}
+	if n.Limit != nil {
+		if err := n.Limit.Restore(ctx); err != nil {
+			return errors.New("An error occurred while restore SelectStmt.Limit")
+		}
+	}
+	return nil
 }
 
-func (s *SelectStmt) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
+func (n *SelectStmt) Accept(v Visitor) (node Node, ok bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	nn := newNode.(*SelectStmt)
+
+	for i, p := range nn.PathPatternMacros {
+		node, ok := p.Accept(v)
+		if !ok {
+			return nn, false
+		}
+		nn.PathPatternMacros[i] = node.(*PathPatternMacro)
+	}
+
+	if nn.Where != nil {
+		node, ok := nn.Where.Accept(v)
+		if !ok {
+			return nn, false
+		}
+		nn.Where = node.(ExprNode)
+	}
+
+	if nn.GroupBy != nil {
+		node, ok := nn.GroupBy.Accept(v)
+		if !ok {
+			return nn, false
+		}
+		nn.GroupBy = node.(*GroupByClause)
+	}
+
+	if nn.Having != nil {
+		node, ok := nn.Having.Accept(v)
+		if !ok {
+			return nn, false
+		}
+		nn.Having = node.(*HavingClause)
+	}
+
+	if nn.OrderBy != nil {
+		node, ok := nn.OrderBy.Accept(v)
+		if !ok {
+			return nn, false
+		}
+		nn.OrderBy = node.(*OrderByClause)
+	}
+
+	if nn.Limit != nil {
+		node, ok := nn.Limit.Accept(v)
+		if !ok {
+			return nn, false
+		}
+		nn.Limit = node.(*LimitClause)
+	}
+
+	return v.Leave(nn)
 }
 
 type MatchClauseList struct {

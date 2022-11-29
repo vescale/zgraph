@@ -61,18 +61,17 @@ type VariableReference struct {
 }
 
 func (n *VariableReference) Format(w io.Writer) {
-	//TODO implement me
-	panic("implement me")
+	fmt.Fprint(w, n.VariableName)
 }
 
 func (n *VariableReference) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
+	ctx.WritePlain(n.VariableName)
+	return nil
 }
 
 func (n *VariableReference) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
+	newNode, _ := v.Enter(n)
+	return v.Leave(newNode)
 }
 
 type PropertyAccess struct {
@@ -82,19 +81,34 @@ type PropertyAccess struct {
 	PropertyName model.CIStr
 }
 
-func (p *PropertyAccess) Format(w io.Writer) {
-	//TODO implement me
-	panic("implement me")
+func (n *PropertyAccess) Format(w io.Writer) {
+	n.VariableName.Format(w)
+	fmt.Fprint(w, ".")
+	fmt.Fprint(w, n.PropertyName.O)
 }
 
-func (p *PropertyAccess) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
+func (n *PropertyAccess) Restore(ctx *format.RestoreCtx) error {
+	if err := n.VariableName.Restore(ctx); err != nil {
+		return errors.Annotate(err, "An error occurred while restore PropertyAccess.VariableName")
+	}
+	ctx.WritePlain(".")
+	ctx.WriteName(n.PropertyName.O)
+	return nil
 }
 
-func (p *PropertyAccess) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
+func (n *PropertyAccess) Accept(v Visitor) (node Node, ok bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+
+	nn, ok := newNode.(*PropertyAccess)
+	node, ok = nn.VariableName.Accept(v)
+	if !ok {
+		return nn, false
+	}
+	nn.VariableName = node.(*VariableReference)
+	return v.Leave(nn)
 }
 
 type StringLiteral struct {

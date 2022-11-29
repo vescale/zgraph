@@ -60,3 +60,16 @@ func (p *Parser) Parse(sql string) (stmts []ast.StmtNode, warns []error, err err
 	}
 	return p.result, warns, nil
 }
+
+// ParseOneStmt parses a query and returns an ast.StmtNode.
+// The query must have exactly one statement.
+func (p *Parser) ParseOneStmt(sql string) (ast.StmtNode, error) {
+	stmts, _, err := p.Parse(sql)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+	if len(stmts) != 1 {
+		return nil, errors.New("query must have exactly one statement")
+	}
+	return stmts[0], nil
+}
