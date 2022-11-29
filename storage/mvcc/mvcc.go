@@ -182,10 +182,10 @@ func (mh *marshalHelper) ReadSlice(r *bytes.Buffer, slice *[]byte) {
 // Note that parameter key is raw key, while key in LockedError is mvcc key.
 func (l *Lock) lockErr(key []byte) error {
 	return &LockedError{
-		Key:     Encode(key, LockVer),
-		Primary: l.Primary,
-		StartTS: l.StartVer,
-		TTL:     l.TTL,
+		Key:      Encode(key, LockVer),
+		Primary:  l.Primary,
+		StartVer: l.StartVer,
+		TTL:      l.TTL,
 	}
 }
 

@@ -61,7 +61,7 @@ func (scheduler *LatchesScheduler) run() {
 			scheduler.wakeup(wakeupList)
 		}
 
-		if lock.commitTS > lock.startTS {
+		if lock.commitTS > lock.startVer {
 			currentTS := lock.commitTS
 			elapsed := tsoSub(currentTS, scheduler.lastRecycleTime)
 			if elapsed > checkInterval || counter > checkCounter {
@@ -92,11 +92,11 @@ func (scheduler *LatchesScheduler) Close() {
 	}
 }
 
-// Lock acquire the lock for transaction with startTS and keys. The caller goroutine
+// Lock acquire the lock for transaction with startVer and keys. The caller goroutine
 // would be blocked if the lock can't be obtained now. When this function returns,
 // the lock state would be either success or stale(call lock.IsStale)
-func (scheduler *LatchesScheduler) Lock(startTS mvcc.Version, keys []kv.Key) *Lock {
-	lock := scheduler.latches.genLock(startTS, keys)
+func (scheduler *LatchesScheduler) Lock(startVer mvcc.Version, keys []kv.Key) *Lock {
+	lock := scheduler.latches.genLock(startVer, keys)
 	lock.wg.Add(1)
 	if scheduler.latches.acquire(lock) == acquireLocked {
 		lock.wg.Wait()

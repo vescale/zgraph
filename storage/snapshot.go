@@ -39,7 +39,7 @@ func (s *KVSnapshot) Get(_ context.Context, key kv.Key) ([]byte, error) {
 // Iter implements the Snapshot interface.
 func (s *KVSnapshot) Iter(lowerBound kv.Key, upperBound kv.Key) (Iterator, error) {
 	// The lower-level database stored key-value with versions. We need
-	// to append the startTS to the raw keys.
+	// to append the startVer to the raw keys.
 	var start, end mvcc.Key
 	if len(lowerBound) > 0 {
 		start = mvcc.Encode(lowerBound, mvcc.LockVer)
@@ -150,11 +150,11 @@ func (s *KVSnapshot) get(key kv.Key, resolvedLocks []mvcc.Version) ([]byte, erro
 	return getValue(iter, key, s.ver, resolvedLocks)
 }
 
-func getValue(iter *pebble.Iterator, key kv.Key, startTS mvcc.Version, resolvedLocks []mvcc.Version) ([]byte, error) {
+func getValue(iter *pebble.Iterator, key kv.Key, startVer mvcc.Version, resolvedLocks []mvcc.Version) ([]byte, error) {
 	dec1 := mvcc.LockDecoder{ExpectKey: key}
 	ok, err := dec1.Decode(iter)
 	if ok {
-		startTS, err = dec1.Lock.Check(startTS, key, resolvedLocks)
+		startVer, err = dec1.Lock.Check(startVer, key, resolvedLocks)
 	}
 	if err != nil {
 		return nil, err
@@ -174,8 +174,8 @@ func getValue(iter *pebble.Iterator, key kv.Key, startTS mvcc.Version, resolvedL
 			value.Type == mvcc.ValueTypeLock {
 			continue
 		}
-		// Read the first committed value that can be seen at startTS.
-		if value.CommitVer <= startTS {
+		// Read the first committed value that can be seen at startVer.
+		if value.CommitVer <= startVer {
 			if value.Type == mvcc.ValueTypeDelete {
 				return nil, nil
 			}

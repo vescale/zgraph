@@ -36,12 +36,12 @@ func TestWakeUp(t *testing.T) {
 	latches := NewLatches(256)
 	keysA := []kv.Key{
 		[]byte("a"), []byte("b"), []byte("c")}
-	startTSA := getTso()
-	lockA := latches.genLock(startTSA, keysA)
+	startVerA := getTso()
+	lockA := latches.genLock(startVerA, keysA)
 
 	keysB := []kv.Key{[]byte("d"), []byte("e"), []byte("a"), []byte("c")}
-	startTSB := getTso()
-	lockB := latches.genLock(startTSB, keysB)
+	startVerB := getTso()
+	lockB := latches.genLock(startVerB, keysB)
 
 	// A acquire lock success.
 	result := latches.acquire(lockA)
@@ -56,9 +56,9 @@ func TestWakeUp(t *testing.T) {
 	wakeupList := make([]*Lock, 0)
 	lockA.SetCommitTS(commitTSA)
 	wakeupList = latches.release(lockA, wakeupList)
-	assert.Equal(wakeupList[0].startTS, startTSB)
+	assert.Equal(wakeupList[0].startVer, startVerB)
 
-	// B acquire failed since startTSB has stale for some keys.
+	// B acquire failed since startVerB has stale for some keys.
 	result = latches.acquire(lockB)
 	assert.Equal(result, acquireStale)
 
@@ -66,9 +66,9 @@ func TestWakeUp(t *testing.T) {
 	wakeupList = latches.release(lockB, wakeupList)
 	assert.Equal(0, len(wakeupList))
 
-	// B restart:get a new startTS.
-	startTSB = getTso()
-	lockB = latches.genLock(startTSB, keysB)
+	// B restart:get a new startVer.
+	startVerB = getTso()
+	lockB = latches.genLock(startVerB, keysB)
 	result = latches.acquire(lockB)
 	assert.Equal(result, acquireSuccess)
 }
@@ -79,23 +79,23 @@ func TestFirstAcquireFailedWithStale(t *testing.T) {
 
 	keys := []kv.Key{
 		[]byte("a"), []byte("b"), []byte("c")}
-	startTSA := getTso()
-	lockA := latches.genLock(startTSA, keys)
-	startTSB := getTso()
-	lockB := latches.genLock(startTSA, keys)
+	startVerA := getTso()
+	lockA := latches.genLock(startVerA, keys)
+	startVerB := getTso()
+	lockB := latches.genLock(startVerA, keys)
 
 	// acquire lockA success
 	result := latches.acquire(lockA)
 	assert.Equal(result, acquireSuccess)
 
 	// release lockA
-	commitTSA := getTso()
+	commitVerA := getTso()
 	wakeupList := make([]*Lock, 0)
-	lockA.SetCommitTS(commitTSA)
+	lockA.SetCommitTS(commitVerA)
 	latches.release(lockA, wakeupList)
 
-	assert.Greater(commitTSA, startTSB)
-	// acquire lockB first time, should be failed with stale since commitTSA > startTSB
+	assert.Greater(commitVerA, startVerB)
+	// acquire lockB first time, should be failed with stale since commitVerA > startVerB
 	result = latches.acquire(lockB)
 	assert.Equal(result, acquireStale)
 	latches.release(lockB, wakeupList)
@@ -104,23 +104,23 @@ func TestFirstAcquireFailedWithStale(t *testing.T) {
 func TestRecycle(t *testing.T) {
 	assert := assert.New(t)
 	latches := NewLatches(8)
-	startTS := getTso()
-	lock := latches.genLock(startTS, []kv.Key{
+	startVer := getTso()
+	lock := latches.genLock(startVer, []kv.Key{
 		[]byte("a"), []byte("b"),
 	})
-	lock1 := latches.genLock(startTS, []kv.Key{
+	lock1 := latches.genLock(startVer, []kv.Key{
 		[]byte("b"), []byte("c"),
 	})
 	assert.Equal(latches.acquire(lock), acquireSuccess)
 	assert.Equal(latches.acquire(lock1), acquireLocked)
-	lock.SetCommitTS(startTS + 1)
+	lock.SetCommitTS(startVer + 1)
 	var wakeupList []*Lock
 	latches.release(lock, wakeupList)
 	// Release lock will grant latch to lock1 automatically,
 	// so release lock1 is called here.
 	latches.release(lock1, wakeupList)
 
-	lock2 := latches.genLock(startTS+3, []kv.Key{
+	lock2 := latches.genLock(startVer+3, []kv.Key{
 		[]byte("b"), []byte("c"),
 	})
 	assert.Equal(latches.acquire(lock2), acquireSuccess)

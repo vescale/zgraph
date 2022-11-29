@@ -47,13 +47,13 @@ type latch struct {
 type Lock struct {
 	keys []kv.Key
 	// requiredSlots represents required slots.
-	// The slot IDs of the latches(keys) that a startTS must acquire before being able to processed.
+	// The slot IDs of the latches(keys) that a startVer must acquire before being able to processed.
 	requiredSlots []int
 	// acquiredCount represents the number of latches that the transaction has acquired.
 	// For status is stale, it include the latch whose front is current lock already.
 	acquiredCount int
-	// startTS represents current transaction's.
-	startTS mvcc.Version
+	// startVer represents current transaction's.
+	startVer mvcc.Version
 	// commitTS represents current transaction's.
 	commitTS mvcc.Version
 
@@ -72,7 +72,7 @@ const (
 	// which means still locked by other Lock.
 	acquireLocked
 	// acquireStale is a type constant for acquireResult
-	// which means current Lock's startTS is stale.
+	// which means current Lock's startVer is stale.
 	acquireStale
 )
 
@@ -121,14 +121,14 @@ func NewLatches(size uint) *Latches {
 	}
 }
 
-// genLock generates Lock for the transaction with startTS and keys.
-func (latches *Latches) genLock(startTS mvcc.Version, keys []kv.Key) *Lock {
+// genLock generates Lock for the transaction with startVer and keys.
+func (latches *Latches) genLock(startVer mvcc.Version, keys []kv.Key) *Lock {
 	sort.Sort(bytesSlice(keys))
 	return &Lock{
 		keys:          keys,
 		requiredSlots: latches.genSlotIDs(keys),
 		acquiredCount: 0,
-		startTS:       startTS,
+		startVer:      startVer,
 	}
 }
 
@@ -210,7 +210,7 @@ func (latches *Latches) releaseSlot(lock *Lock) (nextLock *Lock) {
 		latch.waiting[len(latch.waiting)-1] = nil
 		latch.waiting = latch.waiting[:len(latch.waiting)-1]
 
-		if find.maxCommitTS > nextLock.startTS {
+		if find.maxCommitTS > nextLock.startVer {
 			find.value = nextLock
 			nextLock.acquiredCount++
 			nextLock.isStale = true
@@ -229,7 +229,7 @@ func (latches *Latches) acquireSlot(lock *Lock) acquireResult {
 
 	// Try to recycle to limit the memory usage.
 	if latch.count >= latchListCount {
-		latch.recycle(lock.startTS)
+		latch.recycle(lock.startVer)
 	}
 
 	find := findNode(latch.queue, key)
@@ -247,7 +247,7 @@ func (latches *Latches) acquireSlot(lock *Lock) acquireResult {
 		return acquireSuccess
 	}
 
-	if find.maxCommitTS > lock.startTS {
+	if find.maxCommitTS > lock.startVer {
 		lock.isStale = true
 		return acquireStale
 	}

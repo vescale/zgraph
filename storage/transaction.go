@@ -32,8 +32,8 @@ type Txn struct {
 	snapshot  Snapshot
 	us        *UnionStore
 	startTime time.Time
-	startTS   mvcc.Version
-	commitTS  mvcc.Version
+	startVer  mvcc.Version
+	commitVer mvcc.Version
 	setCnt    int64
 	lockedCnt int
 	latches   *latch.LatchesScheduler
@@ -105,11 +105,11 @@ func (txn *Txn) Commit(ctx context.Context) error {
 	defer txn.close()
 
 	// Sanity check for start timestamp of the current transaction.
-	if txn.startTS == mvcc.LockVer {
-		return ErrInvalidStartTS
+	if txn.startVer == mvcc.LockVer {
+		return ErrInvalidStartVer
 	}
 
-	committer := &committer{memDB: txn.us.MemBuffer()}
+	committer := &committer{memDB: txn.us.MemBuffer(), startVer: txn.startVer}
 	err := committer.init(txn.startTime)
 	if err != nil {
 		return err
@@ -117,7 +117,7 @@ func (txn *Txn) Commit(ctx context.Context) error {
 	if committer.length() == 0 {
 		return nil
 	}
-	lock := txn.latches.Lock(txn.startTS, committer.keys())
+	lock := txn.latches.Lock(txn.startVer, committer.keys())
 	defer txn.latches.UnLock(lock)
 
 	err = committer.execute()
@@ -138,7 +138,7 @@ func (txn *Txn) Rollback() error {
 
 // String implements fmt.Stringer interface.
 func (txn *Txn) String() string {
-	return fmt.Sprintf("%d", txn.startTS)
+	return fmt.Sprintf("%d", txn.startVer)
 }
 
 func (txn *Txn) close() {

@@ -19,14 +19,14 @@ import "fmt"
 // LockedError is returned when trying to Read/Write on a locked key. Caller should
 // backoff or cleanup the lock then retry.
 type LockedError struct {
-	Key     Key
-	Primary []byte
-	StartTS Version
-	TTL     uint64
+	Key      Key
+	Primary  []byte
+	StartVer Version
+	TTL      uint64
 }
 
 // Error formats the lock to a string.
 func (e *LockedError) Error() string {
-	return fmt.Sprintf("key is locked, key: %q, primary: %q, txnStartTS: %v",
-		e.Key, e.Primary, e.StartTS)
+	return fmt.Sprintf("key is locked, key: %q, primary: %q, startVer: %v",
+		e.Key, e.Primary, e.StartVer)
 }

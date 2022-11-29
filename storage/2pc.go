@@ -16,6 +16,7 @@ type committer struct {
 	memDB      *MemDB
 	primaryKey kv.Key
 	lockTTL    uint64
+	startVer   mvcc.Version
 	commitVer  mvcc.Version
 
 	// The format to put to the UserData of the handles:
@@ -193,7 +194,7 @@ func txnLockTTL(startTime time.Time, txnSize int) uint64 {
 	}
 
 	// Increase lockTTL by the transaction's read time.
-	// When resolving a lock, we compare current ver and startTS+lockTTL to decide whether to clean up. If a txn
+	// When resolving a lock, we compare current ver and startVer+lockTTL to decide whether to clean up. If a txn
 	// takes a long time to read, increasing its TTL will help to prevent it from been aborted soon after prewrite.
 	elapsed := time.Since(startTime) / time.Millisecond
 	return lockTTL + uint64(elapsed)

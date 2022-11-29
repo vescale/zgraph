@@ -34,7 +34,7 @@ var (
 	// ErrInvalidTxn is the error when commits or rollbacks in an invalid transaction.
 	ErrInvalidTxn = errors.New("invalid transaction")
 
-	ErrInvalidStartTS = errors.New("invalid start timestamp for transaction")
+	ErrInvalidStartVer = errors.New("invalid start timestamp for transaction")
 )
 
 // ErrEntryTooLarge is the error when a key value entry is too large.

@@ -160,7 +160,7 @@ func TestSnapshot_BatchGet(t *testing.T) {
 		},
 	}
 	for _, e := range expected {
-		snapshot, err := s.Snapshot(mvcc.Version(e.ver))
+		snapshot, err := s.Snapshot(e.ver)
 		assert.Nil(t, err)
 		var keys []kv.Key
 		for _, k := range e.keys {
