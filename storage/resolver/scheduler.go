@@ -81,4 +81,7 @@ func (s *Scheduler) Resolve(keys []kv.Key, startVer, commitVer mvcc.Version, not
 func (s *Scheduler) Close() {
 	s.cancelFn()
 	s.wg.Wait()
+	for _, r := range s.resolvers {
+		r.close()
+	}
 }

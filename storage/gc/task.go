@@ -13,3 +13,11 @@
 // limitations under the License.
 
 package gc
+
+import "github.com/vescale/zgraph/storage/kv"
+
+// Task represents a GC task which contains the key ranges to execute GC.
+type Task struct {
+	LowerBound kv.Key
+	UpperBound kv.Key
+}

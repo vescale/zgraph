@@ -16,13 +16,15 @@ package resolver
 
 import (
 	"context"
+	"sync/atomic"
 
 	"github.com/cockroachdb/pebble"
 )
 
 type resolver struct {
-	db *pebble.DB
-	ch chan Task
+	db     *pebble.DB
+	ch     chan Task
+	closed atomic.Bool
 }
 
 func newResolver(db *pebble.DB) *resolver {
@@ -73,4 +75,11 @@ func (r *resolver) push(tasks ...Task) {
 	for _, t := range tasks {
 		r.ch <- t
 	}
+}
+
+func (r *resolver) close() {
+	if r.closed.Swap(true) {
+		return
+	}
+	close(r.ch)
 }

@@ -18,22 +18,25 @@ import (
 	"time"
 
 	"github.com/cockroachdb/pebble"
+	"github.com/vescale/zgraph/storage/gc"
 	"github.com/vescale/zgraph/storage/latch"
 	"github.com/vescale/zgraph/storage/mvcc"
 	"github.com/vescale/zgraph/storage/resolver"
 )
 
 type mvccStorage struct {
-	db       *pebble.DB
-	latches  *latch.LatchesScheduler
-	resolver *resolver.Scheduler
+	db        *pebble.DB
+	latches   *latch.LatchesScheduler
+	resolver  *resolver.Scheduler
+	gcManager *gc.Manager
 }
 
 // New returns a new storage instance.
 func New() Storage {
 	return &mvccStorage{
-		latches:  latch.NewScheduler(8),
-		resolver: resolver.NewScheduler(4),
+		latches:   latch.NewScheduler(8),
+		resolver:  resolver.NewScheduler(4),
+		gcManager: gc.NewManager(2),
 	}
 }
 
@@ -50,6 +53,9 @@ func (s *mvccStorage) Open(dirname string, options ...Option) error {
 	s.db = db
 	s.resolver.SetDB(db)
 	s.resolver.Run()
+	s.gcManager.SetDB(db)
+	s.gcManager.SetResolver(s.resolver)
+	s.gcManager.Run()
 
 	return nil
 }
@@ -97,6 +103,7 @@ func (s *mvccStorage) CurrentVersion() (mvcc.Version, error) {
 func (s *mvccStorage) Close() error {
 	s.latches.Close()
 	s.resolver.Close()
+	s.gcManager.Close()
 	if s.db != nil {
 		return s.db.Close()
 	}
