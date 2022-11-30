@@ -32,9 +32,12 @@
 package parser
 
 import (
+	"math"
+
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/parser/model"
 	"github.com/vescale/zgraph/parser/opcode"
+	"github.com/vescale/zgraph/parser/types"
 )
 
 %}
@@ -108,13 +111,13 @@ import (
 	labels                "LABELS"
 	properties            "PROPERTIES"
         caseKwd               "CASE"
-        end                   "END"
         then                  "THEN"
         when                  "WHEN"
         elseKwd               "ELSE"
 
 	/* Unreserved keywords */
 	begin                 "BEGIN"
+	end                   "END"
 	commit                "COMMIT"
 	booleanType           "BOOLEAN"
 	explain               "EXPLAIN"
@@ -165,8 +168,8 @@ import (
 	inDegree              "IN_DEGREE"
 	javaRegexpLike        "JAVA_REGEXP_LIKE"
 	label                 "LABEL"
-	match_number          "MATCH_NUMBER"
-	out_degree            "OUT_DEGREE"
+	matchNumber           "MATCH_NUMBER"
+	outDegree             "OUT_DEGREE"
 	abs                   "ABS"
 	ceil                  "CEIL"
 	ceiling               "CEILING"
@@ -174,14 +177,24 @@ import (
 	floor                 "FLOOR"
 	hasLabel              "HAS_LABEL"
 	id                    "ID"
+	allDifferent          "ALL_DIFFERENT"
 
 %token	<item>
 
 	/*yy:token "1.%d"   */
-	decLit       "decimal literal"
+	floatLit "floating-point literal"
+
+	/*yy:token "1.%d"   */
+	decLit "decimal literal"
 
 	/*yy:token "%d"     */
-	intLit       "integer literal"
+	intLit "integer literal"
+
+	/*yy:token "%x"     */
+	hexLit "hexadecimal literal"
+
+	/*yy:token "%b"     */
+	bitLit       "bit literal"
 
 	andnot       "&^"
 	assignmentEq ":="
@@ -728,96 +741,108 @@ Literal:
 StringLiteral:
 	stringLit
 	{
-		$$ = &ast.StringLiteral{
-			Value: $1,
-		}
+		$$ = ast.NewValueExpr($1)
+	}
+|	hexLit
+	{
+		$$ = ast.NewValueExpr($1)
+	}
+|	bitLit
+	{
+		$$ = ast.NewValueExpr($1)
 	}
 
 NumericLiteral:
 	intLit
 	{
-		$$ = &ast.IntegerLiteral{
-			Value: $1.(int64),
-		}
+		$$ = ast.NewValueExpr($1)
 	}
 |	decLit
 	{
-		$$ = &ast.DecimalLiteral{
-			Value: $1,
-		}
+		$$ = ast.NewValueExpr($1)
+	}
+|	floatLit
+	{
+		$$ = ast.NewValueExpr($1)
 	}
 
 BooleanLiteral:
 	"FALSE"
 	{
-		$$ = &ast.BooleanLiteral{
-			Value: false,
-		}
+		$$ = ast.NewValueExpr(false)
 	}
 |	"TRUE"
 	{
-		$$ = &ast.BooleanLiteral{
-			Value: true,
-		}
+		$$ = ast.NewValueExpr(true)
 	}
 
 DateLiteral:
 	"DATE" stringLit
 	{
-		$$ = &ast.DateLiteral{
-			Value: $2,
+		d, err := types.NewDateLiteral($2)
+		if err != nil {
+			yylex.AppendError(err)
+			return 1
 		}
+		$$ = ast.NewValueExpr(d)
 	}
 
 TimeLiteral:
 	"TIME" stringLit
 	{
-		$$ = &ast.TimeLiteral{
-			Value: $2,
+		t, err := types.NewTimeLiteral($2)
+		if err != nil {
+			yylex.AppendError(err)
+			return 1
 		}
+		$$ = ast.NewValueExpr(t)
 	}
 
 TimestampLiteral:
 	"TIMESTAMP" stringLit
 	{
-		$$ = &ast.TimestampLiteral{
-			Value: $2,
+		t, err := types.NewTimestampLiteral($2)
+		if err != nil {
+			yylex.AppendError(err)
+			return 1
 		}
+		$$ = ast.NewValueExpr(t)
 	}
 
 IntervalLiteral:
 	"INTERVAL" stringLit DateTimeField
 	{
-		$$ = &ast.IntervalLiteral{
+		i := &types.IntervalLiteral{
 			Value: $2,
-			Unit:  $3.(ast.DateTimeField),
+			Unit:  $3.(types.DateTimeField),
 		}
+		$$ = ast.NewValueExpr(i)
 	}
 
 DateTimeField:
 	"YEAR"
 	{
-		$$ = ast.DateTimeFieldYear
+		$$ = types.DateTimeFieldYear
 	}
 |	"MONTH"
 	{
-		$$ = ast.DateTimeFieldMonth
+		$$ = types.DateTimeFieldMonth
 	}
 |	"DAY"
 	{
-		$$ = ast.DateTimeFieldDay
+		$$ = types.DateTimeFieldDay
 	}
 |	"HOUR"
 	{
-		$$ = ast.DateTimeFieldHour
+		$$ = types.DateTimeFieldHour
 	}
 |	"MINUTE"
 	{
-		$$ = ast.DateTimeFieldMinite
+		$$ = types.DateTimeFieldMinute
 	}
 |	"SECOND"
 	{
-		$$ = ast.DateTimeFieldSecond
+		$$ = types.DateTimeFieldSecond
 	}
 
 BindVariable:
@@ -963,6 +988,7 @@ FunctionName:
 |	"ELEMENT_NUMBER"
 |	"IN_DEGREE"
 |	"OUT_DEGREE"
+|	"ALL_DIFFERENT"
 
 ArgumentList:
 	ValueExpression
@@ -1002,7 +1028,7 @@ Aggregation:
 		$$ = &ast.AggregateFuncExpr{
 			F:    $1,
 			Args: []ast.ExprNode{
-				&ast.IntegerLiteral{Value: 1},
+				ast.NewValueExpr(1),
 			},
 		}
 	}
@@ -1526,7 +1552,7 @@ PathPattern:
 	{
 		pp := $4.(*ast.PathPattern)
 		pp.Tp = ast.PathPatternTopKShortest
-		pp.TopK = $2.(uint64)
+		pp.TopK = $2.(int64)
 		$$ = pp
 	}
 |	"ANY" "CHEAPEST" VariableLengthPathPattern
@@ -1545,7 +1571,7 @@ PathPattern:
 	{
 		pp := $4.(*ast.PathPattern)
 		pp.Tp = ast.PathPatternTopKCheapest
-		pp.TopK = $2.(uint64)
+		pp.TopK = $2.(int64)
 		$$ = pp
 	}
 |	"ALL" VariableLengthPathPattern
@@ -1745,11 +1771,11 @@ CostClauseOpt:
 PatternQuantifier:
 	'*'
 	{
-		$$ = &ast.PatternQuantifier{Tp: ast.PatternQuantifierZeroOrMore, M: 18446744073709551615}
+		$$ = &ast.PatternQuantifier{Tp: ast.PatternQuantifierZeroOrMore, M: math.MaxInt64}
 	}
 |	'+'
 	{
-		$$ = &ast.PatternQuantifier{Tp: ast.PatternQuantifierOneOrMore, N: 1, M: 18446744073709551615}
+		$$ = &ast.PatternQuantifier{Tp: ast.PatternQuantifierOneOrMore, N: 1, M: math.MaxInt64}
 	}
 // '?' is declared as paramMarker before.
 |	paramMarker
@@ -1758,19 +1784,19 @@ PatternQuantifier:
 	}
 |	'{' intLit '}'
 	{
-		$$ = &ast.PatternQuantifier{Tp: ast.PatternQuantifierExactlyN, N: $2.(uint64), M: $2.(uint64)}
+		$$ = &ast.PatternQuantifier{Tp: ast.PatternQuantifierExactlyN, N: $2.(int64), M: $2.(int64)}
 	}
 |	'{' intLit ',' '}'
 	{
-		$$ = &ast.PatternQuantifier{Tp: ast.PatternQuantifierNOrMore, N: $2.(uint64), M: 18446744073709551615}
+		$$ = &ast.PatternQuantifier{Tp: ast.PatternQuantifierNOrMore, N: $2.(int64), M: math.MaxInt64}
 	}
 |	'{' intLit ',' intLit '}'
 	{
-		$$ = &ast.PatternQuantifier{Tp: ast.PatternQuantifierBetweenNAndM, N: $2.(uint64), M: $4.(uint64)}
+		$$ = &ast.PatternQuantifier{Tp: ast.PatternQuantifierBetweenNAndM, N: $2.(int64), M: $4.(int64)}
 	}
 |	'{' ',' intLit '}'
 	{
-		$$ = &ast.PatternQuantifier{Tp: ast.PatternQuantifierBetweenZeroAndM, N: 0, M: $3.(uint64)}
+		$$ = &ast.PatternQuantifier{Tp: ast.PatternQuantifierBetweenZeroAndM, N: 0, M: $3.(int64)}
 	}
 
 PatternQuantifierOpt:
@@ -1815,7 +1841,7 @@ WhereClauseOpt:
  	}
 |	"WHERE" ValueExpression
 	{
-		$$ = $1
+		$$ = $2
 	}
 
 GroupByClauseOpt:
@@ -1842,6 +1868,7 @@ ByItem:
 	{
 		$$ = &ast.ByItem{
 			Expr: $1.(*ast.ExpAsVar),
+			NullOrder: true,
 		}
 	}
 |	ExpAsVar Order
@@ -1919,9 +1946,7 @@ LimitOption:
 LengthNum:
 	intLit
 	{
-		$$ = &ast.IntegerLiteral{
-			Value: $1.(int64),
-		}
+		$$ = ast.NewValueExpr($1)
 	}
 
 /******************************************************************************

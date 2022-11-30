@@ -22,7 +22,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/vescale/zgraph/datum"
+	"github.com/vescale/zgraph/parser/types"
 )
 
 var _ = yyLexer(&Lexer{})
@@ -135,36 +135,6 @@ func (l *Lexer) AppendWarn(err error) {
 	l.warns = append(l.warns, err)
 }
 
-func (l *Lexer) getNextToken() int {
-	r := l.r
-	tok, pos, lit := l.scan()
-	if tok == identifier {
-		if tok1 := l.isTokenIdentifier(lit, pos.Offset); tok1 != 0 {
-			tok = tok1
-		}
-	}
-	l.r = r
-	return tok
-}
-
-func (l *Lexer) getNextTwoTokens() (tok1 int, tok2 int) {
-	r := l.r
-	tok1, pos, lit := l.scan()
-	if tok1 == identifier {
-		if tmpToken := l.isTokenIdentifier(lit, pos.Offset); tmpToken != 0 {
-			tok1 = tmpToken
-		}
-	}
-	tok2, pos, lit = l.scan()
-	if tok2 == identifier {
-		if tmpToken := l.isTokenIdentifier(lit, pos.Offset); tmpToken != 0 {
-			tok2 = tmpToken
-		}
-	}
-	l.r = r
-	return tok1, tok2
-}
-
 // Lex returns a token and store the token value in v.
 // Lexer satisfies yyLexer interface.
 // 0 and invalid are special token id this function would return:
@@ -188,8 +158,14 @@ func (l *Lexer) Lex(v *yySymType) int {
 	switch tok {
 	case intLit:
 		return toInt(l, v, lit)
+	case floatLit:
+		return toFloat(l, v, lit)
 	case decLit:
 		return toDecimal(l, v, lit)
+	case hexLit:
+		return toHex(l, v, lit)
+	case bitLit:
+		return toBit(l, v, lit)
 	case singleAtIdentifier, doubleAtIdentifier, cast, extract:
 		v.item = lit
 		return tok
@@ -235,12 +211,46 @@ func toInt(l yyLexer, lval *yySymType, str string) int {
 }
 
 func toDecimal(l yyLexer, lval *yySymType, str string) int {
-	dec, err := datum.NewDecimal(str)
+	dec, err := types.NewDecimal(str)
 	if err != nil {
-		l.AppendError(err)
+		l.AppendError(l.Errorf("decimal literal: %v", err))
+		return invalid
 	}
 	lval.item = dec
 	return decLit
+}
+
+func toFloat(l yyLexer, lval *yySymType, str string) int {
+	n, err := strconv.ParseFloat(str, 64)
+	if err != nil {
+		l.AppendError(l.Errorf("float literal: %v", err))
+		return invalid
+	}
+
+	lval.item = n
+	return floatLit
+}
+
+// See https://dev.mysql.com/doc/refman/5.7/en/hexadecimal-literals.html
+func toHex(l yyLexer, lval *yySymType, str string) int {
+	h, err := types.NewHexLiteral(str)
+	if err != nil {
+		l.AppendError(l.Errorf("hex literal: %v", err))
+		return invalid
+	}
+	lval.item = h
+	return hexLit
+}
+
+// See https://dev.mysql.com/doc/refman/5.7/en/bit-type.html
+func toBit(l yyLexer, lval *yySymType, str string) int {
+	b, err := types.NewBitLiteral(str)
+	if err != nil {
+		l.AppendError(l.Errorf("bit literal: %v", err))
+		return invalid
+	}
+	lval.item = b
+	return bitLit
 }
 
 // LexLiteral returns the value of the converted literal
@@ -322,7 +332,7 @@ func startWithSlash(s *Lexer) (tok int, pos Pos, lit string) {
 		}
 		s.r.inc()
 		if ch = s.r.peek(); ch == '>' {
-			tok = rightArrow
+			tok = reachOutgoingRight
 			s.r.inc()
 		} else {
 			tok = reachIncomingRight

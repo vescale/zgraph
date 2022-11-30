@@ -17,25 +17,20 @@ package ast
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/parser/format"
 	"github.com/vescale/zgraph/parser/model"
 	"github.com/vescale/zgraph/parser/opcode"
+	"github.com/vescale/zgraph/parser/types"
 )
 
 var (
+	_ ExprNode = &ValueExpr{}
 	_ ExprNode = &VariableReference{}
 	_ ExprNode = &PropertyAccess{}
-	_ ExprNode = &StringLiteral{}
-	_ ExprNode = &IntegerLiteral{}
-	_ ExprNode = &DecimalLiteral{}
-	_ ExprNode = &BooleanLiteral{}
-	_ ExprNode = &DateLiteral{}
-	_ ExprNode = &TimeLiteral{}
-	_ ExprNode = &TimestampLiteral{}
-	_ ExprNode = &IntervalLiteral{}
 	_ ExprNode = &BindVariable{}
 	_ ExprNode = &UnaryOperationExpr{}
 	_ ExprNode = &BinaryOperationExpr{}
@@ -54,6 +49,108 @@ var (
 	_ Node = &WhenClause{}
 )
 
+// ValueExpr is the simple value expression.
+type ValueExpr struct {
+	exprNode
+
+	types.Datum
+}
+
+// NewValueExpr creates a ValueExpr with value, and sets default field type.
+func NewValueExpr(value interface{}) *ValueExpr {
+	if ve, ok := value.(*ValueExpr); ok {
+		return ve
+	}
+	ve := &ValueExpr{}
+	ve.SetValue(value)
+	return ve
+}
+
+// Restore implements Node interface.
+func (n *ValueExpr) Restore(ctx *format.RestoreCtx) error {
+	switch n.Kind() {
+	case types.KindNull:
+		ctx.WriteKeyWord("NULL")
+	case types.KindInt64:
+		ctx.WritePlain(strconv.FormatInt(n.GetInt64(), 10))
+	case types.KindUint64:
+		ctx.WritePlain(strconv.FormatUint(n.GetUint64(), 10))
+	case types.KindFloat32:
+		ctx.WritePlain(strconv.FormatFloat(n.GetFloat64(), 'e', -1, 32))
+	case types.KindFloat64:
+		ctx.WritePlain(strconv.FormatFloat(n.GetFloat64(), 'e', -1, 64))
+	case types.KindString:
+		ctx.WriteString(n.GetString())
+	case types.KindBytes:
+		ctx.WriteString(n.GetString())
+	case types.KindMysqlDecimal:
+		ctx.WritePlain(n.GetMysqlDecimal().String())
+	case types.KindBinaryLiteral:
+		ctx.WritePlain(n.GetBinaryLiteral().ToBitLiteralString(true))
+	case types.KindDate:
+		ctx.WriteKeyWord("DATE ")
+		ctx.WriteString(n.GetDateLiteral().String())
+	case types.KindTime:
+		ctx.WriteKeyWord("TIME ")
+		ctx.WriteString(n.GetTimeLiteral().String())
+	case types.KindTimestamp:
+		ctx.WriteKeyWord("TIMESTAMP ")
+		ctx.WriteString(n.GetTimestampLiteral().String())
+	case types.KindInterval:
+		ctx.WriteKeyWord("INTERVAL ")
+		ctx.WriteString(n.GetIntervalLiteral().Value)
+		ctx.WritePlain(" ")
+		ctx.WriteKeyWord(n.GetIntervalLiteral().Unit.String())
+	case types.KindInterface:
+		// TODO implement Restore function
+		return fmt.Errorf("not implemented")
+	default:
+		return fmt.Errorf("can't format to string")
+	}
+	return nil
+}
+
+// GetDatumString implements the ValueExpr interface.
+func (n *ValueExpr) GetDatumString() string {
+	return n.GetString()
+}
+
+// Format the ExprNode into a Writer.
+func (n *ValueExpr) Format(w io.Writer) {
+	var s string
+	switch n.Kind() {
+	case types.KindNull:
+		s = "NULL"
+	case types.KindInt64:
+		s = strconv.FormatInt(n.GetInt64(), 10)
+	case types.KindUint64:
+		s = strconv.FormatUint(n.GetUint64(), 10)
+	case types.KindFloat32:
+		s = strconv.FormatFloat(n.GetFloat64(), 'e', -1, 32)
+	case types.KindFloat64:
+		s = strconv.FormatFloat(n.GetFloat64(), 'e', -1, 64)
+	case types.KindString, types.KindBytes:
+		s = strconv.Quote(n.GetString())
+	case types.KindMysqlDecimal:
+		s = n.GetMysqlDecimal().String()
+	case types.KindBinaryLiteral:
+		s = n.GetBinaryLiteral().ToBitLiteralString(true)
+	default:
+		panic("Can't format to string")
+	}
+	_, _ = fmt.Fprint(w, s)
+}
+
+// Accept implements Node interface.
+func (n *ValueExpr) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	n = newNode.(*ValueExpr)
+	return v.Leave(n)
+}
+
 type VariableReference struct {
 	exprNode
 
@@ -65,7 +162,7 @@ func (n *VariableReference) Format(w io.Writer) {
 }
 
 func (n *VariableReference) Restore(ctx *format.RestoreCtx) error {
-	ctx.WritePlain(n.VariableName)
+	ctx.WriteName(n.VariableName)
 	return nil
 }
 
@@ -109,187 +206,6 @@ func (n *PropertyAccess) Accept(v Visitor) (node Node, ok bool) {
 	}
 	nn.VariableName = node.(*VariableReference)
 	return v.Leave(nn)
-}
-
-type StringLiteral struct {
-	exprNode
-
-	Value string
-}
-
-func (s *StringLiteral) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s *StringLiteral) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s *StringLiteral) Format(w io.Writer) {
-	//TODO implement me
-	panic("implement me")
-}
-
-type IntegerLiteral struct {
-	exprNode
-
-	Value int64
-}
-
-func (i *IntegerLiteral) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (i *IntegerLiteral) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (i *IntegerLiteral) Format(w io.Writer) {
-	//TODO implement me
-	panic("implement me")
-}
-
-type DecimalLiteral struct {
-	exprNode
-
-	// TODO: decimal
-	Value interface{}
-}
-
-func (d *DecimalLiteral) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *DecimalLiteral) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *DecimalLiteral) Format(w io.Writer) {
-	//TODO implement me
-	panic("implement me")
-}
-
-type BooleanLiteral struct {
-	exprNode
-
-	Value bool
-}
-
-func (b *BooleanLiteral) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (b *BooleanLiteral) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (b *BooleanLiteral) Format(w io.Writer) {
-	//TODO implement me
-	panic("implement me")
-}
-
-type DateLiteral struct {
-	exprNode
-
-	Value string
-}
-
-func (d *DateLiteral) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *DateLiteral) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *DateLiteral) Format(w io.Writer) {
-	//TODO implement me
-	panic("implement me")
-}
-
-type TimeLiteral struct {
-	exprNode
-
-	Value string
-}
-
-func (t *TimeLiteral) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *TimeLiteral) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *TimeLiteral) Format(w io.Writer) {
-	//TODO implement me
-	panic("implement me")
-}
-
-type TimestampLiteral struct {
-	exprNode
-
-	Value string
-}
-
-func (t *TimestampLiteral) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *TimestampLiteral) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *TimestampLiteral) Format(w io.Writer) {
-	//TODO implement me
-	panic("implement me")
-}
-
-type DateTimeField byte
-
-const (
-	DateTimeFieldYear   DateTimeField = 1
-	DateTimeFieldMonth  DateTimeField = 2
-	DateTimeFieldDay    DateTimeField = 3
-	DateTimeFieldHour   DateTimeField = 4
-	DateTimeFieldMinite DateTimeField = 5
-	DateTimeFieldSecond DateTimeField = 6
-)
-
-type IntervalLiteral struct {
-	exprNode
-
-	Value string
-	Unit  DateTimeField
-}
-
-func (i *IntervalLiteral) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (i *IntervalLiteral) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (i *IntervalLiteral) Format(w io.Writer) {
-	//TODO implement me
-	panic("implement me")
 }
 
 type BindVariable struct {
@@ -608,7 +524,7 @@ func (n *AggregateFuncExpr) Restore(ctx *format.RestoreCtx) error {
 				return errors.Annotatef(err, "An error occurred while restore AggregateFuncExpr.Args[%d]", i)
 			}
 		}
-		ctx.WriteKeyWord(" SEPARATOR ")
+		ctx.WritePlain(", ")
 		if err := n.Args[len(n.Args)-1].Restore(ctx); err != nil {
 			return errors.Annotate(err, "An error occurred while restore AggregateFuncExpr.Args SEPARATOR")
 		}
@@ -749,77 +665,65 @@ const (
 	DataTypeTimestampWithZone
 )
 
-// CastFunctionType is the type for cast function.
-type CastFunctionType int
+func (d DataType) String() string {
+	switch d {
+	case DataTypeString:
+		return "STRING"
+	case DataTypeBoolean:
+		return "BOOLEAN"
+	case DataTypeInteger:
+		return "INTEGER"
+	case DataTypeInt:
+		return "INT"
+	case DataTypeLong:
+		return "LONG"
+	case DataTypeFloat:
+		return "FLOAT"
+	case DataTypeDouble:
+		return "DOUBLE"
+	case DataTypeDate:
+		return "DATE"
+	case DataTypeTime:
+		return "TIME"
+	case DataTypeTimeWithZone:
+		return "TIME WITH TIME ZONE"
+	case DataTypeTimestamp:
+		return "TIMESTAMP"
+	case DataTypeTimestampWithZone:
+		return "TIMESTAMP WITH TIME ZONE"
+	default:
+		return fmt.Sprintf("UNKNOWN<%d>", d)
+	}
+}
 
-// CastFunction types
-const (
-	CastFunction CastFunctionType = iota + 1
-	CastConvertFunction
-	CastBinaryOperator
-)
-
-// CastFuncExpr is the cast function converting value to another type, e.g, cast(expr AS signed).
-// See https://dev.mysql.com/doc/refman/5.7/en/cast-functions.html
 type CastFuncExpr struct {
 	funcNode
 	// Expr is the expression to be converted.
 	Expr ExprNode
-	// FunctionType is either Cast, Convert or Binary.
-	FunctionType CastFunctionType
 	// DataType is the conversion type.
 	DataType DataType
 }
 
 // Restore implements Node interface.
 func (n *CastFuncExpr) Restore(ctx *format.RestoreCtx) error {
-	switch n.FunctionType {
-	case CastFunction:
-		ctx.WriteKeyWord("CAST")
-		ctx.WritePlain("(")
-		if err := n.Expr.Restore(ctx); err != nil {
-			return errors.Annotatef(err, "An error occurred while restore CastFuncExpr.Expr")
-		}
-		ctx.WriteKeyWord(" AS ")
-		//n.Tp.RestoreAsCastType(ctx, n.ExplicitCharSet)
-		ctx.WritePlain(")")
-	case CastConvertFunction:
-		ctx.WriteKeyWord("CONVERT")
-		ctx.WritePlain("(")
-		if err := n.Expr.Restore(ctx); err != nil {
-			return errors.Annotatef(err, "An error occurred while restore CastFuncExpr.Expr")
-		}
-		ctx.WritePlain(", ")
-		//n.Tp.RestoreAsCastType(ctx, n.ExplicitCharSet)
-		ctx.WritePlain(")")
-	case CastBinaryOperator:
-		ctx.WriteKeyWord("BINARY ")
-		if err := n.Expr.Restore(ctx); err != nil {
-			return errors.Annotatef(err, "An error occurred while restore CastFuncExpr.Expr")
-		}
+	ctx.WriteKeyWord("CAST")
+	ctx.WritePlain("(")
+	if err := n.Expr.Restore(ctx); err != nil {
+		return errors.Annotatef(err, "An error occurred while restore CastFuncExpr.Expr")
 	}
+	ctx.WriteKeyWord(" AS ")
+	ctx.WriteKeyWord(n.DataType.String())
+	ctx.WritePlain(")")
 	return nil
 }
 
 // Format the ExprNode into a Writer.
 func (n *CastFuncExpr) Format(w io.Writer) {
-	switch n.FunctionType {
-	case CastFunction:
-		fmt.Fprint(w, "CAST(")
-		n.Expr.Format(w)
-		fmt.Fprint(w, " AS ")
-		//n.Tp.FormatAsCastType(w, n.ExplicitCharSet)
-		fmt.Fprint(w, ")")
-	case CastConvertFunction:
-		fmt.Fprint(w, "CONVERT(")
-		n.Expr.Format(w)
-		fmt.Fprint(w, ", ")
-		//n.Tp.FormatAsCastType(w, n.ExplicitCharSet)
-		fmt.Fprint(w, ")")
-	case CastBinaryOperator:
-		fmt.Fprint(w, "BINARY ")
-		n.Expr.Format(w)
-	}
+	fmt.Fprint(w, "CAST(")
+	n.Expr.Format(w)
+	fmt.Fprint(w, " AS ")
+	fmt.Fprint(w, n.DataType.String())
+	fmt.Fprint(w, ")")
 }
 
 // Accept implements Node Accept interface.

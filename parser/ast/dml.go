@@ -181,8 +181,9 @@ func (e *ExpAsVar) Accept(v Visitor) (node Node, ok bool) {
 type ByItem struct {
 	node
 
-	Expr *ExpAsVar
-	Desc bool
+	Expr      *ExpAsVar
+	Desc      bool
+	NullOrder bool
 }
 
 // Restore implements Node interface.
@@ -192,6 +193,8 @@ func (n *ByItem) Restore(ctx *format.RestoreCtx) error {
 	}
 	if n.Desc {
 		ctx.WriteKeyWord(" DESC")
+	} else if !n.NullOrder {
+		ctx.WriteKeyWord(" ASC")
 	}
 	return nil
 }
@@ -667,21 +670,25 @@ func (n *SelectStmt) Restore(ctx *format.RestoreCtx) error {
 		}
 	}
 	if n.GroupBy != nil {
+		ctx.WritePlain(" ")
 		if err := n.GroupBy.Restore(ctx); err != nil {
 			return errors.New("An error occurred while restore SelectStmt.GroupBy")
 		}
 	}
 	if n.Having != nil {
+		ctx.WritePlain(" ")
 		if err := n.Having.Restore(ctx); err != nil {
 			return errors.New("An error occurred while restore SelectStmt.Having")
 		}
 	}
 	if n.OrderBy != nil {
+		ctx.WritePlain(" ")
 		if err := n.OrderBy.Restore(ctx); err != nil {
 			return errors.New("An error occurred while restore SelectStmt.OrderBy")
 		}
 	}
 	if n.Limit != nil {
+		ctx.WritePlain(" ")
 		if err := n.Limit.Restore(ctx); err != nil {
 			return errors.New("An error occurred while restore SelectStmt.Limit")
 		}
@@ -855,7 +862,7 @@ type PathPattern struct {
 	node
 
 	Tp          PathPatternType
-	TopK        uint64
+	TopK        int64
 	Vertices    []*VertexPattern
 	Connections []VertexPairConnection
 }
@@ -1228,8 +1235,8 @@ type PatternQuantifier struct {
 	node
 
 	Tp PatternQuantifierType
-	N  uint64
-	M  uint64
+	N  int64
+	M  int64
 }
 
 func (n *PatternQuantifier) Restore(ctx *format.RestoreCtx) error {
