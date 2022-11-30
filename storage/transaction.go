@@ -29,10 +29,11 @@ import (
 
 // Txn represents a transaction implemented beyond the low-level key/value storage.
 type Txn struct {
-	mu        sync.Mutex // For thread-safe LockKeys function.
+	mu        sync.Mutex
 	vp        mvcc.VersionProvider
 	db        *pebble.DB
 	us        *UnionStore
+	latches   *latch.LatchesScheduler
 	resolver  *resolver.Scheduler
 	valid     bool
 	snapshot  Snapshot
@@ -41,7 +42,6 @@ type Txn struct {
 	commitVer mvcc.Version
 	setCnt    int64
 	lockedCnt int
-	latches   *latch.LatchesScheduler
 }
 
 // Get implements the Transaction interface.
@@ -103,7 +103,7 @@ func (txn *Txn) Reset() {
 	txn.us.MemBuffer().Reset()
 }
 
-func (txn *Txn) Commit(ctx context.Context) error {
+func (txn *Txn) Commit(_ context.Context) error {
 	if !txn.valid {
 		return ErrInvalidTxn
 	}
@@ -133,7 +133,7 @@ func (txn *Txn) Commit(ctx context.Context) error {
 
 	err = committer.execute()
 	if err == nil {
-		lock.SetCommitTS(committer.commitVer)
+		lock.SetCommitVer(committer.commitVer)
 	}
 	return err
 }

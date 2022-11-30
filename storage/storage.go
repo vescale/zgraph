@@ -48,6 +48,8 @@ func (s *mvccStorage) Open(dirname string, options ...Option) error {
 		return err
 	}
 	s.db = db
+	s.resolver.SetDB(db)
+	s.resolver.Run()
 
 	return nil
 }
@@ -66,11 +68,11 @@ func (s *mvccStorage) Begin() (Transaction, error) {
 		vp:        s,
 		db:        s.db,
 		us:        NewUnionStore(snap),
+		latches:   s.latches,
 		resolver:  s.resolver,
 		startTime: time.Now(),
 		startVer:  curVer,
 		snapshot:  snap,
-		latches:   s.latches,
 	}
 	return txn, nil
 }
@@ -85,16 +87,18 @@ func (s *mvccStorage) Snapshot(ver mvcc.Version) (Snapshot, error) {
 }
 
 // CurrentVersion implements the VersionProvider interface.
-// Currently, we use the system time as our startVer, and we cannot tolerant
-// the system time rewind.
+// Currently, we use the system time as our startVer, and the system time
+// rewind cannot be tolerant.
 func (s *mvccStorage) CurrentVersion() (mvcc.Version, error) {
 	return mvcc.Version(time.Now().UnixNano()), nil
 }
 
 // Close implements the Storage interface.
 func (s *mvccStorage) Close() error {
-	if s.db == nil {
-		return nil
+	s.latches.Close()
+	s.resolver.Close()
+	if s.db != nil {
+		return s.db.Close()
 	}
-	return s.db.Close()
+	return nil
 }

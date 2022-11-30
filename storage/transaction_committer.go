@@ -245,7 +245,7 @@ func (c *committer) commit() error {
 	defer batch.Close()
 
 	// Commit primary key first.
-	err := resolver.ResolveKey(c.db, batch, c.primaryKey, c.startVer, c.commitVer)
+	err := resolver.Resolve(c.db, batch, c.primaryKey, c.startVer, c.commitVer)
 	if err != nil {
 		return err
 	}
@@ -273,7 +273,7 @@ func (c *committer) commit() error {
 		copy(cpy, key)
 		remainedKeys = append(remainedKeys, cpy)
 	}
-	c.resolver.SubmitKeys(remainedKeys)
+	c.resolver.Resolve(remainedKeys, c.startVer, c.commitVer, nil)
 
 	return nil
 }

@@ -41,7 +41,7 @@ func TestWithConcurrency(t *testing.T) {
 				if lock.IsStale() {
 					// Should restart the transaction or return error
 				} else {
-					lock.SetCommitTS(getTso())
+					lock.SetCommitVer(getTso())
 					// Do 2pc
 				}
 				sched.UnLock(lock)

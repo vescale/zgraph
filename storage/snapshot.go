@@ -21,14 +21,16 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/storage/kv"
 	"github.com/vescale/zgraph/storage/mvcc"
+	"github.com/vescale/zgraph/storage/resolver"
 )
 
 // KVSnapshot represent the MVCC snapshot of the low-level key/value store.
 // All values read from the KVSnapshot will be checked via mvcc.Version.
 // And only the committed key/values can be retrieved or iterated.
 type KVSnapshot struct {
-	db  *pebble.DB
-	ver mvcc.Version
+	db       *pebble.DB
+	ver      mvcc.Version
+	resolver *resolver.Scheduler
 }
 
 // Get implements the Snapshot interface.

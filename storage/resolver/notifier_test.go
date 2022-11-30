@@ -15,14 +15,27 @@
 package resolver
 
 import (
-	"github.com/vescale/zgraph/storage/kv"
-	"github.com/vescale/zgraph/storage/mvcc"
+	"testing"
+
+	"github.com/pingcap/errors"
+	"github.com/stretchr/testify/assert"
 )
 
-// Task represents a resolve task.
-type Task struct {
-	Key       kv.Key
-	StartVer  mvcc.Version
-	CommitVer mvcc.Version
-	Notifier  Notifier
+func TestNewMultiKeysNotifier(t *testing.T) {
+	assert := assert.New(t)
+
+	n := NewMultiKeysNotifier(5)
+
+	for i := 0; i < 5; i++ {
+		var err error
+		if i%2 == 0 {
+			err = errors.New("mock error")
+		}
+		n.Notify(err)
+	}
+
+	errs := n.Wait()
+	assert.NotNil(errs)
+	assert.Equal(3, len(errs))
+	assert.Error(errs[2], "mock error")
 }

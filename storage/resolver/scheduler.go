@@ -15,18 +15,23 @@
 package resolver
 
 import (
+	"context"
 	"sync"
 
 	"github.com/cockroachdb/pebble"
+	"github.com/twmb/murmur3"
 	"github.com/vescale/zgraph/storage/kv"
+	"github.com/vescale/zgraph/storage/mvcc"
 )
 
-// Scheduler is used to schedule ResolveKey tasks.
+// Scheduler is used to schedule Resolve tasks.
 type Scheduler struct {
 	mu        sync.Mutex
 	db        *pebble.DB
 	size      int
 	resolvers []*resolver
+	wg        sync.WaitGroup
+	cancelFn  context.CancelFunc
 }
 
 func NewScheduler(size int) *Scheduler {
@@ -44,19 +49,36 @@ func (s *Scheduler) SetDB(db *pebble.DB) {
 
 // Run initializes the resolvers and start to accept resolve tasks.
 func (s *Scheduler) Run() {
+	ctx, cancelFn := context.WithCancel(context.Background())
 	for i := 0; i < s.size; i++ {
 		r := newResolver(s.db)
-		go r.run()
 		s.resolvers = append(s.resolvers, r)
+		s.wg.Add(1)
+		go func() {
+			defer s.wg.Done()
+			r.run(ctx)
+		}()
+	}
+	s.cancelFn = cancelFn
+}
+
+// Resolve submits a bundle of keys to resolve
+func (s *Scheduler) Resolve(keys []kv.Key, startVer, commitVer mvcc.Version, notifier Notifier) {
+	if len(keys) == 0 {
+		return
+	}
+	for _, key := range keys {
+		idx := int(murmur3.Sum32(key)) % s.size
+		s.resolvers[idx].push(Task{
+			Key:       key,
+			StartVer:  startVer,
+			CommitVer: commitVer,
+			Notifier:  notifier,
+		})
 	}
 }
 
-// SubmitKey submits a key to resolve
-func (s *Scheduler) SubmitKey(key kv.Key) {
-
-}
-
-// SubmitKeys submits a bundle of keys to resolve
-func (s *Scheduler) SubmitKeys(keys []kv.Key) {
-
+func (s *Scheduler) Close() {
+	s.cancelFn()
+	s.wg.Wait()
 }

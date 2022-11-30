@@ -20,13 +20,14 @@ import (
 	"github.com/vescale/zgraph/storage/mvcc"
 )
 
-// ResolveKey resolve the specified key.
-func ResolveKey(db *pebble.DB, batch *pebble.Batch, key kv.Key, startVer, commitVer mvcc.Version) error {
+// Resolve resolves the specified key.
+func Resolve(db *pebble.DB, batch *pebble.Batch, key kv.Key, startVer, commitVer mvcc.Version) error {
 	opt := pebble.IterOptions{LowerBound: mvcc.Encode(key, mvcc.LockVer)}
 	iter := db.NewIter(&opt)
 	lock := mvcc.LockDecoder{ExpectKey: key}
 	defer iter.Close()
 
+	iter.First()
 	foundLock, err := lock.Decode(iter)
 	if err != nil {
 		return err

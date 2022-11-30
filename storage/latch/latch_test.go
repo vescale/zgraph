@@ -54,7 +54,7 @@ func TestWakeUp(t *testing.T) {
 	// A release lock, and get wakeup list.
 	commitTSA := getTso()
 	wakeupList := make([]*Lock, 0)
-	lockA.SetCommitTS(commitTSA)
+	lockA.SetCommitVer(commitTSA)
 	wakeupList = latches.release(lockA, wakeupList)
 	assert.Equal(wakeupList[0].startVer, startVerB)
 
@@ -91,7 +91,7 @@ func TestFirstAcquireFailedWithStale(t *testing.T) {
 	// release lockA
 	commitVerA := getTso()
 	wakeupList := make([]*Lock, 0)
-	lockA.SetCommitTS(commitVerA)
+	lockA.SetCommitVer(commitVerA)
 	latches.release(lockA, wakeupList)
 
 	assert.Greater(commitVerA, startVerB)
@@ -113,7 +113,7 @@ func TestRecycle(t *testing.T) {
 	})
 	assert.Equal(latches.acquire(lock), acquireSuccess)
 	assert.Equal(latches.acquire(lock1), acquireLocked)
-	lock.SetCommitTS(startVer + 1)
+	lock.SetCommitVer(startVer + 1)
 	var wakeupList []*Lock
 	latches.release(lock, wakeupList)
 	// Release lock will grant latch to lock1 automatically,

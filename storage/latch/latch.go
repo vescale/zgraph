@@ -54,8 +54,8 @@ type Lock struct {
 	acquiredCount int
 	// startVer represents current transaction's.
 	startVer mvcc.Version
-	// commitTS represents current transaction's.
-	commitTS mvcc.Version
+	// commitVer represents current transaction's.
+	commitVer mvcc.Version
 
 	wg      sync.WaitGroup
 	isStale bool
@@ -85,9 +85,9 @@ func (l *Lock) isLocked() bool {
 	return !l.isStale && l.acquiredCount != len(l.requiredSlots)
 }
 
-// SetCommitTS sets the lock's commitTS.
-func (l *Lock) SetCommitTS(commitTS mvcc.Version) {
-	l.commitTS = commitTS
+// SetCommitVer sets the lock's commitVer.
+func (l *Lock) SetCommitVer(commitVer mvcc.Version) {
+	l.commitVer = commitVer
 }
 
 // Latches which are used for concurrency control.
@@ -183,7 +183,7 @@ func (latches *Latches) releaseSlot(lock *Lock) (nextLock *Lock) {
 	if find.value != lock {
 		panic("releaseSlot wrong")
 	}
-	find.maxCommitTS = mvcc.Max(find.maxCommitTS, lock.commitTS)
+	find.maxCommitTS = mvcc.Max(find.maxCommitTS, lock.commitVer)
 	find.value = nil
 	// Make a copy of the key, so latch does not reference the transaction's memory.
 	// If we do not do it, transaction memory can't be recycle by GC and there will

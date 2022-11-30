@@ -61,11 +61,11 @@ func (scheduler *LatchesScheduler) run() {
 			scheduler.wakeup(wakeupList)
 		}
 
-		if lock.commitTS > lock.startVer {
-			currentTS := lock.commitTS
+		if lock.commitVer > lock.startVer {
+			currentTS := lock.commitVer
 			elapsed := tsoSub(currentTS, scheduler.lastRecycleTime)
 			if elapsed > checkInterval || counter > checkCounter {
-				go scheduler.latches.recycle(lock.commitTS)
+				go scheduler.latches.recycle(lock.commitVer)
 				scheduler.lastRecycleTime = currentTS
 				counter = 0
 			}
