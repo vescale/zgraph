@@ -178,9 +178,9 @@ func (mh *marshalHelper) ReadSlice(r *bytes.Buffer, slice *[]byte) {
 	*slice = data
 }
 
-// lockErr returns LockedError.
+// LockErr returns LockedError.
 // Note that parameter key is raw key, while key in LockedError is mvcc key.
-func (l *Lock) lockErr(key []byte) error {
+func (l *Lock) LockErr(key []byte) error {
 	return &LockedError{
 		Key:      Encode(key, LockVer),
 		Primary:  l.Primary,
@@ -204,7 +204,7 @@ func (l *Lock) Check(ver Version, key []byte, resolvedLocks []Version) (Version,
 			return ver, nil
 		}
 	}
-	return 0, l.lockErr(key)
+	return 0, l.LockErr(key)
 }
 
 func (e *Entry) Less(than btree.Item) bool {

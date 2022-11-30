@@ -20,17 +20,22 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cockroachdb/pebble"
 	"github.com/vescale/zgraph/storage/kv"
 	"github.com/vescale/zgraph/storage/latch"
 	"github.com/vescale/zgraph/storage/mvcc"
+	"github.com/vescale/zgraph/storage/resolver"
 )
 
 // Txn represents a transaction implemented beyond the low-level key/value storage.
 type Txn struct {
 	mu        sync.Mutex // For thread-safe LockKeys function.
+	vp        mvcc.VersionProvider
+	db        *pebble.DB
+	us        *UnionStore
+	resolver  *resolver.Scheduler
 	valid     bool
 	snapshot  Snapshot
-	us        *UnionStore
 	startTime time.Time
 	startVer  mvcc.Version
 	commitVer mvcc.Version
@@ -109,7 +114,13 @@ func (txn *Txn) Commit(ctx context.Context) error {
 		return ErrInvalidStartVer
 	}
 
-	committer := &committer{memDB: txn.us.MemBuffer(), startVer: txn.startVer}
+	committer := &committer{
+		db:       txn.db,
+		vp:       txn.vp,
+		memDB:    txn.us.MemBuffer(),
+		resolver: txn.resolver,
+		startVer: txn.startVer,
+	}
 	err := committer.init(txn.startTime)
 	if err != nil {
 		return err

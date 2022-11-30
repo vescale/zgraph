@@ -13,3 +13,52 @@
 // limitations under the License.
 
 package resolver
+
+import (
+	"github.com/cockroachdb/pebble"
+)
+
+type resolver struct {
+	db *pebble.DB
+	ch chan Task
+}
+
+func newResolver(db *pebble.DB) *resolver {
+	return &resolver{
+		db: db,
+	}
+}
+
+func (r *resolver) run() {
+	for task := range r.ch {
+		c := len(r.ch)
+		tasks := make([]Task, 0, c+1)
+		tasks = append(tasks, task)
+		if c > 0 {
+			for i := 0; i < c; i++ {
+				tasks = append(tasks, <-r.ch)
+			}
+		}
+		r.resolve(tasks)
+	}
+}
+
+func (r *resolver) resolve(tasks []Task) {
+	batch := r.db.NewBatch()
+	for _, task := range tasks {
+		err := ResolveKey(r.db, batch, task.Key, task.StartVer, task.CommitVer)
+		if err != nil {
+			// TODO: handle error
+		}
+	}
+	err := batch.Commit(nil)
+	if err != nil {
+		// TODO: handle error
+	}
+}
+
+func (r *resolver) push(tasks ...Task) {
+	for _, t := range tasks {
+		r.ch <- t
+	}
+}

@@ -25,6 +25,7 @@ import (
 	"unsafe"
 
 	"github.com/vescale/zgraph/storage/kv"
+	"github.com/vescale/zgraph/storage/mvcc"
 )
 
 var tombstone = []byte{}
@@ -34,10 +35,11 @@ func IsTombstone(val []byte) bool { return len(val) == 0 }
 
 // MemKeyHandle represents a pointer for key in MemBuffer.
 type MemKeyHandle struct {
-	// Opaque user data
-	UserData uint16
-	idx      uint16
-	off      uint32
+	idx uint16
+	off uint32
+	// Fields are used for 2pc prepare stage.
+	op    mvcc.Op
+	flags kv.KeyFlags
 }
 
 func (h MemKeyHandle) toAddr() memdbArenaAddr {

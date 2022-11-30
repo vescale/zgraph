@@ -20,17 +20,20 @@ import (
 	"github.com/cockroachdb/pebble"
 	"github.com/vescale/zgraph/storage/latch"
 	"github.com/vescale/zgraph/storage/mvcc"
+	"github.com/vescale/zgraph/storage/resolver"
 )
 
 type mvccStorage struct {
-	db      *pebble.DB
-	latches *latch.LatchesScheduler
+	db       *pebble.DB
+	latches  *latch.LatchesScheduler
+	resolver *resolver.Scheduler
 }
 
 // New returns a new storage instance.
 func New() Storage {
 	return &mvccStorage{
-		latches: latch.NewScheduler(8),
+		latches:  latch.NewScheduler(8),
+		resolver: resolver.NewScheduler(4),
 	}
 }
 
@@ -60,9 +63,12 @@ func (s *mvccStorage) Begin() (Transaction, error) {
 		return nil, err
 	}
 	txn := &Txn{
+		vp:        s,
+		db:        s.db,
+		us:        NewUnionStore(snap),
+		resolver:  s.resolver,
 		startTime: time.Now(),
 		startVer:  curVer,
-		us:        NewUnionStore(snap),
 		snapshot:  snap,
 		latches:   s.latches,
 	}

@@ -17,6 +17,7 @@ package mvcc
 import (
 	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/codec"
+	"github.com/vescale/zgraph/storage/kv"
 )
 
 var (
@@ -25,13 +26,13 @@ var (
 )
 
 // Encode encodes a user defined key with timestamp.
-func Encode(key []byte, ver Version) Key {
+func Encode(key kv.Key, ver Version) Key {
 	return codec.EncodeUintDesc(codec.EncodeBytes(nil, key), uint64(ver))
 }
 
 // Decode parses the origin key and version of an encoded key.
 // Will return the original key if the encoded key is a meta key.
-func Decode(encodedKey []byte) ([]byte, Version, error) {
+func Decode(encodedKey []byte) (kv.Key, Version, error) {
 	// Skip DataPrefix
 	remainBytes, key, err := codec.DecodeBytes(encodedKey, nil)
 	if err != nil {

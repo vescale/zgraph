@@ -5,19 +5,25 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cockroachdb/pebble"
 	"github.com/vescale/zgraph/storage/kv"
 	"github.com/vescale/zgraph/storage/mvcc"
+	"github.com/vescale/zgraph/storage/resolver"
 	"go.uber.org/atomic"
 )
 
 // committer represents the transaction 2 phase committer. It will calculate the
 // mutations and apply to the low-level storage.
 type committer struct {
+	vp         mvcc.VersionProvider
+	db         *pebble.DB
 	memDB      *MemDB
-	primaryKey kv.Key
-	lockTTL    uint64
+	resolver   *resolver.Scheduler
 	startVer   mvcc.Version
 	commitVer  mvcc.Version
+	primaryIdx int
+	primaryKey kv.Key
+	lockTTL    uint64
 
 	// The format to put to the UserData of the handles:
 	// MSB									                                                                  LSB
@@ -87,26 +93,16 @@ func (c *committer) init(startTime time.Time) error {
 				c.delCnt++
 			}
 
-			// Set the mutation flags.
-			aux := uint16(op) << 4
-			if flags.HasAssertExist() {
-				aux |= 1 << 1
-			}
-			if flags.HasAssertNotExist() {
-				aux |= 1 << 2
-			}
-			if flags.HasNeedConstraintCheckInPrewrite() {
-				aux |= 1 << 3
-			}
-
 			handle := it.Handle()
-			handle.UserData = aux
+			handle.op = op
+			handle.flags = flags
 			c.handles = append(c.handles, handle)
 			c.size += len(key) + len(value)
 		}
 
 		// Choose the first valid key as the primary key of the current transaction.
 		if len(c.primaryKey) == 0 && op != mvcc.Op_CheckNotExists {
+			c.primaryIdx = len(c.handles) - 1
 			c.primaryKey = key
 		}
 	}
@@ -117,13 +113,6 @@ func (c *committer) init(startTime time.Time) error {
 	c.lockTTL = txnLockTTL(startTime, c.size)
 
 	return nil
-}
-
-func (c *committer) primary() kv.Key {
-	if len(c.primaryKey) > 0 {
-		return c.primaryKey
-	}
-	return c.memDB.GetKeyByHandle(c.handles[0])
 }
 
 func (c *committer) length() int {
@@ -141,16 +130,151 @@ func (c *committer) keys() []kv.Key {
 
 // execute commits the mutations to the low-level key/value storage engine.
 func (c *committer) execute() error {
-	panic("implement me!")
+	errs := c.prepare()
+	if len(errs) > 0 {
+		// TODO: handle errors carefully.
+		for _, err := range errs {
+			switch err.(type) {
+			case *mvcc.LockedError:
+			case *ErrKeyAlreadyExist:
+			default:
+				// TODO: currently we return the first unknown error.
+				return err
+			}
+		}
+	}
+
+	commitVer, err := c.vp.CurrentVersion()
+	if err != nil {
+		return err
+	}
+	c.commitVer = commitVer
+
+	return c.commit()
 }
 
 // prepare implements the first stage of 2PC transaction model.
-func (c *committer) prepare() error {
-	return nil
+func (c *committer) prepare() []error {
+	var (
+		resolvedLocks []mvcc.Version // TODO: support resolved locks
+		errs          []error
+		batch         = c.db.NewBatch()
+		primaryKey    = c.primaryKey
+		startVer      = c.startVer
+	)
+	defer batch.Close()
+
+	for _, h := range c.handles {
+		op := h.op
+		key := c.memDB.GetKeyByHandle(h)
+		enc := mvcc.Encode(key, mvcc.LockVer)
+		opt := pebble.IterOptions{
+			LowerBound: enc,
+		}
+		if op == mvcc.Op_Insert || op == mvcc.Op_CheckNotExists {
+			iter := c.db.NewIter(&opt)
+			val, err := getValue(iter, key, startVer, resolvedLocks)
+			_ = iter.Close()
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+			if val != nil {
+				err = &ErrKeyAlreadyExist{
+					Key: key,
+				}
+				errs = append(errs, err)
+				continue
+			}
+		}
+		if op == mvcc.Op_CheckNotExists {
+			continue
+		}
+
+		// TODO: optimize the logical and avoid decoding lock twice.
+		iter := c.db.NewIter(&opt)
+		lock := mvcc.LockDecoder{ExpectKey: key}
+		foundLock, err := lock.Decode(iter)
+		_ = iter.Close()
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+
+		// There is a lock exists.
+		if foundLock {
+			errs = append(errs, lock.Lock.LockErr(key))
+			continue
+		}
+
+		// Append the current row key into the write batch.
+		if op == mvcc.Op_Insert {
+			op = mvcc.Op_Put
+		}
+		val, _ := c.memDB.GetValueByHandle(h)
+		l := mvcc.Lock{
+			StartVer: startVer,
+			Primary:  primaryKey,
+			Value:    val,
+			Op:       op,
+			TTL:      c.lockTTL,
+		}
+		writeVal, err := l.MarshalBinary()
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		err = batch.Set(enc, writeVal, nil)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+	}
+
+	// Commit the current write batch into the low-level storage engine.
+	if err := batch.Commit(nil); err != nil {
+		return []error{err}
+	}
+
+	return errs
 }
 
 // commit implements the second stage of 2PC transaction model.
 func (c *committer) commit() error {
+	batch := c.db.NewBatch()
+	defer batch.Close()
+
+	// Commit primary key first.
+	err := resolver.ResolveKey(c.db, batch, c.primaryKey, c.startVer, c.commitVer)
+	if err != nil {
+		return err
+	}
+	err = batch.Commit(nil)
+	if err != nil {
+		return err
+	}
+
+	// The remained keys submit to resolver to resolve them asynchronously.
+	var remainedKeys []kv.Key
+	for i, h := range c.handles {
+		// The primary key had been committed.
+		if i == c.primaryIdx {
+			continue
+		}
+		if h.op == mvcc.Op_CheckNotExists {
+			continue
+		}
+
+		// Note: the keys stored in MemDB are reference to MemDB and its lifetime
+		// bound to the MemDB. We will release MemDB instance after the transaction
+		// committed. So we need to copy the keys, then submit them to the resolver.
+		key := c.memDB.GetKeyByHandle(h)
+		cpy := make(kv.Key, len(key))
+		copy(cpy, key)
+		remainedKeys = append(remainedKeys, cpy)
+	}
+	c.resolver.SubmitKeys(remainedKeys)
+
 	return nil
 }
 
@@ -160,7 +284,7 @@ const bytesPerMiB = 1024 * 1024
 var ttlFactor = 6000
 
 // By default, locks after 3000ms is considered unusual (the client created the
-// lock might be dead). Other client may cleanup this kind of lock.
+// lock might be dead). Other client may clean up this kind of lock.
 // For locks created recently, we will do backoff and retry.
 var defaultLockTTL uint64 = 3000
 

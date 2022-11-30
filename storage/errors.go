@@ -59,3 +59,13 @@ func (e *ErrTxnTooLarge) Error() string {
 func IsErrNotFound(err error) bool {
 	return errors.Cause(err) == ErrNotExist
 }
+
+// ErrKeyAlreadyExist is returned when key exists but this key has a constraint that
+// it should not exist. Client should return duplicated entry error.
+type ErrKeyAlreadyExist struct {
+	Key []byte
+}
+
+func (e *ErrKeyAlreadyExist) Error() string {
+	return fmt.Sprintf("key already exist, key: %q", e.Key)
+}
