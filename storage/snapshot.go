@@ -31,11 +31,12 @@ type KVSnapshot struct {
 	db       *pebble.DB
 	ver      mvcc.Version
 	resolver *resolver.Scheduler
+	resolved []mvcc.Version
 }
 
 // Get implements the Snapshot interface.
 func (s *KVSnapshot) Get(_ context.Context, key kv.Key) ([]byte, error) {
-	return s.get(key, nil)
+	return s.get(key)
 }
 
 // Iter implements the Snapshot interface.
@@ -123,7 +124,7 @@ func (s *KVSnapshot) IterReverse(lowerBound kv.Key, upperBound kv.Key) (Iterator
 func (s *KVSnapshot) BatchGet(_ context.Context, keys []kv.Key) (map[string][]byte, error) {
 	results := map[string][]byte{}
 	for _, key := range keys {
-		value, err := s.get(key, nil)
+		value, err := s.get(key)
 		if err != nil {
 			// TODO: backoff if locked keys encountered.
 			//locked, ok := err.(*LockedError)
@@ -140,7 +141,7 @@ func (s *KVSnapshot) BatchGet(_ context.Context, keys []kv.Key) (map[string][]by
 	return results, nil
 }
 
-func (s *KVSnapshot) get(key kv.Key, resolvedLocks []mvcc.Version) ([]byte, error) {
+func (s *KVSnapshot) get(key kv.Key) ([]byte, error) {
 	iter := s.db.NewIter(&pebble.IterOptions{LowerBound: mvcc.Encode(key, mvcc.LockVer)})
 	defer iter.Close()
 
@@ -149,7 +150,11 @@ func (s *KVSnapshot) get(key kv.Key, resolvedLocks []mvcc.Version) ([]byte, erro
 	if ok := iter.First(); !ok {
 		return nil, errors.New("invalid key")
 	}
-	return getValue(iter, key, s.ver, resolvedLocks)
+
+	val, err := getValue(iter, key, s.ver, s.resolved)
+	if lock, ok := err.(*mvcc.LockedError); ok {
+
+	}
 }
 
 func getValue(iter *pebble.Iterator, key kv.Key, startVer mvcc.Version, resolvedLocks []mvcc.Version) ([]byte, error) {

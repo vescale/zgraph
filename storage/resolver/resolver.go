@@ -60,7 +60,12 @@ func (r *resolver) run(ctx context.Context) {
 func (r *resolver) resolve(tasks []Task) {
 	batch := r.db.NewBatch()
 	for _, task := range tasks {
-		err := Resolve(r.db, batch, task.Key, task.StartVer, task.CommitVer)
+		var err error
+		if task.CommitVer > 0 {
+			err = Resolve(r.db, batch, task.Key, task.StartVer, task.CommitVer)
+		} else {
+			err = Rollback(r.db, batch, task.Key, task.StartVer)
+		}
 		if task.Notifier != nil {
 			task.Notifier.Notify(err)
 		}

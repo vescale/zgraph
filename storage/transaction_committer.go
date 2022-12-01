@@ -173,6 +173,7 @@ func (c *committer) prepare() []error {
 		}
 		if op == mvcc.Op_Insert || op == mvcc.Op_CheckNotExists {
 			iter := c.db.NewIter(&opt)
+			iter.First()
 			val, err := getValue(iter, key, startVer, resolvedLocks)
 			_ = iter.Close()
 			if err != nil {
@@ -193,8 +194,9 @@ func (c *committer) prepare() []error {
 
 		// TODO: optimize the logical and avoid decoding lock twice.
 		iter := c.db.NewIter(&opt)
-		lock := mvcc.LockDecoder{ExpectKey: key}
-		foundLock, err := lock.Decode(iter)
+		iter.First()
+		decoder := mvcc.LockDecoder{ExpectKey: key}
+		exists, err := decoder.Decode(iter)
 		_ = iter.Close()
 		if err != nil {
 			errs = append(errs, err)
@@ -202,8 +204,8 @@ func (c *committer) prepare() []error {
 		}
 
 		// There is a lock exists.
-		if foundLock {
-			errs = append(errs, lock.Lock.LockErr(key))
+		if exists {
+			errs = append(errs, decoder.Lock.LockErr(key))
 			continue
 		}
 

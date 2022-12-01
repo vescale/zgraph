@@ -24,15 +24,15 @@ import (
 func Resolve(db *pebble.DB, batch *pebble.Batch, key kv.Key, startVer, commitVer mvcc.Version) error {
 	opt := pebble.IterOptions{LowerBound: mvcc.Encode(key, mvcc.LockVer)}
 	iter := db.NewIter(&opt)
-	lock := mvcc.LockDecoder{ExpectKey: key}
+	iter.First()
 	defer iter.Close()
 
-	iter.First()
-	foundLock, err := lock.Decode(iter)
+	decoder := mvcc.LockDecoder{ExpectKey: key}
+	exists, err := decoder.Decode(iter)
 	if err != nil {
 		return err
 	}
-	if !foundLock || lock.Lock.StartVer != startVer {
+	if !exists || decoder.Lock.StartVer != startVer {
 		// If the lock of this transaction is not found, or the lock is replaced by
 		// another transaction, check commit information of this transaction.
 		c, ok, err1 := getTxnCommitInfo(iter, key, startVer)
@@ -49,7 +49,7 @@ func Resolve(db *pebble.DB, batch *pebble.Batch, key kv.Key, startVer, commitVer
 
 	// Delete lock and construct the value entry
 	var valueType mvcc.ValueType
-	switch lock.Lock.Op {
+	switch decoder.Lock.Op {
 	case mvcc.Op_Put:
 		valueType = mvcc.ValueTypePut
 	case mvcc.Op_Lock:
@@ -62,7 +62,7 @@ func Resolve(db *pebble.DB, batch *pebble.Batch, key kv.Key, startVer, commitVer
 		Type:      valueType,
 		StartVer:  startVer,
 		CommitVer: commitVer,
-		Value:     lock.Lock.Value,
+		Value:     decoder.Lock.Value,
 	}
 	writeKey := mvcc.Encode(key, commitVer)
 	writeValue, err := value.MarshalBinary()
@@ -79,6 +79,61 @@ func Resolve(db *pebble.DB, batch *pebble.Batch, key kv.Key, startVer, commitVer
 	}
 
 	return nil
+}
+
+func Rollback(db *pebble.DB, batch *pebble.Batch, key kv.Key, startVer mvcc.Version) error {
+	opt := pebble.IterOptions{LowerBound: mvcc.Encode(key, mvcc.LockVer)}
+	iter := db.NewIter(&opt)
+	iter.First()
+	defer iter.Close()
+
+	if iter.Valid() {
+		decoder := mvcc.LockDecoder{ExpectKey: key}
+		exists, err := decoder.Decode(iter)
+		if err != nil {
+			return err
+		}
+		// If current transaction's lock exist.
+		if exists && decoder.Lock.StartVer == startVer {
+			err := writeRollback(batch, key, startVer)
+			if err != nil {
+				return err
+			}
+			return batch.Delete(mvcc.Encode(key, mvcc.LockVer), nil)
+		}
+
+		// If current transaction's lock not exist.
+		// If commit info of current transaction exist.
+		c, exists, err := getTxnCommitInfo(iter, key, startVer)
+		if err != nil {
+			return err
+		}
+		if exists {
+			// If current transaction is already committed.
+			if c.Type != mvcc.ValueTypeRollback {
+				return ErrAlreadyCommitted(c.CommitVer)
+			}
+			// If current transaction is already rollback.
+			return nil
+		}
+	}
+
+	// If current transaction is not prewritted before.
+	return writeRollback(batch, key, startVer)
+}
+
+func writeRollback(batch *pebble.Batch, key []byte, startVer mvcc.Version) error {
+	tomb := mvcc.Value{
+		Type:      mvcc.ValueTypeRollback,
+		StartVer:  startVer,
+		CommitVer: startVer,
+	}
+	writeKey := mvcc.Encode(key, startVer)
+	writeValue, err := tomb.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	return batch.Set(writeKey, writeValue, nil)
 }
 
 func getTxnCommitInfo(iter *pebble.Iterator, expectKey []byte, startVer mvcc.Version) (mvcc.Value, bool, error) {

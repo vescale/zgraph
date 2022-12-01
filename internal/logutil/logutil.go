@@ -14,9 +14,16 @@
 
 package logutil
 
+import (
+	"fmt"
+	"log"
+)
+
 var g Logger = &defaultLogger{}
 
 type Logger interface {
+	Infof(msg string, args ...interface{})
+	Fatalf(msg string, args ...interface{})
 }
 
 // SetLogger replaces the default logger
@@ -29,5 +36,12 @@ func L() Logger {
 	return g
 }
 
-type defaultLogger struct {
+type defaultLogger struct{}
+
+func (defaultLogger) Infof(msg string, args ...interface{}) {
+	_ = log.Output(2, fmt.Sprintf(msg, args...))
+}
+
+func (defaultLogger) Fatalf(msg string, args ...interface{}) {
+	_ = log.Output(2, fmt.Sprintf(msg, args...))
 }
