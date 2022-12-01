@@ -14,13 +14,17 @@
 
 package mvcc
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/vescale/zgraph/storage/kv"
+)
 
 // LockedError is returned when trying to Read/Write on a locked key. Caller should
 // backoff or cleanup the lock then retry.
 type LockedError struct {
-	Key      Key
-	Primary  []byte
+	Key      kv.Key
+	Primary  kv.Key
 	StartVer Version
 	TTL      uint64
 }

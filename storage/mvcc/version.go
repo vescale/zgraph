@@ -32,7 +32,7 @@ import "math"
 
 // VersionProvider provides increasing IDs.
 type VersionProvider interface {
-	CurrentVersion() (Version, error)
+	CurrentVersion() Version
 }
 
 // Version is the wrapper of KV's version.

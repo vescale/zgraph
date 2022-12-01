@@ -136,7 +136,7 @@ func writeRollback(batch *pebble.Batch, key []byte, startVer mvcc.Version) error
 	return batch.Set(writeKey, writeValue, nil)
 }
 
-func getTxnCommitInfo(iter *pebble.Iterator, expectKey []byte, startVer mvcc.Version) (mvcc.Value, bool, error) {
+func getTxnCommitInfo(iter *pebble.Iterator, expectKey kv.Key, startVer mvcc.Version) (mvcc.Value, bool, error) {
 	for iter.Valid() {
 		dec := mvcc.ValueDecoder{
 			ExpectKey: expectKey,

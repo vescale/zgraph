@@ -16,9 +16,10 @@ package storage
 
 import (
 	"context"
+	"sync"
 
+	"github.com/cenkalti/backoff"
 	"github.com/cockroachdb/pebble"
-	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/storage/kv"
 	"github.com/vescale/zgraph/storage/mvcc"
 	"github.com/vescale/zgraph/storage/resolver"
@@ -29,14 +30,60 @@ import (
 // And only the committed key/values can be retrieved or iterated.
 type KVSnapshot struct {
 	db       *pebble.DB
+	vp       mvcc.VersionProvider
 	ver      mvcc.Version
 	resolver *resolver.Scheduler
-	resolved []mvcc.Version
+
+	// The KVSnapshot instance may be accessed concurrently.
+	mu struct {
+		sync.RWMutex
+		resolved []mvcc.Version
+	}
 }
 
 // Get implements the Snapshot interface.
 func (s *KVSnapshot) Get(_ context.Context, key kv.Key) ([]byte, error) {
-	return s.get(key)
+	var val []byte
+	err := backoff.Retry(func() error {
+		v, err := s.get(key)
+		if err != nil {
+			lockedErr, ok := err.(*mvcc.LockedError)
+			if !ok {
+				return &backoff.PermanentError{Err: err}
+			}
+
+			// Try to resolve lock
+			status, err := resolver.CheckTxnStatus(s.db, s.vp, lockedErr.Primary, lockedErr.StartVer)
+			if err != nil {
+				return &backoff.PermanentError{Err: err}
+			}
+			switch status.Action {
+			case resolver.TxnActionNone:
+				// Transaction is still alive and try it letter.
+				return resolver.ErrRetryable("txn still alive")
+
+			case resolver.TxnActionTTLExpireRollback,
+				resolver.TxnActionLockNotExistRollback:
+				// Resolve the current key.
+				s.resolver.Resolve([]kv.Key{key}, lockedErr.StartVer, 0, nil)
+				// Put the resolve transaction into the resolved list to make the
+				// subsequent request bypass them.
+				s.mu.Lock()
+				s.mu.resolved = append(s.mu.resolved, lockedErr.StartVer)
+				s.mu.Unlock()
+
+			default:
+				// TxnActionLockNotExistDoNothing
+				// Transaction committed: we try to resolve the current key and backoff.
+				s.resolver.Resolve([]kv.Key{key}, lockedErr.StartVer, status.CommitVer, nil)
+				return resolver.ErrRetryable("resolving committed transaction")
+			}
+		}
+		val = v
+		return nil
+	}, expoBackoff())
+
+	return val, err
 }
 
 // Iter implements the Snapshot interface.
@@ -142,19 +189,16 @@ func (s *KVSnapshot) BatchGet(_ context.Context, keys []kv.Key) (map[string][]by
 }
 
 func (s *KVSnapshot) get(key kv.Key) ([]byte, error) {
-	iter := s.db.NewIter(&pebble.IterOptions{LowerBound: mvcc.Encode(key, mvcc.LockVer)})
+	opt := pebble.IterOptions{LowerBound: mvcc.Encode(key, mvcc.LockVer)}
+	iter := s.db.NewIter(&opt)
+	iter.First()
 	defer iter.Close()
 
-	// NewIter returns an SnapshotIter that is unpositioned (Iterator.Valid() will
-	// return false). We must to call First or Last to position the SnapshotIter.
-	if ok := iter.First(); !ok {
-		return nil, errors.New("invalid key")
-	}
+	s.mu.RLock()
+	resolved := s.mu.resolved
+	s.mu.RUnlock()
 
-	val, err := getValue(iter, key, s.ver, s.resolved)
-	if lock, ok := err.(*mvcc.LockedError); ok {
-
-	}
+	return getValue(iter, key, s.ver, resolved)
 }
 
 func getValue(iter *pebble.Iterator, key kv.Key, startVer mvcc.Version, resolvedLocks []mvcc.Version) ([]byte, error) {

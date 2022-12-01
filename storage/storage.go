@@ -62,10 +62,7 @@ func (s *mvccStorage) Open(dirname string, options ...Option) error {
 
 // Begin implements the Storage interface
 func (s *mvccStorage) Begin() (Transaction, error) {
-	curVer, err := s.CurrentVersion()
-	if err != nil {
-		return nil, err
-	}
+	curVer := s.CurrentVersion()
 	snap, err := s.Snapshot(curVer)
 	if err != nil {
 		return nil, err
@@ -87,6 +84,7 @@ func (s *mvccStorage) Begin() (Transaction, error) {
 func (s *mvccStorage) Snapshot(ver mvcc.Version) (Snapshot, error) {
 	snap := &KVSnapshot{
 		db:  s.db,
+		vp:  s,
 		ver: ver,
 	}
 	return snap, nil
@@ -95,8 +93,8 @@ func (s *mvccStorage) Snapshot(ver mvcc.Version) (Snapshot, error) {
 // CurrentVersion implements the VersionProvider interface.
 // Currently, we use the system time as our startVer, and the system time
 // rewind cannot be tolerant.
-func (s *mvccStorage) CurrentVersion() (mvcc.Version, error) {
-	return mvcc.Version(time.Now().UnixNano()), nil
+func (s *mvccStorage) CurrentVersion() mvcc.Version {
+	return mvcc.Version(time.Now().UnixNano())
 }
 
 // Close implements the Storage interface.

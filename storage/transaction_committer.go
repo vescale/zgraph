@@ -24,12 +24,7 @@ type committer struct {
 	primaryIdx int
 	primaryKey kv.Key
 	lockTTL    uint64
-
-	// The format to put to the UserData of the handles:
-	// MSB									                                                                  LSB
-	// [12 bits: Op]
-	// [1 bit: NeedConstraintCheckInPrewrite][1 bit: assertNotExist][1 bit: assertExist][1 bit: isPessimisticLock]
-	handles []MemKeyHandle
+	handles    []MemKeyHandle
 
 	// counter of mutations
 	size, putCnt, delCnt, lockCnt, checkCnt int
@@ -144,11 +139,8 @@ func (c *committer) execute() error {
 		}
 	}
 
-	commitVer, err := c.vp.CurrentVersion()
-	if err != nil {
-		return err
-	}
-	c.commitVer = commitVer
+	// Retrieve the latest version as the commit version of the current transaction.
+	c.commitVer = c.vp.CurrentVersion()
 
 	return c.commit()
 }

@@ -25,6 +25,11 @@ var (
 	ErrInvalidEncodedKey = errors.New("invalid encoded key")
 )
 
+// LockKey returns the encoded lock key of specified raw key.
+func LockKey(key kv.Key) Key {
+	return Encode(key, LockVer)
+}
+
 // Encode encodes a user defined key with timestamp.
 func Encode(key kv.Key, ver Version) Key {
 	return codec.EncodeUintDesc(codec.EncodeBytes(nil, key), uint64(ver))
