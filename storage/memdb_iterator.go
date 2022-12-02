@@ -36,7 +36,7 @@ type MemDBIter struct {
 // If such entry is not found, it returns an invalid Iterator with no error.
 // It yields only keys that < upperBound. If upperBound is nil, it means the upperBound is unbounded.
 // The Iterator must be Closed after use.
-func (db *MemDB) Iter(lowerBound, upperBound kv.Key) (Iterator, error) {
+func (db *MemDB) Iter(lowerBound, upperBound kv.Key) (kv.Iterator, error) {
 	i := &MemDBIter{
 		db:    db,
 		start: lowerBound,
@@ -49,7 +49,7 @@ func (db *MemDB) Iter(lowerBound, upperBound kv.Key) (Iterator, error) {
 // IterReverse creates a reversed Iterator positioned on the first entry which key is less than k.
 // The returned SnapshotIter will iterate from greater key to smaller key.
 // If k is nil, the returned SnapshotIter will be positioned at the last key.
-func (db *MemDB) IterReverse(lowerBound, upperBound kv.Key) (Iterator, error) {
+func (db *MemDB) IterReverse(lowerBound, upperBound kv.Key) (kv.Iterator, error) {
 	i := &MemDBIter{
 		db:      db,
 		start:   lowerBound,

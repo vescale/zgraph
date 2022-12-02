@@ -21,7 +21,7 @@ import (
 )
 
 // Resolve resolves the specified key.
-func Resolve(db *pebble.DB, batch *pebble.Batch, key kv.Key, startVer, commitVer mvcc.Version) error {
+func Resolve(db *pebble.DB, batch *pebble.Batch, key kv.Key, startVer, commitVer kv.Version) error {
 	opt := pebble.IterOptions{LowerBound: mvcc.Encode(key, mvcc.LockVer)}
 	iter := db.NewIter(&opt)
 	iter.First()
@@ -81,7 +81,7 @@ func Resolve(db *pebble.DB, batch *pebble.Batch, key kv.Key, startVer, commitVer
 	return nil
 }
 
-func Rollback(db *pebble.DB, batch *pebble.Batch, key kv.Key, startVer mvcc.Version) error {
+func Rollback(db *pebble.DB, batch *pebble.Batch, key kv.Key, startVer kv.Version) error {
 	opt := pebble.IterOptions{LowerBound: mvcc.Encode(key, mvcc.LockVer)}
 	iter := db.NewIter(&opt)
 	iter.First()
@@ -122,7 +122,7 @@ func Rollback(db *pebble.DB, batch *pebble.Batch, key kv.Key, startVer mvcc.Vers
 	return writeRollback(batch, key, startVer)
 }
 
-func writeRollback(batch *pebble.Batch, key []byte, startVer mvcc.Version) error {
+func writeRollback(batch *pebble.Batch, key []byte, startVer kv.Version) error {
 	tomb := mvcc.Value{
 		Type:      mvcc.ValueTypeRollback,
 		StartVer:  startVer,
@@ -136,7 +136,7 @@ func writeRollback(batch *pebble.Batch, key []byte, startVer mvcc.Version) error
 	return batch.Set(writeKey, writeValue, nil)
 }
 
-func getTxnCommitInfo(iter *pebble.Iterator, expectKey kv.Key, startVer mvcc.Version) (mvcc.Value, bool, error) {
+func getTxnCommitInfo(iter *pebble.Iterator, expectKey kv.Key, startVer kv.Version) (mvcc.Value, bool, error) {
 	for iter.Valid() {
 		dec := mvcc.ValueDecoder{
 			ExpectKey: expectKey,

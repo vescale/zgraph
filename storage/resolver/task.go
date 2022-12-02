@@ -16,13 +16,12 @@ package resolver
 
 import (
 	"github.com/vescale/zgraph/storage/kv"
-	"github.com/vescale/zgraph/storage/mvcc"
 )
 
 // Task represents a resolve task.
 type Task struct {
 	Key       kv.Key
-	StartVer  mvcc.Version
-	CommitVer mvcc.Version
+	StartVer  kv.Version
+	CommitVer kv.Version
 	Notifier  Notifier
 }

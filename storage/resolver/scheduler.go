@@ -22,7 +22,6 @@ import (
 	"github.com/cockroachdb/pebble"
 	"github.com/twmb/murmur3"
 	"github.com/vescale/zgraph/storage/kv"
-	"github.com/vescale/zgraph/storage/mvcc"
 )
 
 // Scheduler is used to schedule Resolve tasks.
@@ -69,7 +68,7 @@ func (s *Scheduler) Run() {
 }
 
 // Resolve submits a bundle of keys to resolve
-func (s *Scheduler) Resolve(keys []kv.Key, startVer, commitVer mvcc.Version, notifier Notifier) {
+func (s *Scheduler) Resolve(keys []kv.Key, startVer, commitVer kv.Version, notifier Notifier) {
 	if len(keys) == 0 {
 		return
 	}

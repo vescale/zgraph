@@ -23,14 +23,13 @@ import (
 
 	"github.com/twmb/murmur3"
 	"github.com/vescale/zgraph/storage/kv"
-	"github.com/vescale/zgraph/storage/mvcc"
 )
 
 type node struct {
-	slotID      int
-	key         []byte
-	maxCommitTS mvcc.Version
-	value       *Lock
+	slotID       int
+	key          []byte
+	maxCommitVer kv.Version
+	value        *Lock
 
 	next *node
 }
@@ -53,9 +52,9 @@ type Lock struct {
 	// For status is stale, it include the latch whose front is current lock already.
 	acquiredCount int
 	// startVer represents current transaction's.
-	startVer mvcc.Version
+	startVer kv.Version
 	// commitVer represents current transaction's.
-	commitVer mvcc.Version
+	commitVer kv.Version
 
 	wg      sync.WaitGroup
 	isStale bool
@@ -86,7 +85,7 @@ func (l *Lock) isLocked() bool {
 }
 
 // SetCommitVer sets the lock's commitVer.
-func (l *Lock) SetCommitVer(commitVer mvcc.Version) {
+func (l *Lock) SetCommitVer(commitVer kv.Version) {
 	l.commitVer = commitVer
 }
 
@@ -122,7 +121,7 @@ func NewLatches(size uint) *Latches {
 }
 
 // genLock generates Lock for the transaction with startVer and keys.
-func (latches *Latches) genLock(startVer mvcc.Version, keys []kv.Key) *Lock {
+func (latches *Latches) genLock(startVer kv.Version, keys []kv.Key) *Lock {
 	sort.Sort(bytesSlice(keys))
 	return &Lock{
 		keys:          keys,
@@ -183,7 +182,7 @@ func (latches *Latches) releaseSlot(lock *Lock) (nextLock *Lock) {
 	if find.value != lock {
 		panic("releaseSlot wrong")
 	}
-	find.maxCommitTS = mvcc.Max(find.maxCommitTS, lock.commitVer)
+	find.maxCommitVer = kv.Max(find.maxCommitVer, lock.commitVer)
 	find.value = nil
 	// Make a copy of the key, so latch does not reference the transaction's memory.
 	// If we do not do it, transaction memory can't be recycle by GC and there will
@@ -210,7 +209,7 @@ func (latches *Latches) releaseSlot(lock *Lock) (nextLock *Lock) {
 		latch.waiting[len(latch.waiting)-1] = nil
 		latch.waiting = latch.waiting[:len(latch.waiting)-1]
 
-		if find.maxCommitTS > nextLock.startVer {
+		if find.maxCommitVer > nextLock.startVer {
 			find.value = nextLock
 			nextLock.acquiredCount++
 			nextLock.isStale = true
@@ -247,7 +246,7 @@ func (latches *Latches) acquireSlot(lock *Lock) acquireResult {
 		return acquireSuccess
 	}
 
-	if find.maxCommitTS > lock.startVer {
+	if find.maxCommitVer > lock.startVer {
 		lock.isStale = true
 		return acquireStale
 	}
@@ -264,12 +263,12 @@ func (latches *Latches) acquireSlot(lock *Lock) acquireResult {
 }
 
 // recycle is not thread safe, the latch should acquire its lock before executing this function.
-func (l *latch) recycle(currentTS mvcc.Version) int {
+func (l *latch) recycle(currentTS kv.Version) int {
 	total := 0
 	fakeHead := node{next: l.queue}
 	prev := &fakeHead
 	for curr := prev.next; curr != nil; curr = curr.next {
-		if tsoSub(currentTS, curr.maxCommitTS) >= expireDuration && curr.value == nil {
+		if tsoSub(currentTS, curr.maxCommitVer) >= expireDuration && curr.value == nil {
 			l.count--
 			prev.next = curr.next
 			total++
@@ -281,7 +280,7 @@ func (l *latch) recycle(currentTS mvcc.Version) int {
 	return total
 }
 
-func (latches *Latches) recycle(currentTS mvcc.Version) {
+func (latches *Latches) recycle(currentTS kv.Version) {
 	total := 0
 	for i := 0; i < len(latches.slots); i++ {
 		latch := &latches.slots[i]

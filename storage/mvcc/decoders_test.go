@@ -20,6 +20,7 @@ import (
 
 	"github.com/cockroachdb/pebble"
 	"github.com/stretchr/testify/assert"
+	"github.com/vescale/zgraph/storage/kv"
 )
 
 func TestLockDecoder_Decode(t *testing.T) {
@@ -33,7 +34,7 @@ func TestLockDecoder_Decode(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ver Version
+		ver kv.Version
 	}{
 		{key: []byte("test"), val: []byte("test1"), ver: 1},
 		{key: []byte("test"), val: []byte("test3"), ver: 3},
@@ -60,7 +61,7 @@ func TestLockDecoder_Decode(t *testing.T) {
 	locks := []struct {
 		key []byte
 		val []byte
-		ver Version
+		ver kv.Version
 	}{
 		{key: []byte("test"), val: []byte("test1"), ver: 1},
 		{key: []byte("test1"), val: []byte("test5"), ver: 5},
@@ -111,7 +112,7 @@ func TestValueDecoder_Decode(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ver Version
+		ver kv.Version
 	}{
 		{key: []byte("test"), val: []byte("test1"), ver: 1},
 		{key: []byte("test"), val: []byte("test3"), ver: 3},
@@ -174,7 +175,7 @@ func TestSkipDecoder_Decode(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ver Version
+		ver kv.Version
 	}{
 		{key: []byte("test"), val: []byte("test1"), ver: 1},
 		{key: []byte("test"), val: []byte("test3"), ver: 3},

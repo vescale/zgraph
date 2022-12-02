@@ -25,7 +25,7 @@ import (
 type LockedError struct {
 	Key      kv.Key
 	Primary  kv.Key
-	StartVer Version
+	StartVer kv.Version
 	TTL      uint64
 }
 

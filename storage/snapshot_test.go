@@ -38,7 +38,7 @@ func TestSnapshot_Get(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ver mvcc.Version
+		ver kv.Version
 	}{
 		{key: []byte("test"), val: []byte("test1"), ver: 100},
 		{key: []byte("test"), val: []byte("test3"), ver: 300},
@@ -67,7 +67,7 @@ func TestSnapshot_Get(t *testing.T) {
 	expected := []struct {
 		key string
 		val string
-		ver mvcc.Version
+		ver kv.Version
 	}{
 		{"test", "test1", 200},
 		{"test", "test1", 300},
@@ -98,7 +98,7 @@ func TestSnapshot_BatchGet(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ver mvcc.Version
+		ver kv.Version
 	}{
 		{key: []byte("test"), val: []byte("test1"), ver: 100},
 		{key: []byte("test"), val: []byte("test3"), ver: 300},
@@ -127,7 +127,7 @@ func TestSnapshot_BatchGet(t *testing.T) {
 	expected := []struct {
 		keys   []string
 		values map[string][]byte
-		ver    mvcc.Version
+		ver    kv.Version
 	}{
 		{
 			keys: []string{"test", "test1", "test2"},

@@ -28,13 +28,13 @@ import (
 // SnapshotIter represents a iterator which provides a consistent view of key/value store.
 type SnapshotIter struct {
 	db       *pebble.DB
-	vp       mvcc.VersionProvider
-	ver      mvcc.Version
+	vp       kv.VersionProvider
+	ver      kv.Version
 	inner    *pebble.Iterator
 	resolver *resolver.Scheduler
 	mu       struct {
 		sync.RWMutex
-		resolved []mvcc.Version
+		resolved []kv.Version
 	}
 
 	// Iterator states

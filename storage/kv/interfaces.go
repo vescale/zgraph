@@ -12,27 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package kv
 
 import (
 	"context"
-
-	"github.com/vescale/zgraph/storage/kv"
-	"github.com/vescale/zgraph/storage/mvcc"
 )
 
 type Storage interface {
-	mvcc.VersionProvider
+	VersionProvider
 
 	Begin() (Transaction, error)
-	Snapshot(ver mvcc.Version) (Snapshot, error)
+	Snapshot(ver Version) (Snapshot, error)
 	Close() error
 }
 
 // Iterator is the interface for a SnapshotIter on KV db.
 type Iterator interface {
 	Valid() bool
-	Key() kv.Key
+	Key() Key
 	Value() []byte
 	Next() error
 	Close()
@@ -42,13 +39,13 @@ type Iterator interface {
 type Getter interface {
 	// Get gets the value for key k from kv db.
 	// If corresponding kv pair does not exist, it returns nil and ErrNotExist.
-	Get(ctx context.Context, k kv.Key) ([]byte, error)
+	Get(ctx context.Context, k Key) ([]byte, error)
 }
 
 // BatchGetter is the interface for BatchGet.
 type BatchGetter interface {
 	// BatchGet gets a batch of values.
-	BatchGet(ctx context.Context, keys []kv.Key) (map[string][]byte, error)
+	BatchGet(ctx context.Context, keys []Key) (map[string][]byte, error)
 }
 
 // Retriever is the interface wraps the basic Get and Seek methods.
@@ -58,21 +55,21 @@ type Retriever interface {
 	// If such entry is not found, it returns an invalid Iterator with no error.
 	// It yields only keys that < upperBound. If upperBound is nil, it means the upperBound is unbounded.
 	// The Iterator must be Closed after use.
-	Iter(lowerBound kv.Key, upperBound kv.Key) (Iterator, error)
+	Iter(lowerBound Key, upperBound Key) (Iterator, error)
 
 	// IterReverse creates a reversed Iterator positioned on the first entry which key is less than k.
 	// The returned SnapshotIter will iterate from greater key to smaller key.
 	// If k is nil, the returned SnapshotIter will be positioned at the last key.
-	IterReverse(lowerBound kv.Key, upperBound kv.Key) (Iterator, error)
+	IterReverse(lowerBound Key, upperBound Key) (Iterator, error)
 }
 
 // Mutator is the interface wraps the basic Set and Delete methods.
 type Mutator interface {
 	// Set sets the value for key k as v into kv db.
 	// v must NOT be nil or empty, otherwise it returns ErrCannotSetNilValue.
-	Set(k kv.Key, v []byte) error
+	Set(k Key, v []byte) error
 	// Delete removes the entry for key k from kv db.
-	Delete(k kv.Key) error
+	Delete(k Key) error
 }
 
 type Transaction interface {
@@ -84,7 +81,7 @@ type Transaction interface {
 	// BatchGet gets kv from the memory buffer of statement and transaction, and the kv storage.
 	// Do not use len(value) == 0 or value == nil to represent non-exist.
 	// If a key doesn't exist, there shouldn't be any corresponding entry in the result map.
-	BatchGet(ctx context.Context, keys []kv.Key) (map[string][]byte, error)
+	BatchGet(ctx context.Context, keys []Key) (map[string][]byte, error)
 	// Size returns sum of keys and values length.
 	Size() int
 	// Len returns the number of entries in the DB.

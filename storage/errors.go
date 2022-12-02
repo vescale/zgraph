@@ -19,7 +19,6 @@ import (
 
 	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/storage/kv"
-	"github.com/vescale/zgraph/storage/mvcc"
 )
 
 var (
@@ -83,9 +82,9 @@ func (e *ErrGroup) Error() string {
 
 // ErrConflict is returned when the commitTS of key in the DB is greater than startTS.
 type ErrConflict struct {
-	StartVer          mvcc.Version
-	ConflictStartVer  mvcc.Version
-	ConflictCommitVer mvcc.Version
+	StartVer          kv.Version
+	ConflictStartVer  kv.Version
+	ConflictCommitVer kv.Version
 	Key               kv.Key
 }
 

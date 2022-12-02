@@ -20,6 +20,7 @@ import (
 
 	"github.com/cockroachdb/pebble"
 	"github.com/stretchr/testify/assert"
+	"github.com/vescale/zgraph/storage/kv"
 	"github.com/vescale/zgraph/storage/mvcc"
 )
 
@@ -35,7 +36,7 @@ func TestIterator_Basic(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ver mvcc.Version
+		ver kv.Version
 	}{
 		{key: []byte("test"), val: []byte("test1"), ver: 100},
 		{key: []byte("test"), val: []byte("test3"), ver: 300},
@@ -61,29 +62,29 @@ func TestIterator_Basic(t *testing.T) {
 	err = db.Apply(writes, wo)
 	assert.Nil(t, err)
 
-	type kv struct {
+	type pair struct {
 		k string
 		v string
 	}
 	expected := []struct {
 		ver     uint64
-		results []kv
+		results []pair
 	}{
 		{
 			ver: 200,
-			results: []kv{
+			results: []pair{
 				{"test", "test1"},
 			},
 		},
 		{
 			ver: 320,
-			results: []kv{
+			results: []pair{
 				{"test", "test3"},
 			},
 		},
 		{
 			ver: 1000,
-			results: []kv{
+			results: []pair{
 				{"test", "test3"},
 				{"test1", "test7"},
 				{"test2", "test9"},
@@ -91,16 +92,16 @@ func TestIterator_Basic(t *testing.T) {
 		},
 	}
 	for _, e := range expected {
-		snapshot, err := s.Snapshot(mvcc.Version(e.ver))
+		snapshot, err := s.Snapshot(kv.Version(e.ver))
 		assert.Nil(t, err)
 		iter, err := snapshot.Iter([]byte("t"), []byte("u"))
 		assert.Nil(t, err)
-		var results []kv
+		var results []pair
 
 		for iter.Valid() {
 			key := iter.Key()
 			val := iter.Value()
-			results = append(results, kv{string(key), string(val)})
+			results = append(results, pair{string(key), string(val)})
 			err = iter.Next()
 			assert.Nil(t, err)
 		}
@@ -123,7 +124,7 @@ func TestReverseIterator(t *testing.T) {
 	data := []struct {
 		key []byte
 		val []byte
-		ver mvcc.Version
+		ver kv.Version
 	}{
 		{key: []byte("test"), val: []byte("test1"), ver: 100},
 		{key: []byte("test"), val: []byte("test3"), ver: 300},
@@ -149,29 +150,29 @@ func TestReverseIterator(t *testing.T) {
 	err = db.Apply(writes, wo)
 	assert.Nil(t, err)
 
-	type kv struct {
+	type pair struct {
 		k string
 		v string
 	}
 	expected := []struct {
 		ver     uint64
-		results []kv
+		results []pair
 	}{
 		{
 			ver: 200,
-			results: []kv{
+			results: []pair{
 				{"test", "test1"},
 			},
 		},
 		{
 			ver: 320,
-			results: []kv{
+			results: []pair{
 				{"test", "test3"},
 			},
 		},
 		{
 			ver: 1000,
-			results: []kv{
+			results: []pair{
 				{"test2", "test9"},
 				{"test1", "test7"},
 				{"test", "test3"},
@@ -179,16 +180,16 @@ func TestReverseIterator(t *testing.T) {
 		},
 	}
 	for _, e := range expected {
-		snapshot, err := s.Snapshot(mvcc.Version(e.ver))
+		snapshot, err := s.Snapshot(kv.Version(e.ver))
 		assert.Nil(t, err)
 		iter, err := snapshot.IterReverse([]byte("t"), []byte("u"))
 		assert.Nil(t, err)
-		var results []kv
+		var results []pair
 
 		for iter.Valid() {
 			key := iter.Key()
 			val := iter.Value()
-			results = append(results, kv{string(key), string(val)})
+			results = append(results, pair{string(key), string(val)})
 			err = iter.Next()
 			assert.Nil(t, err)
 		}

@@ -24,8 +24,8 @@ import (
 
 // UnionIter is the SnapshotIter on an UnionStore.
 type UnionIter struct {
-	dirtyIt    Iterator
-	snapshotIt Iterator
+	dirtyIt    kv.Iterator
+	snapshotIt kv.Iterator
 
 	dirtyValid    bool
 	snapshotValid bool
@@ -36,7 +36,7 @@ type UnionIter struct {
 }
 
 // NewUnionIter returns a union SnapshotIter for BufferStore.
-func NewUnionIter(dirtyIt Iterator, snapshotIt Iterator, reverse bool) (*UnionIter, error) {
+func NewUnionIter(dirtyIt kv.Iterator, snapshotIt kv.Iterator, reverse bool) (*UnionIter, error) {
 	it := &UnionIter{
 		dirtyIt:       dirtyIt,
 		snapshotIt:    snapshotIt,

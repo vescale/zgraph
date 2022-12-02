@@ -23,7 +23,7 @@ import (
 )
 
 // SnapshotGetter returns a Getter for a snapshot of MemBuffer.
-func (db *MemDB) SnapshotGetter() Getter {
+func (db *MemDB) SnapshotGetter() kv.Getter {
 	return &memdbSnapGetter{
 		db: db,
 		cp: db.getSnapshot(),
@@ -31,7 +31,7 @@ func (db *MemDB) SnapshotGetter() Getter {
 }
 
 // SnapshotIter returns a Iterator for a snapshot of MemBuffer.
-func (db *MemDB) SnapshotIter(start, end []byte) Iterator {
+func (db *MemDB) SnapshotIter(start, end []byte) kv.Iterator {
 	it := &memdbSnapIter{
 		MemDBIter: &MemDBIter{
 			db:    db,

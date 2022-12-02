@@ -19,8 +19,8 @@ import (
 
 	"github.com/cockroachdb/pebble"
 	"github.com/vescale/zgraph/storage/gc"
+	"github.com/vescale/zgraph/storage/kv"
 	"github.com/vescale/zgraph/storage/latch"
-	"github.com/vescale/zgraph/storage/mvcc"
 	"github.com/vescale/zgraph/storage/resolver"
 )
 
@@ -32,7 +32,7 @@ type mvccStorage struct {
 }
 
 // Open returns a new storage instance.
-func Open(dirname string, options ...Option) (Storage, error) {
+func Open(dirname string, options ...Option) (kv.Storage, error) {
 	opt := &pebble.Options{}
 	for _, op := range options {
 		op(opt)
@@ -61,7 +61,7 @@ func Open(dirname string, options ...Option) (Storage, error) {
 }
 
 // Begin implements the Storage interface
-func (s *mvccStorage) Begin() (Transaction, error) {
+func (s *mvccStorage) Begin() (kv.Transaction, error) {
 	curVer := s.CurrentVersion()
 	snap, err := s.Snapshot(curVer)
 	if err != nil {
@@ -82,7 +82,7 @@ func (s *mvccStorage) Begin() (Transaction, error) {
 }
 
 // Snapshot implements the Storage interface.
-func (s *mvccStorage) Snapshot(ver mvcc.Version) (Snapshot, error) {
+func (s *mvccStorage) Snapshot(ver kv.Version) (kv.Snapshot, error) {
 	snap := &KVSnapshot{
 		db:       s.db,
 		vp:       s,
@@ -95,8 +95,8 @@ func (s *mvccStorage) Snapshot(ver mvcc.Version) (Snapshot, error) {
 // CurrentVersion implements the VersionProvider interface.
 // Currently, we use the system time as our startVer, and the system time
 // rewind cannot be tolerant.
-func (s *mvccStorage) CurrentVersion() mvcc.Version {
-	return mvcc.Version(time.Now().UnixNano())
+func (s *mvccStorage) CurrentVersion() kv.Version {
+	return kv.Version(time.Now().UnixNano())
 }
 
 // Close implements the Storage interface.

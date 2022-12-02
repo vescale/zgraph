@@ -155,7 +155,7 @@ func TestUnionStoreIterReverse(t *testing.T) {
 	checkIterator(t, iter, []kv.Key{[]byte("2"), []byte("0")}, [][]byte{[]byte("2"), []byte("0")})
 }
 
-func checkIterator(t *testing.T, iter Iterator, keys []kv.Key, values [][]byte) {
+func checkIterator(t *testing.T, iter kv.Iterator, keys []kv.Key, values [][]byte) {
 	assert := assert.New(t)
 	defer iter.Close()
 	assert.Equal(len(keys), len(values))

@@ -30,14 +30,14 @@ import (
 // And only the committed key/values can be retrieved or iterated.
 type KVSnapshot struct {
 	db       *pebble.DB
-	vp       mvcc.VersionProvider
-	ver      mvcc.Version
+	vp       kv.VersionProvider
+	ver      kv.Version
 	resolver *resolver.Scheduler
 
 	// The KVSnapshot instance may be accessed concurrently.
 	mu struct {
 		sync.RWMutex
-		resolved []mvcc.Version
+		resolved []kv.Version
 	}
 }
 
@@ -88,7 +88,7 @@ func (s *KVSnapshot) Get(_ context.Context, key kv.Key) ([]byte, error) {
 }
 
 // Iter implements the Snapshot interface.
-func (s *KVSnapshot) Iter(lowerBound kv.Key, upperBound kv.Key) (Iterator, error) {
+func (s *KVSnapshot) Iter(lowerBound kv.Key, upperBound kv.Key) (kv.Iterator, error) {
 	// The lower-level database stored key-value with versions. We need
 	// to append the startVer to the raw keys.
 	var start, end mvcc.Key
@@ -133,7 +133,7 @@ func (s *KVSnapshot) Iter(lowerBound kv.Key, upperBound kv.Key) (Iterator, error
 }
 
 // IterReverse implements the Snapshot interface.
-func (s *KVSnapshot) IterReverse(lowerBound kv.Key, upperBound kv.Key) (Iterator, error) {
+func (s *KVSnapshot) IterReverse(lowerBound kv.Key, upperBound kv.Key) (kv.Iterator, error) {
 	var start, end mvcc.Key
 	if len(lowerBound) > 0 {
 		start = mvcc.Encode(lowerBound, mvcc.LockVer)
@@ -177,8 +177,8 @@ func (s *KVSnapshot) IterReverse(lowerBound kv.Key, upperBound kv.Key) (Iterator
 func (s *KVSnapshot) BatchGet(_ context.Context, keys []kv.Key) (map[string][]byte, error) {
 	results := map[string][]byte{}
 	err := backoff.RetryNotify(func() error {
-		rollbacks := map[mvcc.Version][]kv.Key{}
-		committed := map[mvcc.VersionPair][]kv.Key{}
+		rollbacks := map[kv.Version][]kv.Key{}
+		committed := map[kv.VersionPair][]kv.Key{}
 		for _, key := range keys {
 			_, found := results[string(key)]
 			if found {
@@ -211,7 +211,7 @@ func (s *KVSnapshot) BatchGet(_ context.Context, keys []kv.Key) (map[string][]by
 				default:
 					// TxnActionLockNotExistDoNothing
 					// Transaction committed: we try to resolve the current key and backoff.
-					pair := mvcc.VersionPair{StartVer: lockedErr.StartVer, CommitVer: status.CommitVer}
+					pair := kv.VersionPair{StartVer: lockedErr.StartVer, CommitVer: status.CommitVer}
 					committed[pair] = append(committed[pair], key)
 					continue
 				}
@@ -257,7 +257,7 @@ func (s *KVSnapshot) get(key kv.Key) ([]byte, error) {
 	return getValue(iter, key, s.ver, resolved)
 }
 
-func getValue(iter *pebble.Iterator, key kv.Key, startVer mvcc.Version, resolvedLocks []mvcc.Version) ([]byte, error) {
+func getValue(iter *pebble.Iterator, key kv.Key, startVer kv.Version, resolvedLocks []kv.Version) ([]byte, error) {
 	dec1 := mvcc.LockDecoder{ExpectKey: key}
 	ok, err := dec1.Decode(iter)
 	if ok {

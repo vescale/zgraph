@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/btree"
 	"github.com/pingcap/errors"
+	"github.com/vescale/zgraph/storage/kv"
 )
 
 type ValueType int
@@ -35,13 +36,13 @@ const (
 
 type Value struct {
 	Type      ValueType
-	StartVer  Version
-	CommitVer Version
+	StartVer  kv.Version
+	CommitVer kv.Version
 	Value     []byte
 }
 
 type Lock struct {
-	StartVer Version
+	StartVer kv.Version
 	Primary  []byte
 	Value    []byte
 	Op       Op
@@ -189,7 +190,7 @@ func (l *Lock) LockErr(key []byte) error {
 	}
 }
 
-func (l *Lock) Check(ver Version, key []byte, resolvedLocks []Version) (Version, error) {
+func (l *Lock) Check(ver kv.Version, key []byte, resolvedLocks []kv.Version) (kv.Version, error) {
 	// ignore when ver is older than lock or lock's type is Lock.
 	if l.StartVer > ver || l.Op == Op_Lock {
 		return ver, nil
@@ -211,7 +212,7 @@ func (e *Entry) Less(than btree.Item) bool {
 	return bytes.Compare(e.Key, than.(*Entry).Key) < 0
 }
 
-func (e *Entry) Get(ver Version, resolvedLocks []Version) ([]byte, error) {
+func (e *Entry) Get(ver kv.Version, resolvedLocks []kv.Version) ([]byte, error) {
 	if e.Lock != nil {
 		var err error
 		ver, err = e.Lock.Check(ver, e.Key.Raw(), resolvedLocks)

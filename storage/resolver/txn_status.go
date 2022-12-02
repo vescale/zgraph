@@ -33,12 +33,12 @@ const (
 )
 
 type TxnStatus struct {
-	CommitVer mvcc.Version
+	CommitVer kv.Version
 	Action    TxnAction
 }
 
 // CheckTxnStatus checks the transaction status according to the primary key.
-func CheckTxnStatus(db *pebble.DB, vp mvcc.VersionProvider, primaryKey kv.Key, startVer mvcc.Version) (TxnStatus, error) {
+func CheckTxnStatus(db *pebble.DB, vp kv.VersionProvider, primaryKey kv.Key, startVer kv.Version) (TxnStatus, error) {
 	opt := pebble.IterOptions{LowerBound: mvcc.LockKey(primaryKey)}
 	iter := db.NewIter(&opt)
 	iter.First()
@@ -57,7 +57,7 @@ func CheckTxnStatus(db *pebble.DB, vp mvcc.VersionProvider, primaryKey kv.Key, s
 	// If the transaction lock exists means the current transaction not committed.
 	if exists && decoder.Lock.StartVer == startVer {
 		ver := vp.CurrentVersion()
-		exp := startVer + mvcc.Version(time.Duration(decoder.Lock.TTL)*time.Millisecond)
+		exp := startVer + kv.Version(time.Duration(decoder.Lock.TTL)*time.Millisecond)
 		if exp < ver {
 			return TxnStatus{Action: TxnActionTTLExpireRollback}, nil
 		}

@@ -570,7 +570,7 @@ func decodeInt(s []byte) int {
 	return n
 }
 
-func valToStr(iter Iterator) string {
+func valToStr(iter kv.Iterator) string {
 	val := iter.Value()
 	return string(val)
 }
@@ -653,7 +653,7 @@ type FnKeyCmp func(key []byte) bool
 
 // NextUntil applies FnKeyCmp to each entry of the SnapshotIter until meets some condition.
 // It will stop when fn returns true, or SnapshotIter is invalid or an error occurs.
-func NextUntil(it Iterator, fn FnKeyCmp) error {
+func NextUntil(it kv.Iterator, fn FnKeyCmp) error {
 	var err error
 	for it.Valid() && !fn(it.Key()) {
 		err = it.Next()

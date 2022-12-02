@@ -33,16 +33,16 @@ import (
 // Txn represents a transaction implemented beyond the low-level key/value storage.
 type Txn struct {
 	mu        sync.Mutex
-	vp        mvcc.VersionProvider
+	vp        kv.VersionProvider
 	db        *pebble.DB
 	us        *UnionStore
 	latches   *latch.LatchesScheduler
 	resolver  *resolver.Scheduler
 	valid     bool
-	snapshot  Snapshot
+	snapshot  kv.Snapshot
 	startTime time.Time
-	startVer  mvcc.Version
-	commitVer mvcc.Version
+	startVer  kv.Version
+	commitVer kv.Version
 	setCnt    int64
 	lockedCnt int
 }
@@ -56,12 +56,12 @@ func (txn *Txn) Get(ctx context.Context, k kv.Key) ([]byte, error) {
 // If such entry is not found, it returns an invalid Iterator with no error.
 // It yields only keys that < upperBound. If upperBound is nil, it means the upperBound is unbounded.
 // The Iterator must be Closed after use.
-func (txn *Txn) Iter(lowerBound, upperBound kv.Key) (Iterator, error) {
+func (txn *Txn) Iter(lowerBound, upperBound kv.Key) (kv.Iterator, error) {
 	return txn.us.Iter(lowerBound, upperBound)
 }
 
 // IterReverse creates a reversed Iterator positioned on the first entry which key is less than k.
-func (txn *Txn) IterReverse(lowerBound, upperBound kv.Key) (Iterator, error) {
+func (txn *Txn) IterReverse(lowerBound, upperBound kv.Key) (kv.Iterator, error) {
 	return txn.us.IterReverse(lowerBound, upperBound)
 }
 
@@ -79,7 +79,7 @@ func (txn *Txn) Delete(k kv.Key) error {
 }
 
 // Snapshot implements the Transaction interface.
-func (txn *Txn) Snapshot() Snapshot {
+func (txn *Txn) Snapshot() kv.Snapshot {
 	return txn.snapshot
 }
 
@@ -157,8 +157,8 @@ func (txn *Txn) Commit(_ context.Context) error {
 		}
 		txn.latches.UnLock(lock)
 
-		rollbacks := map[mvcc.Version][]kv.Key{}
-		committed := map[mvcc.VersionPair][]kv.Key{}
+		rollbacks := map[kv.Version][]kv.Key{}
+		committed := map[kv.VersionPair][]kv.Key{}
 		for _, err := range errg.Errors {
 			// Try to resolve keys locked error.
 			lockedErr, ok := err.(*mvcc.LockedError)
@@ -184,7 +184,7 @@ func (txn *Txn) Commit(_ context.Context) error {
 			default:
 				// TxnActionLockNotExistDoNothing
 				// Transaction committed: we try to resolve the current key and backoff.
-				pair := mvcc.VersionPair{StartVer: lockedErr.StartVer, CommitVer: status.CommitVer}
+				pair := kv.VersionPair{StartVer: lockedErr.StartVer, CommitVer: status.CommitVer}
 				committed[pair] = append(committed[pair], lockedErr.Key)
 				continue
 			}
@@ -235,9 +235,9 @@ type committer struct {
 	db         *pebble.DB
 	memDB      *MemDB
 	resolver   *resolver.Scheduler
-	startVer   mvcc.Version
-	commitVer  mvcc.Version
-	resolved   []mvcc.Version
+	startVer   kv.Version
+	commitVer  kv.Version
+	resolved   []kv.Version
 	primaryIdx int
 	primaryKey kv.Key
 	lockTTL    uint64

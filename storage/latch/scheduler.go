@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/vescale/zgraph/storage/kv"
-	"github.com/vescale/zgraph/storage/mvcc"
 )
 
 const lockChanSize = 100
@@ -30,7 +29,7 @@ type LatchesScheduler struct {
 	latches         *Latches
 	unlockCh        chan *Lock
 	closed          bool
-	lastRecycleTime mvcc.Version
+	lastRecycleTime kv.Version
 	once            sync.Once
 	sync.RWMutex
 }
@@ -101,7 +100,7 @@ func (scheduler *LatchesScheduler) Close() {
 // Lock acquire the lock for transaction with startVer and keys. The caller goroutine
 // would be blocked if the lock can't be obtained now. When this function returns,
 // the lock state would be either success or stale(call lock.IsStale)
-func (scheduler *LatchesScheduler) Lock(startVer mvcc.Version, keys []kv.Key) *Lock {
+func (scheduler *LatchesScheduler) Lock(startVer kv.Version, keys []kv.Key) *Lock {
 	lock := scheduler.latches.genLock(startVer, keys)
 	lock.wg.Add(1)
 	if scheduler.latches.acquire(lock) == acquireLocked {
@@ -122,6 +121,6 @@ func (scheduler *LatchesScheduler) UnLock(lock *Lock) {
 	}
 }
 
-func tsoSub(ts1, ts2 mvcc.Version) time.Duration {
+func tsoSub(ts1, ts2 kv.Version) time.Duration {
 	return time.Nanosecond * time.Duration(ts1-ts2)
 }

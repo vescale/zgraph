@@ -27,6 +27,7 @@ import (
 
 func TestWithConcurrency(t *testing.T) {
 	sched := NewScheduler(7)
+	sched.Run()
 	defer sched.Close()
 	rand.Seed(time.Now().Unix())
 

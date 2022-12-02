@@ -39,8 +39,8 @@ func TestNewScheduler(t *testing.T) {
 	data := []struct {
 		key        string
 		primaryKey string
-		startVer   mvcc.Version
-		commitVer  mvcc.Version
+		startVer   kv.Version
+		commitVer  kv.Version
 	}{
 		// Transaction A
 		{
@@ -119,8 +119,8 @@ func TestNewScheduler_EarlyResolve(t *testing.T) {
 	data := []struct {
 		key        string
 		primaryKey string
-		startVer   mvcc.Version
-		commitVer  mvcc.Version
+		startVer   kv.Version
+		commitVer  kv.Version
 	}{
 		// Transaction A
 		{

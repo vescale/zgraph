@@ -27,11 +27,11 @@ import (
 // snapshot for read.
 type UnionStore struct {
 	memBuffer *MemDB
-	snapshot  Snapshot
+	snapshot  kv.Snapshot
 }
 
 // NewUnionStore builds a new unionStore.
-func NewUnionStore(snapshot Snapshot) *UnionStore {
+func NewUnionStore(snapshot kv.Snapshot) *UnionStore {
 	return &UnionStore{
 		snapshot:  snapshot,
 		memBuffer: newMemDB(),
@@ -59,7 +59,7 @@ func (us *UnionStore) Get(ctx context.Context, k kv.Key) ([]byte, error) {
 }
 
 // Iter implements the Retriever interface.
-func (us *UnionStore) Iter(lowerBound, upperBound kv.Key) (Iterator, error) {
+func (us *UnionStore) Iter(lowerBound, upperBound kv.Key) (kv.Iterator, error) {
 	bufferIt, err := us.memBuffer.Iter(lowerBound, upperBound)
 	if err != nil {
 		return nil, err
@@ -72,7 +72,7 @@ func (us *UnionStore) Iter(lowerBound, upperBound kv.Key) (Iterator, error) {
 }
 
 // IterReverse implements the Retriever interface.
-func (us *UnionStore) IterReverse(lowerBound, upperBound kv.Key) (Iterator, error) {
+func (us *UnionStore) IterReverse(lowerBound, upperBound kv.Key) (kv.Iterator, error) {
 	bufferIt, err := us.memBuffer.IterReverse(lowerBound, upperBound)
 	if err != nil {
 		return nil, err

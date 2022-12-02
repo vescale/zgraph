@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Copyright 2015 PingCAP, Inc.
+// Copyright 2016 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,50 +26,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mvcc
+package kv
 
-import "math"
+import (
+	"testing"
 
-// VersionProvider provides increasing IDs.
-type VersionProvider interface {
-	CurrentVersion() Version
-}
-
-// Version is the wrapper of KV's version.
-type Version uint64
-
-type VersionPair struct {
-	StartVer  Version
-	CommitVer Version
-}
-
-var (
-	// MaxVersion is the maximum version, notice that it's not a valid version.
-	MaxVersion = Version(math.MaxUint64)
-	// MinVersion is the minimum version, it's not a valid version, too.
-	MinVersion = Version(0)
+	"github.com/stretchr/testify/assert"
 )
 
-// NewVersion creates a new Version struct.
-func NewVersion(v uint64) Version {
-	return Version(v)
-}
+func TestVersion(t *testing.T) {
+	le := NewVersion(42).Cmp(NewVersion(43))
+	gt := NewVersion(42).Cmp(NewVersion(41))
+	eq := NewVersion(42).Cmp(NewVersion(42))
 
-// Cmp returns the comparison result of two versions.
-// The result will be 0 if a==b, -1 if a < b, and +1 if a > b.
-func (v Version) Cmp(another Version) int {
-	if v > another {
-		return 1
-	} else if v < another {
-		return -1
-	}
-	return 0
-}
-
-// Max returns the larger version between a and b
-func Max(a, b Version) Version {
-	if a > b {
-		return a
-	}
-	return b
+	assert.True(t, le < 0)
+	assert.True(t, gt > 0)
+	assert.True(t, eq == 0)
+	assert.True(t, MinVersion.Cmp(MaxVersion) < 0)
 }

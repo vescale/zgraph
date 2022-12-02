@@ -24,18 +24,18 @@ import (
 
 // BatchBufferGetter is the interface for BatchGet.
 type BatchBufferGetter interface {
-	Getter
+	kv.Getter
 	Len() int
 }
 
 // BufferBatchGetter is the type for BatchGet with MemBuffer.
 type BufferBatchGetter struct {
 	buffer   BatchBufferGetter
-	snapshot BatchGetter
+	snapshot kv.BatchGetter
 }
 
 // NewBufferBatchGetter creates a new BufferBatchGetter.
-func NewBufferBatchGetter(buffer BatchBufferGetter, snapshot BatchGetter) *BufferBatchGetter {
+func NewBufferBatchGetter(buffer BatchBufferGetter, snapshot kv.BatchGetter) *BufferBatchGetter {
 	return &BufferBatchGetter{buffer: buffer, snapshot: snapshot}
 }
 

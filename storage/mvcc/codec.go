@@ -31,13 +31,13 @@ func LockKey(key kv.Key) Key {
 }
 
 // Encode encodes a user defined key with timestamp.
-func Encode(key kv.Key, ver Version) Key {
+func Encode(key kv.Key, ver kv.Version) Key {
 	return codec.EncodeUintDesc(codec.EncodeBytes(nil, key), uint64(ver))
 }
 
 // Decode parses the origin key and version of an encoded key.
 // Will return the original key if the encoded key is a meta key.
-func Decode(encodedKey []byte) (kv.Key, Version, error) {
+func Decode(encodedKey []byte) (kv.Key, kv.Version, error) {
 	// Skip DataPrefix
 	remainBytes, key, err := codec.DecodeBytes(encodedKey, nil)
 	if err != nil {
@@ -57,5 +57,5 @@ func Decode(encodedKey []byte) (kv.Key, Version, error) {
 	if len(remainBytes) != 0 {
 		return nil, 0, errors.Trace(ErrInvalidEncodedKey)
 	}
-	return key, Version(ver), nil
+	return key, kv.Version(ver), nil
 }
