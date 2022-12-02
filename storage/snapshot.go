@@ -169,23 +169,79 @@ func (s *KVSnapshot) IterReverse(lowerBound kv.Key, upperBound kv.Key) (Iterator
 }
 
 func (s *KVSnapshot) BatchGet(_ context.Context, keys []kv.Key) (map[string][]byte, error) {
-	results := map[string][]byte{}
-	for _, key := range keys {
-		value, err := s.get(key)
-		if err != nil {
-			// TODO: backoff if locked keys encountered.
-			//locked, ok := err.(*LockedError)
-			//if !ok {
-			//	return nil, err
-			//}
-			return nil, err
-		}
-		results[string(key)] = value
+	type versionPair struct {
+		startVer  mvcc.Version
+		commitVer mvcc.Version
 	}
+	results := map[string][]byte{}
+	err := backoff.Retry(func() error {
+		rollbacks := map[mvcc.Version][]kv.Key{}
+		committed := map[versionPair][]kv.Key{}
+		for _, key := range keys {
+			_, found := results[string(key)]
+			if found {
+				continue
+			}
 
-	// TODO: resolve locks and backoff
+			value, err := s.get(key)
+			if err != nil {
+				lockedErr, ok := err.(*mvcc.LockedError)
+				if !ok {
+					return &backoff.PermanentError{Err: err}
+				}
 
-	return results, nil
+				// Try to resolve lock
+				status, err := resolver.CheckTxnStatus(s.db, s.vp, lockedErr.Primary, lockedErr.StartVer)
+				if err != nil {
+					return &backoff.PermanentError{Err: err}
+				}
+				switch status.Action {
+				case resolver.TxnActionNone:
+					// Transaction is still alive and try it letter.
+					continue
+
+				case resolver.TxnActionTTLExpireRollback,
+					resolver.TxnActionLockNotExistRollback:
+					// Resolve the current key.
+					rollbacks[lockedErr.StartVer] = append(rollbacks[lockedErr.StartVer], key)
+					continue
+
+				default:
+					// TxnActionLockNotExistDoNothing
+					// Transaction committed: we try to resolve the current key and backoff.
+					pair := versionPair{lockedErr.StartVer, status.CommitVer}
+					committed[pair] = append(committed[pair], key)
+					continue
+				}
+			}
+			results[string(key)] = value
+		}
+
+		if len(rollbacks) > 0 {
+			for startVer, keys := range rollbacks {
+				s.resolver.Resolve(keys, startVer, 0, nil)
+				// Put the resolve transaction into the resolved list to make the
+				// subsequent request bypass them.
+				s.mu.Lock()
+				s.mu.resolved = append(s.mu.resolved, startVer)
+				s.mu.Unlock()
+			}
+		}
+		if len(committed) > 0 {
+			for pair, keys := range committed {
+				s.resolver.Resolve(keys, pair.startVer, pair.commitVer, nil)
+			}
+		}
+
+		// All keys are retrieved.
+		if len(results) == len(keys) {
+			return nil
+		}
+
+		return resolver.ErrRetryable("some keys still resolving")
+	}, expoBackoff())
+
+	return results, err
 }
 
 func (s *KVSnapshot) get(key kv.Key) ([]byte, error) {
