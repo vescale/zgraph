@@ -31,6 +31,7 @@ type LatchesScheduler struct {
 	unlockCh        chan *Lock
 	closed          bool
 	lastRecycleTime mvcc.Version
+	once            sync.Once
 	sync.RWMutex
 }
 
@@ -43,7 +44,6 @@ func NewScheduler(size uint) *LatchesScheduler {
 		unlockCh: unlockCh,
 		closed:   false,
 	}
-	go scheduler.run()
 	return scheduler
 }
 
@@ -52,7 +52,13 @@ const checkInterval = 1 * time.Minute
 const checkCounter = 50000
 const latchListCount = 5
 
-func (scheduler *LatchesScheduler) run() {
+func (scheduler *LatchesScheduler) Run() {
+	scheduler.once.Do(func() {
+		go scheduler.schedule()
+	})
+}
+
+func (scheduler *LatchesScheduler) schedule() {
 	var counter int
 	wakeupList := make([]*Lock, 0)
 	for lock := range scheduler.unlockCh {

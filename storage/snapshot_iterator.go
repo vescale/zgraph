@@ -123,10 +123,21 @@ func (i *SnapshotIter) Next() error {
 }
 
 func (i *SnapshotIter) resetIter() {
+	lowerBound, upperBound := i.inner.RangeBounds()
 	if i.reverse {
-		i.inner.SeekLT(i.nextKey.PrefixNext())
+		iter := i.db.NewIter(&pebble.IterOptions{
+			LowerBound: lowerBound,
+			UpperBound: i.nextKey.PrefixNext(),
+		})
+		iter.Last()
+		i.inner = iter
 	} else {
-		i.inner.SeekGE(mvcc.LockKey(i.nextKey))
+		iter := i.db.NewIter(&pebble.IterOptions{
+			LowerBound: mvcc.LockKey(i.nextKey),
+			UpperBound: upperBound,
+		})
+		iter.First()
+		i.inner = iter
 	}
 }
 

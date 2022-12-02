@@ -17,6 +17,7 @@ package resolver
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	"github.com/cockroachdb/pebble"
 	"github.com/twmb/murmur3"
@@ -26,6 +27,7 @@ import (
 
 // Scheduler is used to schedule Resolve tasks.
 type Scheduler struct {
+	running   atomic.Bool
 	mu        sync.Mutex
 	db        *pebble.DB
 	size      int
@@ -49,6 +51,10 @@ func (s *Scheduler) SetDB(db *pebble.DB) {
 
 // Run initializes the resolvers and start to accept resolve tasks.
 func (s *Scheduler) Run() {
+	if s.running.Swap(true) {
+		return
+	}
+
 	ctx, cancelFn := context.WithCancel(context.Background())
 	for i := 0; i < s.size; i++ {
 		r := newResolver(s.db)

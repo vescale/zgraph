@@ -19,6 +19,7 @@ import (
 	"sync/atomic"
 
 	"github.com/cockroachdb/pebble"
+	"github.com/vescale/zgraph/internal/logutil"
 )
 
 type resolver struct {
@@ -65,6 +66,10 @@ func (r *resolver) resolve(tasks []Task) {
 			err = Resolve(r.db, batch, task.Key, task.StartVer, task.CommitVer)
 		} else {
 			err = Rollback(r.db, batch, task.Key, task.StartVer)
+		}
+		if err != nil {
+			logutil.Errorf("Resolve key failed, key:%v, startVer:%d, commitVer:%d, caused by:%+v",
+				task.Key, task.StartVer, task.CommitVer, err)
 		}
 		if task.Notifier != nil {
 			task.Notifier.Notify(err)

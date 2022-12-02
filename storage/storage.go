@@ -31,33 +31,33 @@ type mvccStorage struct {
 	gcManager *gc.Manager
 }
 
-// New returns a new storage instance.
-func New() Storage {
-	return &mvccStorage{
-		latches:   latch.NewScheduler(8),
-		resolver:  resolver.NewScheduler(4),
-		gcManager: gc.NewManager(2),
-	}
-}
-
-// Open implements the Storage interface.
-func (s *mvccStorage) Open(dirname string, options ...Option) error {
+// Open returns a new storage instance.
+func Open(dirname string, options ...Option) (Storage, error) {
 	opt := &pebble.Options{}
 	for _, op := range options {
 		op(opt)
 	}
 	db, err := pebble.Open(dirname, opt)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	s.db = db
+
+	s := &mvccStorage{
+		db:        db,
+		latches:   latch.NewScheduler(8),
+		resolver:  resolver.NewScheduler(4),
+		gcManager: gc.NewManager(2),
+	}
 	s.resolver.SetDB(db)
-	s.resolver.Run()
 	s.gcManager.SetDB(db)
 	s.gcManager.SetResolver(s.resolver)
+
+	// Run all background services.
+	s.latches.Run()
+	s.resolver.Run()
 	s.gcManager.Run()
 
-	return nil
+	return s, nil
 }
 
 // Begin implements the Storage interface
@@ -73,6 +73,7 @@ func (s *mvccStorage) Begin() (Transaction, error) {
 		us:        NewUnionStore(snap),
 		latches:   s.latches,
 		resolver:  s.resolver,
+		valid:     true,
 		startTime: time.Now(),
 		startVer:  curVer,
 		snapshot:  snap,
@@ -83,9 +84,10 @@ func (s *mvccStorage) Begin() (Transaction, error) {
 // Snapshot implements the Storage interface.
 func (s *mvccStorage) Snapshot(ver mvcc.Version) (Snapshot, error) {
 	snap := &KVSnapshot{
-		db:  s.db,
-		vp:  s,
-		ver: ver,
+		db:       s.db,
+		vp:       s,
+		ver:      ver,
+		resolver: s.resolver,
 	}
 	return snap, nil
 }

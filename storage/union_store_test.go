@@ -27,9 +27,9 @@ import (
 func TestUnionStoreGetSet(t *testing.T) {
 	assert := assert.New(t)
 
-	diskStore := New()
-	err := diskStore.Open(t.TempDir())
+	diskStore, err := Open(t.TempDir())
 	assert.Nil(err)
+	assert.NotNil(diskStore)
 	ver := diskStore.CurrentVersion()
 	snapshot, err := diskStore.Snapshot(ver)
 	assert.Nil(err)
@@ -53,9 +53,9 @@ func TestUnionStoreGetSet(t *testing.T) {
 func TestUnionStoreDelete(t *testing.T) {
 	assert := assert.New(t)
 
-	diskStore := New()
-	err := diskStore.Open(t.TempDir())
+	diskStore, err := Open(t.TempDir())
 	assert.Nil(err)
+	assert.NotNil(diskStore)
 	ver := diskStore.CurrentVersion()
 	snapshot, err := diskStore.Snapshot(ver)
 	assert.Nil(err)
@@ -79,9 +79,9 @@ func TestUnionStoreDelete(t *testing.T) {
 func TestUnionStoreSeek(t *testing.T) {
 	assert := assert.New(t)
 
-	diskStore := New()
-	err := diskStore.Open(t.TempDir())
+	diskStore, err := Open(t.TempDir())
 	assert.Nil(err)
+	assert.NotNil(diskStore)
 	ver := diskStore.CurrentVersion()
 	snapshot, err := diskStore.Snapshot(ver)
 	assert.Nil(err)
@@ -118,9 +118,9 @@ func TestUnionStoreSeek(t *testing.T) {
 
 func TestUnionStoreIterReverse(t *testing.T) {
 	assert := assert.New(t)
-	diskStore := New()
-	err := diskStore.Open(t.TempDir())
+	diskStore, err := Open(t.TempDir())
 	assert.Nil(err)
+	assert.NotNil(diskStore)
 	ver := diskStore.CurrentVersion()
 	snapshot, err := diskStore.Snapshot(ver)
 	assert.Nil(err)

@@ -111,8 +111,10 @@ func (s *KVSnapshot) Iter(lowerBound kv.Key, upperBound kv.Key) (Iterator, error
 	_ = inner.First()
 
 	iter := &SnapshotIter{
-		inner: inner,
-		ver:   s.ver,
+		db:       s.db,
+		inner:    inner,
+		resolver: s.resolver,
+		ver:      s.ver,
 	}
 
 	// Handle startKey is nil, in this case, the real startKey
@@ -152,9 +154,11 @@ func (s *KVSnapshot) IterReverse(lowerBound kv.Key, upperBound kv.Key) (Iterator
 	_ = inner.Last()
 
 	iter := &SnapshotIter{
-		reverse: true,
-		inner:   inner,
-		ver:     s.ver,
+		db:       s.db,
+		reverse:  true,
+		inner:    inner,
+		resolver: s.resolver,
+		ver:      s.ver,
 	}
 
 	// Set the next key to the last valid key between lowerBound and upperBound.

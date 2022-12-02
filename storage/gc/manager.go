@@ -17,6 +17,7 @@ package gc
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cockroachdb/pebble"
@@ -25,6 +26,7 @@ import (
 
 // Manager represents the GC manager which is used to scheduler GC tasks to GC worker.
 type Manager struct {
+	running  atomic.Bool
 	size     int
 	mu       sync.RWMutex
 	db       *pebble.DB
@@ -55,6 +57,10 @@ func (m *Manager) SetResolver(resolver *resolver.Scheduler) {
 }
 
 func (m *Manager) Run() {
+	if m.running.Swap(true) {
+		return
+	}
+
 	ctx, cancelFn := context.WithCancel(context.Background())
 	for i := 0; i < m.size; i++ {
 		worker := newWorker(m.db, m.resolver)

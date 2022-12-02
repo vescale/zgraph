@@ -24,7 +24,6 @@ import (
 type Storage interface {
 	mvcc.VersionProvider
 
-	Open(dirname string, options ...Option) error
 	Begin() (Transaction, error)
 	Snapshot(ver mvcc.Version) (Snapshot, error)
 	Close() error

@@ -24,10 +24,9 @@ import (
 )
 
 func TestIterator_Basic(t *testing.T) {
-	tmpDir := t.TempDir()
-	s := New()
-	err := s.Open(tmpDir)
+	s, err := Open(t.TempDir())
 	assert.Nil(t, err)
+	assert.NotNil(t, s)
 
 	db := s.(*mvccStorage).db
 	writes := db.NewBatch()
@@ -113,10 +112,9 @@ func TestIterator_Basic(t *testing.T) {
 }
 
 func TestReverseIterator(t *testing.T) {
-	tmpDir := t.TempDir()
-	s := New()
-	err := s.Open(tmpDir)
+	s, err := Open(t.TempDir())
 	assert.Nil(t, err)
+	assert.NotNil(t, s)
 
 	db := s.(*mvccStorage).db
 	writes := db.NewBatch()
