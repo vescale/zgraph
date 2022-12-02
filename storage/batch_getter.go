@@ -52,7 +52,7 @@ func (b *BufferBatchGetter) BatchGet(ctx context.Context, keys []kv.Key) (map[st
 			bufferValues[i] = val
 			continue
 		}
-		if !IsErrNotFound(err) {
+		if !kv.IsErrNotFound(err) {
 			return nil, err
 		}
 		shrinkKeys = append(shrinkKeys, key)

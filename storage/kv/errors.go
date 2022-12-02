@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package kv
 
 import (
 	"fmt"
 
 	"github.com/pingcap/errors"
-	"github.com/vescale/zgraph/storage/kv"
 )
 
 var (
@@ -82,10 +81,10 @@ func (e *ErrGroup) Error() string {
 
 // ErrConflict is returned when the commitTS of key in the DB is greater than startTS.
 type ErrConflict struct {
-	StartVer          kv.Version
-	ConflictStartVer  kv.Version
-	ConflictCommitVer kv.Version
-	Key               kv.Key
+	StartVer          Version
+	ConflictStartVer  Version
+	ConflictCommitVer Version
+	Key               Key
 }
 
 func (e *ErrConflict) Error() string {

@@ -437,3 +437,33 @@ func DecodeComparableVarint(b []byte) ([]byte, int64, error) {
 	}
 	return b[length:], int64(v), nil
 }
+
+// EncodedBytesLength returns the length of data after encoded
+func EncodedBytesLength(dataLen int) int {
+	mod := dataLen % encGroupSize
+	padCount := encGroupSize - mod
+	return dataLen + padCount + 1 + dataLen/encGroupSize
+}
+
+// EncodeBytesDesc first encodes bytes using EncodeBytes, then bitwise reverses
+// encoded value to guarantee the encoded value is in descending order for comparison.
+func EncodeBytesDesc(b []byte, data []byte) []byte {
+	n := len(b)
+	b = EncodeBytes(b, data)
+	reverseBytes(b[n:])
+	return b
+}
+
+// DecodeBytesDesc decodes bytes which is encoded by EncodeBytesDesc before,
+// returns the leftover bytes and decoded value if no error.
+func DecodeBytesDesc(b []byte, buf []byte) ([]byte, []byte, error) {
+	return decodeBytes(b, buf, true)
+}
+
+// EncodeBytesExt is an extension of `EncodeBytes`, which will not encode for `isRawKv = true` but just append `data` to `b`.
+func EncodeBytesExt(b []byte, data []byte, isRawKv bool) []byte {
+	if isRawKv {
+		return append(b, data...)
+	}
+	return EncodeBytes(b, data)
+}

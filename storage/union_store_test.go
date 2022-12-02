@@ -67,7 +67,7 @@ func TestUnionStoreDelete(t *testing.T) {
 	err = us.MemBuffer().Delete([]byte("1"))
 	assert.Nil(err)
 	_, err = us.Get(context.TODO(), []byte("1"))
-	assert.True(IsErrNotFound(err))
+	assert.True(kv.IsErrNotFound(err))
 
 	err = us.MemBuffer().Set([]byte("1"), []byte("2"))
 	assert.Nil(err)

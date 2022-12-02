@@ -157,7 +157,7 @@ func TestNewScheduler_EarlyResolve(t *testing.T) {
 		writeVal, err := lock.MarshalBinary()
 		assert.Nil(err)
 
-		err = batch.Set(mvcc.Encode(kv.Key(d.key), mvcc.LockVer), writeVal, nil)
+		err = batch.Set(mvcc.LockKey(kv.Key(d.key)), writeVal, nil)
 		assert.Nil(err)
 
 		keys = append(keys, kv.Key(d.key))
@@ -188,7 +188,7 @@ func TestNewScheduler_EarlyResolve(t *testing.T) {
 	// Check the values
 	for _, d := range data {
 		val, _, err := db.Get(mvcc.Encode(kv.Key(d.key), d.commitVer))
-		assert.Nil(err)
+		assert.Nil(err, "key:%s", d.key)
 		v := mvcc.Value{}
 		err = v.UnmarshalBinary(val)
 		assert.Nil(err)

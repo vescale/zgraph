@@ -77,7 +77,7 @@ func (r *resolver) resolve(tasks []Task) {
 	}
 	err := batch.Commit(nil)
 	if err != nil {
-		// TODO: handle error
+		logutil.Errorf("Commit batch failed: %+v", err)
 	}
 }
 

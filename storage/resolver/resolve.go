@@ -22,7 +22,7 @@ import (
 
 // Resolve resolves the specified key.
 func Resolve(db *pebble.DB, batch *pebble.Batch, key kv.Key, startVer, commitVer kv.Version) error {
-	opt := pebble.IterOptions{LowerBound: mvcc.Encode(key, mvcc.LockVer)}
+	opt := pebble.IterOptions{LowerBound: mvcc.LockKey(key)}
 	iter := db.NewIter(&opt)
 	iter.First()
 	defer iter.Close()
@@ -73,7 +73,7 @@ func Resolve(db *pebble.DB, batch *pebble.Batch, key kv.Key, startVer, commitVer
 	if err != nil {
 		return err
 	}
-	err = batch.Delete(mvcc.Encode(key, mvcc.LockVer), nil)
+	err = batch.Delete(mvcc.LockKey(key), nil)
 	if err != nil {
 		return err
 	}

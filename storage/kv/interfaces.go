@@ -72,9 +72,14 @@ type Mutator interface {
 	Delete(k Key) error
 }
 
-type Transaction interface {
+// RetrieverMutator is the interface that groups Retriever and Mutator interfaces.
+type RetrieverMutator interface {
 	Retriever
 	Mutator
+}
+
+type Transaction interface {
+	RetrieverMutator
 
 	// Snapshot returns the Snapshot binding to this transaction.
 	Snapshot() Snapshot

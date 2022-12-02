@@ -189,11 +189,11 @@ func (db *MemDB) Get(_ context.Context, key kv.Key) ([]byte, error) {
 
 	x := db.traverse(key, false)
 	if x.isNull() {
-		return nil, ErrNotExist
+		return nil, kv.ErrNotExist
 	}
 	if x.vptr.isNull() {
 		// A flag only key, act as value not exists
-		return nil, ErrNotExist
+		return nil, kv.ErrNotExist
 	}
 	return db.vlog.getValue(x.vptr), nil
 }
@@ -202,11 +202,11 @@ func (db *MemDB) Get(_ context.Context, key kv.Key) ([]byte, error) {
 func (db *MemDB) SelectValueHistory(key []byte, predicate func(value []byte) bool) ([]byte, error) {
 	x := db.traverse(key, false)
 	if x.isNull() {
-		return nil, ErrNotExist
+		return nil, kv.ErrNotExist
 	}
 	if x.vptr.isNull() {
 		// A flag only key, act as value not exists
-		return nil, ErrNotExist
+		return nil, kv.ErrNotExist
 	}
 	result := db.vlog.selectValueHistory(x.vptr, func(addr memdbArenaAddr) bool {
 		return predicate(db.vlog.getValue(addr))
@@ -221,7 +221,7 @@ func (db *MemDB) SelectValueHistory(key []byte, predicate func(value []byte) boo
 func (db *MemDB) GetFlags(key []byte) (kv.KeyFlags, error) {
 	x := db.traverse(key, false)
 	if x.isNull() {
-		return 0, ErrNotExist
+		return 0, kv.ErrNotExist
 	}
 	return x.getKeyFlags(), nil
 }
@@ -236,7 +236,7 @@ func (db *MemDB) UpdateFlags(key []byte, ops ...kv.FlagsOp) {
 // v must NOT be nil or empty, otherwise it returns ErrCannotSetNilValue.
 func (db *MemDB) Set(key []byte, value []byte) error {
 	if len(value) == 0 {
-		return ErrCannotSetNilValue
+		return kv.ErrCannotSetNilValue
 	}
 	return db.set(key, value)
 }
@@ -244,7 +244,7 @@ func (db *MemDB) Set(key []byte, value []byte) error {
 // SetWithFlags put key-value into the last active staging buffer with the given KeyFlags.
 func (db *MemDB) SetWithFlags(key []byte, value []byte, ops ...kv.FlagsOp) error {
 	if len(value) == 0 {
-		return ErrCannotSetNilValue
+		return kv.ErrCannotSetNilValue
 	}
 	return db.set(key, value, ops...)
 }
@@ -303,7 +303,7 @@ func (db *MemDB) set(key []byte, value []byte, ops ...kv.FlagsOp) error {
 
 	if value != nil {
 		if size := uint64(len(key) + len(value)); size > db.entrySizeLimit {
-			return &ErrEntryTooLarge{
+			return &kv.ErrEntryTooLarge{
 				Limit: db.entrySizeLimit,
 				Size:  size,
 			}
@@ -336,7 +336,7 @@ func (db *MemDB) set(key []byte, value []byte, ops ...kv.FlagsOp) error {
 
 	db.setValue(x, value)
 	if uint64(db.Size()) > db.bufferSizeLimit {
-		return &ErrTxnTooLarge{Size: db.Size()}
+		return &kv.ErrTxnTooLarge{Size: db.Size()}
 	}
 	return nil
 }

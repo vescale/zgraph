@@ -70,7 +70,7 @@ func (s *mockBatchGetterStore) Get(_ context.Context, k kv.Key) ([]byte, error) 
 			return s.value[i], nil
 		}
 	}
-	return nil, ErrNotExist
+	return nil, kv.ErrNotExist
 }
 
 func (s *mockBatchGetterStore) BatchGet(ctx context.Context, keys []kv.Key) (map[string][]byte, error) {
@@ -81,7 +81,7 @@ func (s *mockBatchGetterStore) BatchGet(ctx context.Context, keys []kv.Key) (map
 			m[string(k)] = v
 			continue
 		}
-		if IsErrNotFound(err) {
+		if kv.IsErrNotFound(err) {
 			continue
 		}
 		return m, err

@@ -46,14 +46,14 @@ func (us *UnionStore) MemBuffer() *MemDB {
 // Get implements the Retriever interface.
 func (us *UnionStore) Get(ctx context.Context, k kv.Key) ([]byte, error) {
 	v, err := us.memBuffer.Get(ctx, k)
-	if errors.Cause(err) == ErrNotExist {
+	if errors.Cause(err) == kv.ErrNotExist {
 		v, err = us.snapshot.Get(ctx, k)
 	}
 	if err != nil {
 		return v, err
 	}
 	if len(v) == 0 {
-		return nil, ErrNotExist
+		return nil, kv.ErrNotExist
 	}
 	return v, nil
 }

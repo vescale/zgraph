@@ -24,6 +24,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/vescale/zgraph/storage/kv"
+	"go.uber.org/atomic"
 )
 
 func TestTxn_Commit(t *testing.T) {
@@ -174,6 +175,8 @@ func benchmarkTxnCommit(b *testing.B, parallelism int) {
 	log.SetOutput(io.Discard)
 	b.SetParallelism(parallelism)
 
+	counter := atomic.Uint64{}
+
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			txn, err := storage.Begin()
@@ -181,7 +184,7 @@ func benchmarkTxnCommit(b *testing.B, parallelism int) {
 			for n := 0; n < kvCount; n++ {
 				key := make([]byte, 8)
 				val := make([]byte, 8)
-				binary.BigEndian.AppendUint64(key, rand.Uint64())
+				binary.BigEndian.AppendUint64(key, counter.Inc())
 				binary.BigEndian.AppendUint64(val, rand.Uint64())
 				err := txn.Set(key, val)
 				assert.Nil(err)
@@ -189,7 +192,7 @@ func benchmarkTxnCommit(b *testing.B, parallelism int) {
 			err = txn.Commit(context.Background())
 			if err != nil {
 				// Only txn conflict allow
-				_, ok := err.(*ErrConflict)
+				_, ok := err.(*kv.ErrConflict)
 				assert.True(ok)
 			}
 		}

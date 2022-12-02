@@ -59,15 +59,15 @@ type memdbSnapGetter struct {
 func (snap *memdbSnapGetter) Get(_ context.Context, key kv.Key) ([]byte, error) {
 	x := snap.db.traverse(key, false)
 	if x.isNull() {
-		return nil, ErrNotExist
+		return nil, kv.ErrNotExist
 	}
 	if x.vptr.isNull() {
 		// A flag only key, act as value not exists
-		return nil, ErrNotExist
+		return nil, kv.ErrNotExist
 	}
 	v, ok := snap.db.vlog.getSnapshotValue(x.vptr, &snap.cp)
 	if !ok {
-		return nil, ErrNotExist
+		return nil, kv.ErrNotExist
 	}
 	return v, nil
 }

@@ -108,13 +108,13 @@ func (txn *Txn) Reset() {
 
 func (txn *Txn) Commit(_ context.Context) error {
 	if !txn.valid {
-		return ErrInvalidTxn
+		return kv.ErrInvalidTxn
 	}
 	defer txn.close()
 
 	// Sanity check for start timestamp of the current transaction.
 	if txn.startVer == mvcc.LockVer {
-		return ErrInvalidStartVer
+		return kv.ErrInvalidStartVer
 	}
 
 	committer := &committer{
@@ -140,7 +140,7 @@ func (txn *Txn) Commit(_ context.Context) error {
 		//   - Resolve: will block if the worker queue full.
 		lock := txn.latches.Lock(txn.startVer, keys)
 		err := committer.prepare()
-		errg, ok := err.(*ErrGroup)
+		errg, ok := err.(*kv.ErrGroup)
 		if !ok {
 			txn.latches.UnLock(lock)
 			return err
@@ -214,7 +214,7 @@ func (txn *Txn) Commit(_ context.Context) error {
 // Rollback implements the Transaction interface. It undoes the transaction operations to KV store.
 func (txn *Txn) Rollback() error {
 	if !txn.valid {
-		return ErrInvalidTxn
+		return kv.ErrInvalidTxn
 	}
 	txn.close()
 	return nil
@@ -368,7 +368,7 @@ func (c *committer) prepare() error {
 				continue
 			}
 			if val != nil {
-				err = &ErrKeyAlreadyExist{
+				err = &kv.ErrKeyAlreadyExist{
 					Key: key,
 				}
 				errs = append(errs, err)
@@ -402,7 +402,7 @@ func (c *committer) prepare() error {
 				return err
 			}
 			if exists && vdecoder.Value.CommitVer > startVer {
-				return &ErrConflict{
+				return &kv.ErrConflict{
 					StartVer:          startVer,
 					ConflictStartVer:  vdecoder.Value.StartVer,
 					ConflictCommitVer: vdecoder.Value.CommitVer,
@@ -445,7 +445,7 @@ func (c *committer) prepare() error {
 		return err
 	}
 
-	return &ErrGroup{Errors: errs}
+	return &kv.ErrGroup{Errors: errs}
 }
 
 // commit implements the second stage of 2PC transaction model.
