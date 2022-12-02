@@ -16,6 +16,10 @@ package storage
 
 import (
 	"context"
+	"encoding/binary"
+	"io"
+	"log"
+	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -156,4 +160,59 @@ func TestTxn_Iter(t *testing.T) {
 		assert.Equal(c.order, order)
 		assert.Equal(c.result, result)
 	}
+}
+
+func benchmarkTxnCommit(b *testing.B, parallelism int) {
+	assert := assert.New(b)
+
+	const kvCount = 10
+
+	storage, err := Open(b.TempDir())
+	assert.Nil(err)
+	assert.NotNil(storage)
+
+	log.SetOutput(io.Discard)
+	b.SetParallelism(parallelism)
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			txn, err := storage.Begin()
+			assert.Nil(err)
+			for n := 0; n < kvCount; n++ {
+				key := make([]byte, 8)
+				val := make([]byte, 8)
+				binary.BigEndian.AppendUint64(key, rand.Uint64())
+				binary.BigEndian.AppendUint64(val, rand.Uint64())
+				err := txn.Set(key, val)
+				assert.Nil(err)
+			}
+			err = txn.Commit(context.Background())
+			if err != nil {
+				// Only txn conflict allow
+				_, ok := err.(*ErrConflict)
+				assert.True(ok)
+			}
+		}
+	})
+
+}
+
+func BenchmarkTxn_Commit_P32(b *testing.B) {
+	benchmarkTxnCommit(b, 32)
+}
+
+func BenchmarkTxn_Commit_P128(b *testing.B) {
+	benchmarkTxnCommit(b, 128)
+}
+
+func BenchmarkTxn_Commit_P256(b *testing.B) {
+	benchmarkTxnCommit(b, 256)
+}
+
+func BenchmarkTxn_Commit_P512(b *testing.B) {
+	benchmarkTxnCommit(b, 512)
+}
+
+func BenchmarkTxn_Commit_P1024(b *testing.B) {
+	benchmarkTxnCommit(b, 1024)
 }
