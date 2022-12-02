@@ -65,7 +65,7 @@ func (i *SnapshotIter) Value() []byte {
 
 // Next implements the Iterator interface.
 func (i *SnapshotIter) Next() error {
-	err := backoff.Retry(func() error {
+	err := backoff.RetryNotify(func() error {
 		i.valid = i.inner.Valid()
 		if !i.valid {
 			return nil
@@ -117,7 +117,7 @@ func (i *SnapshotIter) Next() error {
 		}
 
 		return nil
-	}, expoBackoff())
+	}, expoBackoff(), BackoffErrReporter("SnapshotIter.Next"))
 
 	return err
 }

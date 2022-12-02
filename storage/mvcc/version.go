@@ -38,6 +38,11 @@ type VersionProvider interface {
 // Version is the wrapper of KV's version.
 type Version uint64
 
+type VersionPair struct {
+	StartVer  Version
+	CommitVer Version
+}
+
 var (
 	// MaxVersion is the maximum version, notice that it's not a valid version.
 	MaxVersion = Version(math.MaxUint64)

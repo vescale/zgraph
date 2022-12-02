@@ -15,12 +15,12 @@ import (
 // committer represents the transaction 2 phase committer. It will calculate the
 // mutations and apply to the low-level storage.
 type committer struct {
-	vp         mvcc.VersionProvider
 	db         *pebble.DB
 	memDB      *MemDB
 	resolver   *resolver.Scheduler
 	startVer   mvcc.Version
 	commitVer  mvcc.Version
+	resolved   []mvcc.Version
 	primaryIdx int
 	primaryKey kv.Key
 	lockTTL    uint64
@@ -123,36 +123,14 @@ func (c *committer) keys() []kv.Key {
 	return keys
 }
 
-// execute commits the mutations to the low-level key/value storage engine.
-func (c *committer) execute() error {
-	errs := c.prepare()
-	if len(errs) > 0 {
-		// TODO: handle errors carefully.
-		for _, err := range errs {
-			switch err.(type) {
-			case *mvcc.LockedError:
-			case *ErrKeyAlreadyExist:
-			default:
-				// TODO: currently we return the first unknown error.
-				return err
-			}
-		}
-	}
-
-	// Retrieve the latest version as the commit version of the current transaction.
-	c.commitVer = c.vp.CurrentVersion()
-
-	return c.commit()
-}
-
 // prepare implements the first stage of 2PC transaction model.
-func (c *committer) prepare() []error {
+func (c *committer) prepare() error {
 	var (
-		resolvedLocks []mvcc.Version // TODO: support resolved locks
-		errs          []error
-		batch         = c.db.NewBatch()
-		primaryKey    = c.primaryKey
-		startVer      = c.startVer
+		errs       []error
+		batch      = c.db.NewBatch()
+		primaryKey = c.primaryKey
+		startVer   = c.startVer
+		resolved   = c.resolved
 	)
 	defer batch.Close()
 
@@ -166,7 +144,7 @@ func (c *committer) prepare() []error {
 		if op == mvcc.Op_Insert || op == mvcc.Op_CheckNotExists {
 			iter := c.db.NewIter(&opt)
 			iter.First()
-			val, err := getValue(iter, key, startVer, resolvedLocks)
+			val, err := getValue(iter, key, startVer, resolved)
 			_ = iter.Close()
 			if err != nil {
 				errs = append(errs, err)
@@ -184,20 +162,40 @@ func (c *committer) prepare() []error {
 			continue
 		}
 
-		// TODO: optimize the logical and avoid decoding lock twice.
-		iter := c.db.NewIter(&opt)
-		iter.First()
-		decoder := mvcc.LockDecoder{ExpectKey: key}
-		exists, err := decoder.Decode(iter)
-		_ = iter.Close()
+		err := func() error {
+			iter := c.db.NewIter(&opt)
+			iter.First()
+			defer iter.Close()
+
+			decoder := mvcc.LockDecoder{ExpectKey: key}
+			exists, err := decoder.Decode(iter)
+			if err != nil {
+				return err
+			}
+
+			// There is a lock exists.
+			if exists && decoder.Lock.StartVer != startVer {
+				return decoder.Lock.LockErr(key)
+			}
+
+			// Check conflicts
+			vdecoder := mvcc.ValueDecoder{ExpectKey: key}
+			exists, err = vdecoder.Decode(iter)
+			if err != nil {
+				return err
+			}
+			if exists && vdecoder.Value.CommitVer > startVer {
+				return &ErrConflict{
+					StartVer:          startVer,
+					ConflictStartVer:  vdecoder.Value.StartVer,
+					ConflictCommitVer: vdecoder.Value.CommitVer,
+					Key:               key,
+				}
+			}
+			return nil
+		}()
 		if err != nil {
 			errs = append(errs, err)
-			continue
-		}
-
-		// There is a lock exists.
-		if exists {
-			errs = append(errs, decoder.Lock.LockErr(key))
 			continue
 		}
 
@@ -227,10 +225,10 @@ func (c *committer) prepare() []error {
 
 	// Commit the current write batch into the low-level storage engine.
 	if err := batch.Commit(nil); err != nil {
-		return []error{err}
+		return err
 	}
 
-	return errs
+	return &ErrGroup{Errors: errs}
 }
 
 // commit implements the second stage of 2PC transaction model.

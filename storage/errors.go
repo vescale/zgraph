@@ -18,6 +18,8 @@ import (
 	"fmt"
 
 	"github.com/pingcap/errors"
+	"github.com/vescale/zgraph/storage/kv"
+	"github.com/vescale/zgraph/storage/mvcc"
 )
 
 var (
@@ -68,4 +70,25 @@ type ErrKeyAlreadyExist struct {
 
 func (e *ErrKeyAlreadyExist) Error() string {
 	return fmt.Sprintf("key already exist, key: %q", e.Key)
+}
+
+// ErrGroup is used to collect multiple errors.
+type ErrGroup struct {
+	Errors []error
+}
+
+func (e *ErrGroup) Error() string {
+	return fmt.Sprintf("Errors: %v", e.Errors)
+}
+
+// ErrConflict is returned when the commitTS of key in the DB is greater than startTS.
+type ErrConflict struct {
+	StartVer          mvcc.Version
+	ConflictStartVer  mvcc.Version
+	ConflictCommitVer mvcc.Version
+	Key               kv.Key
+}
+
+func (e *ErrConflict) Error() string {
+	return "write conflict"
 }

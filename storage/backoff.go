@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff"
+	"github.com/vescale/zgraph/internal/logutil"
 )
 
 func expoBackoff() backoff.BackOff {
@@ -17,4 +18,11 @@ func expoBackoff() backoff.BackOff {
 	}
 	b.Reset()
 	return b
+}
+
+// BackoffErrReporter reports backoff error events.
+func BackoffErrReporter(site string) backoff.Notify {
+	return func(err error, dur time.Duration) {
+		logutil.Infof("Backoff in [%s](retry in %s) caused by: %+v", site, dur, err)
+	}
 }

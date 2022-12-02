@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cenkalti/backoff"
 	"github.com/cockroachdb/pebble"
 	"github.com/vescale/zgraph/storage/kv"
 	"github.com/vescale/zgraph/storage/latch"
@@ -116,7 +117,6 @@ func (txn *Txn) Commit(_ context.Context) error {
 
 	committer := &committer{
 		db:       txn.db,
-		vp:       txn.vp,
 		memDB:    txn.us.MemBuffer(),
 		resolver: txn.resolver,
 		startVer: txn.startVer,
@@ -128,14 +128,85 @@ func (txn *Txn) Commit(_ context.Context) error {
 	if committer.length() == 0 {
 		return nil
 	}
-	lock := txn.latches.Lock(txn.startVer, committer.keys())
-	defer txn.latches.UnLock(lock)
+	keys := committer.keys()
 
-	err = committer.execute()
-	if err == nil {
-		lock.SetCommitVer(committer.commitVer)
+	err = backoff.RetryNotify(func() error {
+		// Note: don't use `defer txn.latches.UnLock(lock)` here. we need to keep the
+		// lock fine-grain.
+		// Because the subsequent routine may time-consumed:
+		//   - CheckTxnStatus: will be slow if the IO usage is high.
+		//   - Resolve: will block if the worker queue full.
+		lock := txn.latches.Lock(txn.startVer, keys)
+		err := committer.prepare()
+		errg, ok := err.(*ErrGroup)
+		if !ok {
+			txn.latches.UnLock(lock)
+			return err
+		}
+		// Prepare transaction successfully means all lock are written into the low-level
+		// storage.
+		if len(errg.Errors) == 0 {
+			commitVer := txn.vp.CurrentVersion()
+			txn.commitVer = commitVer
+			committer.commitVer = commitVer
+			lock.SetCommitVer(commitVer)
+			txn.latches.UnLock(lock)
+			return nil
+		}
+		txn.latches.UnLock(lock)
+
+		rollbacks := map[mvcc.Version][]kv.Key{}
+		committed := map[mvcc.VersionPair][]kv.Key{}
+		for _, err := range errg.Errors {
+			// Try to resolve keys locked error.
+			lockedErr, ok := err.(*mvcc.LockedError)
+			if !ok {
+				return &backoff.PermanentError{Err: err}
+			}
+
+			status, err := resolver.CheckTxnStatus(txn.db, txn.vp, lockedErr.Primary, lockedErr.StartVer)
+			if err != nil {
+				return &backoff.PermanentError{Err: err}
+			}
+			switch status.Action {
+			case resolver.TxnActionNone:
+				// Transaction is still alive and try it letter.
+				continue
+
+			case resolver.TxnActionTTLExpireRollback,
+				resolver.TxnActionLockNotExistRollback:
+				// Resolve the current key.
+				rollbacks[lockedErr.StartVer] = append(rollbacks[lockedErr.StartVer], lockedErr.Key)
+				continue
+
+			default:
+				// TxnActionLockNotExistDoNothing
+				// Transaction committed: we try to resolve the current key and backoff.
+				pair := mvcc.VersionPair{StartVer: lockedErr.StartVer, CommitVer: status.CommitVer}
+				committed[pair] = append(committed[pair], lockedErr.Key)
+				continue
+			}
+		}
+
+		if len(rollbacks) > 0 {
+			for startVer, keys := range rollbacks {
+				txn.resolver.Resolve(keys, startVer, 0, nil)
+				committer.resolved = append(committer.resolved, startVer)
+			}
+		}
+		if len(committed) > 0 {
+			for pair, keys := range committed {
+				txn.resolver.Resolve(keys, pair.StartVer, pair.CommitVer, nil)
+			}
+		}
+
+		return resolver.ErrRetryable("resolving locks in transaction prepare staging")
+	}, expoBackoff(), BackoffErrReporter("committer.execute"))
+	if err != nil {
+		return err
 	}
-	return err
+
+	return committer.commit()
 }
 
 // Rollback implements the Transaction interface. It undoes the transaction operations to KV store.

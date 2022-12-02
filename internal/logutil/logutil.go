@@ -31,11 +31,6 @@ func SetLogger(l Logger) {
 	g = l
 }
 
-// L returns the default global logger
-func L() Logger {
-	return g
-}
-
 type defaultLogger struct{}
 
 func (defaultLogger) Infof(msg string, args ...interface{}) {
@@ -44,4 +39,12 @@ func (defaultLogger) Infof(msg string, args ...interface{}) {
 
 func (defaultLogger) Fatalf(msg string, args ...interface{}) {
 	_ = log.Output(2, fmt.Sprintf(msg, args...))
+}
+
+func Infof(msg string, args ...interface{}) {
+	g.Infof(msg, args...)
+}
+
+func Fatalf(msg string, args ...interface{}) {
+	g.Fatalf(msg, args...)
 }

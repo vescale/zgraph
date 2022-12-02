@@ -44,7 +44,7 @@ type KVSnapshot struct {
 // Get implements the Snapshot interface.
 func (s *KVSnapshot) Get(_ context.Context, key kv.Key) ([]byte, error) {
 	var val []byte
-	err := backoff.Retry(func() error {
+	err := backoff.RetryNotify(func() error {
 		v, err := s.get(key)
 		if err != nil {
 			lockedErr, ok := err.(*mvcc.LockedError)
@@ -82,7 +82,7 @@ func (s *KVSnapshot) Get(_ context.Context, key kv.Key) ([]byte, error) {
 		}
 		val = v
 		return nil
-	}, expoBackoff())
+	}, expoBackoff(), BackoffErrReporter("KVSnapshot.Get"))
 
 	return val, err
 }
@@ -171,14 +171,10 @@ func (s *KVSnapshot) IterReverse(lowerBound kv.Key, upperBound kv.Key) (Iterator
 }
 
 func (s *KVSnapshot) BatchGet(_ context.Context, keys []kv.Key) (map[string][]byte, error) {
-	type versionPair struct {
-		startVer  mvcc.Version
-		commitVer mvcc.Version
-	}
 	results := map[string][]byte{}
-	err := backoff.Retry(func() error {
+	err := backoff.RetryNotify(func() error {
 		rollbacks := map[mvcc.Version][]kv.Key{}
-		committed := map[versionPair][]kv.Key{}
+		committed := map[mvcc.VersionPair][]kv.Key{}
 		for _, key := range keys {
 			_, found := results[string(key)]
 			if found {
@@ -211,7 +207,7 @@ func (s *KVSnapshot) BatchGet(_ context.Context, keys []kv.Key) (map[string][]by
 				default:
 					// TxnActionLockNotExistDoNothing
 					// Transaction committed: we try to resolve the current key and backoff.
-					pair := versionPair{lockedErr.StartVer, status.CommitVer}
+					pair := mvcc.VersionPair{StartVer: lockedErr.StartVer, CommitVer: status.CommitVer}
 					committed[pair] = append(committed[pair], key)
 					continue
 				}
@@ -231,7 +227,7 @@ func (s *KVSnapshot) BatchGet(_ context.Context, keys []kv.Key) (map[string][]by
 		}
 		if len(committed) > 0 {
 			for pair, keys := range committed {
-				s.resolver.Resolve(keys, pair.startVer, pair.commitVer, nil)
+				s.resolver.Resolve(keys, pair.StartVer, pair.CommitVer, nil)
 			}
 		}
 
@@ -239,7 +235,7 @@ func (s *KVSnapshot) BatchGet(_ context.Context, keys []kv.Key) (map[string][]by
 			return resolver.ErrRetryable("some keys still resolving")
 		}
 		return nil
-	}, expoBackoff())
+	}, expoBackoff(), BackoffErrReporter("KVSnapshot.BatchGet"))
 
 	return results, err
 }
