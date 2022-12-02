@@ -49,7 +49,6 @@ func (db *MemDB) Iter(lowerBound, upperBound kv.Key) (Iterator, error) {
 // IterReverse creates a reversed Iterator positioned on the first entry which key is less than k.
 // The returned SnapshotIter will iterate from greater key to smaller key.
 // If k is nil, the returned SnapshotIter will be positioned at the last key.
-// TODO: Add lower bound limit
 func (db *MemDB) IterReverse(lowerBound, upperBound kv.Key) (Iterator, error) {
 	i := &MemDBIter{
 		db:      db,

@@ -71,6 +71,7 @@ func (s *KVSnapshot) Get(_ context.Context, key kv.Key) ([]byte, error) {
 				s.mu.Lock()
 				s.mu.resolved = append(s.mu.resolved, lockedErr.StartVer)
 				s.mu.Unlock()
+				return resolver.ErrRetryable("bypass rollback transaction")
 
 			default:
 				// TxnActionLockNotExistDoNothing
@@ -150,9 +151,10 @@ func (s *KVSnapshot) IterReverse(lowerBound kv.Key, upperBound kv.Key) (Iterator
 	// while the `Next` method calling.
 	_ = inner.Last()
 
-	iter := &SnapshotReverseIter{
-		inner: inner,
-		ver:   s.ver,
+	iter := &SnapshotIter{
+		reverse: true,
+		inner:   inner,
+		ver:     s.ver,
 	}
 
 	// Set the next key to the last valid key between lowerBound and upperBound.
@@ -233,12 +235,10 @@ func (s *KVSnapshot) BatchGet(_ context.Context, keys []kv.Key) (map[string][]by
 			}
 		}
 
-		// All keys are retrieved.
-		if len(results) == len(keys) {
-			return nil
+		if len(results) != len(keys) {
+			return resolver.ErrRetryable("some keys still resolving")
 		}
-
-		return resolver.ErrRetryable("some keys still resolving")
+		return nil
 	}, expoBackoff())
 
 	return results, err
