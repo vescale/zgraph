@@ -16,7 +16,11 @@
 
 package kv
 
-import "context"
+import (
+	"context"
+
+	"github.com/pingcap/errors"
+)
 
 const retry = 5
 
@@ -31,13 +35,28 @@ func RunNewTxn(ctx context.Context, store Storage, fn func(ctx context.Context, 
 	for i := 0; i < retry; i++ {
 		err := fn(ctx, txn)
 		if err != nil {
-
+			if IsRetryable(err) {
+				continue
+			}
+			return err
 		}
 		err = txn.Commit(ctx)
-		if err != nil {
-
+		if err == nil {
+			return nil
+		}
+		if !IsRetryable(err) {
+			return err
 		}
 	}
 
 	return nil
+}
+
+// IsRetryable reports whether an error retryable.
+func IsRetryable(err error) bool {
+	err = errors.Cause(err)
+	if err == nil {
+		return false
+	}
+	return err == ErrTxnConflicts
 }

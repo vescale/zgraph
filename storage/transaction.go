@@ -78,6 +78,11 @@ func (txn *Txn) Delete(k kv.Key) error {
 	return txn.us.MemBuffer().Delete(k)
 }
 
+// StartVer implements the Transaction interface.
+func (txn *Txn) StartVer() kv.Version {
+	return txn.startVer
+}
+
 // Snapshot implements the Transaction interface.
 func (txn *Txn) Snapshot() kv.Snapshot {
 	return txn.snapshot

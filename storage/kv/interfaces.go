@@ -81,6 +81,7 @@ type RetrieverMutator interface {
 type Transaction interface {
 	RetrieverMutator
 
+	StartVer() Version
 	// Snapshot returns the Snapshot binding to this transaction.
 	Snapshot() Snapshot
 	// BatchGet gets kv from the memory buffer of statement and transaction, and the kv storage.
