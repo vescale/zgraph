@@ -14,4 +14,26 @@
 
 package zgraph
 
-type ResultSet interface{}
+// SelectField represents a field information.
+type SelectField struct {
+	Graph        string
+	Label        string
+	OrgLabel     string
+	Name         string
+	OrgName      string
+	ColumnLength uint32
+}
+
+// ResultSet represents the result of a query.
+type ResultSet interface {
+	// Fields returns the fields information of the current query.
+	Fields() []*SelectField
+	// Valid reports whether the current result set valid.
+	Valid() bool
+	// Next advances the current result set to the next row of query result.
+	Next() error
+	// Scan reads the current row.
+	Scan(fields ...interface{}) error
+	// Close closes the current result set, which will release all query intermediate resources..
+	Close() error
+}

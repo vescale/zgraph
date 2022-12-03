@@ -3,14 +3,16 @@ module github.com/vescale/zgraph
 go 1.19
 
 require (
+	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cockroachdb/pebble v0.0.0-20221122204154-936e011bb911
-	github.com/coocood/freecache v1.2.3
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548
 	github.com/cznic/sortutil v0.0.0-20181122101858-f5f958428db8
 	github.com/cznic/strutil v0.0.0-20181122101858-275e90344537
 	github.com/google/btree v1.1.2
 	github.com/pingcap/errors v0.11.5-0.20210425183316-da1aaba5fb63
 	github.com/stretchr/testify v1.8.1
+	github.com/twmb/murmur3 v1.1.6
+	go.uber.org/atomic v1.7.0
 	golang.org/x/exp v0.0.0-20221114191408-850992195362
 	modernc.org/parser v1.0.3
 	modernc.org/y v1.0.4
@@ -19,7 +21,6 @@ require (
 require (
 	github.com/DataDog/zstd v1.4.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cockroachdb/errors v1.8.1 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20190617123548-eb05cc24525f // indirect
@@ -40,8 +41,7 @@ require (
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
-	github.com/twmb/murmur3 v1.1.6 // indirect
-	go.uber.org/atomic v1.7.0 // indirect
+	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.1.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
