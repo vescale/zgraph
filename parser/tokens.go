@@ -129,12 +129,6 @@ func init() {
 	initTokenFunc("'\"", startString)
 }
 
-// isInTokenMap indicates whether the target string is contained in tokenMap.
-func isInTokenMap(target string) bool {
-	_, ok := tokenMap[target]
-	return ok
-}
-
 // tokenMap is a map of known identifiers to the parser token ID.
 // Please try to keep the map in alphabetical order.
 var tokenMap = map[string]int{
@@ -171,6 +165,7 @@ var tokenMap = map[string]int{
 	"DIV":              div,
 	"DOUBLE":           doubleType,
 	"DROP":             drop,
+	"EDGE":             edge,
 	"ELEMENT_NUMBER":   elementNumber,
 	"ELSE":             elseKwd,
 	"END":              end,

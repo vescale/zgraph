@@ -493,7 +493,7 @@ func (n *InsertStmt) Restore(ctx *format.RestoreCtx) error {
 	}
 
 	if n.From != nil {
-		ctx.WritePlain(" ")
+		ctx.WriteKeyWord(" FROM ")
 		if err := n.From.Restore(ctx); err != nil {
 			return errors.Annotate(err, "An error occurred while restore InsertStmt.From")
 		}

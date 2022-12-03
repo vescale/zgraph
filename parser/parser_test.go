@@ -328,11 +328,70 @@ func TestModify(t *testing.T) {
 			true,
 			"INSERT VERTEX `x` LABELS (`Male`) PROPERTIES (`x`.`age` = 22)",
 		},
-		// {
-		// 	"INSERT VERTEX x LABELS ( Male ) PROPERTIES ( x.age = y.age ) FROM MATCH (y:Male)",
-		// 	true,
-		// 	"INSERT VERTEX x LABELS ( Male ) PROPERTIES ( x.age = y.age ) FROM MATCH (y:Male)",
-		// },
+		{
+			"INSERT VERTEX x LABELS ( Male ) PROPERTIES ( x.age = y.age ) FROM MATCH (y:Male)",
+			true,
+			"INSERT VERTEX `x` LABELS (`Male`) PROPERTIES (`x`.`age` = `y`.`age`) FROM MATCH (`y`:`Male`)",
+		},
+		{
+			`INSERT VERTEX x LABELS ( Profession ) PROPERTIES ( x.name = y.profession )
+			FROM MATCH (y:Person)
+		GROUP BY y.profession`,
+			true,
+			"INSERT VERTEX `x` LABELS (`Profession`) PROPERTIES (`x`.`name` = `y`.`profession`) FROM MATCH (`y`:`Person`) GROUP BY `y`.`profession`",
+		},
+		{
+			`INSERT EDGE e BETWEEN x AND y
+			FROM MATCH (x)
+			   , MATCH (y)
+		   WHERE id(x) = 1 AND id(y) = 2 `,
+			true,
+			"INSERT EDGE `e` BETWEEN `x` AND `y` FROM MATCH (`x`),MATCH (`y`) WHERE ID(`x`)=1 AND ID(`y`)=2",
+		},
+		{
+			`INSERT EDGE e BETWEEN x AND y LABELS ( knows )
+			FROM MATCH (x:Person)
+			   , MATCH (y:Person)
+		   WHERE id(x) = 1 AND id(y) = 2`,
+			true,
+			"INSERT EDGE `e` BETWEEN `x` AND `y` LABELS (`knows`) FROM MATCH (`x`:`Person`),MATCH (`y`:`Person`) WHERE ID(`x`)=1 AND ID(`y`)=2",
+		},
+		{
+			"INSERT VERTEX v PROPERTIES ( v.age = 22 )",
+			true,
+			"INSERT VERTEX `v` PROPERTIES (`v`.`age` = 22)",
+		},
+		{
+			`INSERT EDGE e BETWEEN x AND y LABELS ( knows ) PROPERTIES ( e.since = DATE '2017-09-21' )
+			FROM MATCH (x:Person)
+			   , MATCH (y:Person)
+		   WHERE id(x) = 1 AND id(y) = 2`,
+			true,
+			"INSERT EDGE `e` BETWEEN `x` AND `y` LABELS (`knows`) PROPERTIES (`e`.`since` = DATE '2017-09-21') FROM MATCH (`x`:`Person`),MATCH (`y`:`Person`) WHERE ID(`x`)=1 AND ID(`y`)=2",
+		},
+		{
+			`INSERT
+			VERTEX v LABELS ( Male ) PROPERTIES ( v.age = 23, v.name = 'John' ),
+			VERTEX u LABELS ( Female ) PROPERTIES ( u.age = 24, u.name = 'Jane' )`,
+			true,
+			"INSERT VERTEX `v` LABELS (`Male`) PROPERTIES (`v`.`age` = 23, `v`.`name` = 'John'),VERTEX `u` LABELS (`Female`) PROPERTIES (`u`.`age` = 24, `u`.`name` = 'Jane')",
+		},
+		{
+			`INSERT VERTEX x LABELS ( Person ) PROPERTIES ( x.name = 'John' )
+			, EDGE e BETWEEN x AND y LABELS ( knows ) PROPERTIES ( e.since = DATE '2017-09-21' )
+		 FROM MATCH (y)
+		WHERE y.name = 'Jane'`,
+			true,
+			"INSERT VERTEX `x` LABELS (`Person`) PROPERTIES (`x`.`name` = 'John'),EDGE `e` BETWEEN `x` AND `y` LABELS (`knows`) PROPERTIES (`e`.`since` = DATE '2017-09-21') FROM MATCH (`y`) WHERE `y`.`name`='Jane'",
+		},
+		{
+			`INSERT EDGE e BETWEEN x AND y
+			FROM MATCH (x)
+			   , MATCH (y) -> (z)
+		   WHERE id(x) = 1`,
+			true,
+			"INSERT EDGE `e` BETWEEN `x` AND `y` FROM MATCH (`x`),MATCH (`y`) -> (`z`) WHERE ID(`x`)=1",
+		},
 	}
 	RunTest(t, table)
 }

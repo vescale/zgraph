@@ -298,6 +298,7 @@ import (
 	FieldAsName
 	FieldAsNameOpt
 	FromClause
+	FromClauseOpt
 	GraphElementInsertion
 	GraphElementInsertionList
 	GraphElementUpdate
@@ -640,27 +641,19 @@ ExplainStmt:
 
  ******************************************************************************/
 InsertStmt:
-	"INSERT" IntoClauseOpt GraphElementInsertionList %prec insert
-	{
-		is := &ast.InsertStmt{
-			Insertions: $3.([]*ast.GraphElementInsertion),
-		}
-		if $2 != nil {
-			is.IntoGraphName = $2.(model.CIStr)
-		}
-		$$ = is
-	}
-|	PathPatternMacroOpt "INSERT" IntoClauseOpt GraphElementInsertionList FromClause WhereClauseOpt GroupByClauseOpt HavingClauseOpt OrderByClauseOpt LimitClauseOpt
+	PathPatternMacroOpt "INSERT" IntoClauseOpt GraphElementInsertionList FromClauseOpt WhereClauseOpt GroupByClauseOpt HavingClauseOpt OrderByClauseOpt LimitClauseOpt
 	{
 		is := &ast.InsertStmt{
 			Insertions: $4.([]*ast.GraphElementInsertion),
-			From:       $5.(*ast.MatchClauseList),
 		}
 		if $1 != nil {
 			is.PathPatternMacros = $1.([]*ast.PathPatternMacro)
 		}
 		if $3 != nil {
 			is.IntoGraphName = $3.(model.CIStr)
+		}
+		if $5 != nil {
+			is.From = $5.(*ast.MatchClauseList)
 		}
 		if $6 != nil {
 			is.Where = $6.(ast.ExprNode)
@@ -1556,6 +1549,16 @@ FromClause:
 		$$ = $2.(*ast.MatchClauseList)
 	}
 
+FromClauseOpt:
+	/* EMPTY */
+	{
+		$$ = nil
+	}
+|	FromClause
+	{
+		$$ = $1.(*ast.MatchClauseList)
+	}
+
 MatchClauseList:
 	MatchClause
 	{
@@ -1914,7 +1917,6 @@ PatternQuantifierOpt:
 |	PatternQuantifier
 
 PathPatternMacroOpt:
-	%prec empty
 	{
 		$$ = nil
 	}
