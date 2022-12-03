@@ -68,6 +68,7 @@ import (
 	asc                   "ASC"
 	by                    "BY"
 	create                "CREATE"
+	defaultKwd            "DEFAULT"
 	deleteKwd             "DELETE"
 	desc                  "DESC"
 	doubleType            "DOUBLE"
@@ -116,6 +117,7 @@ import (
 	/* Unreserved keywords. Notice: make sure these tokens are contained in UnReservedKeyword. */
 	begin                 "BEGIN"
 	end                   "END"
+	comment               "COMMENT"
 	commit                "COMMIT"
 	booleanType           "BOOLEAN"
 	explain               "EXPLAIN"
@@ -259,9 +261,11 @@ import (
 	BeginStmt
 	CommitStmt
 	CreateGraphStmt
+	CreateLabelStmt
 	CreateIndexStmt
 	DeleteStmt
 	DropGraphStmt
+	DropLabelStmt
 	DropIndexStmt
 	EmptyStmt
 	ExplainStmt
@@ -317,6 +321,9 @@ import (
 	LabelNameList
 	LabelPredicate
 	LabelPredicateOpt
+	LabelPropertyDef
+	LabelPropertyList
+	LabelPropertyListOpt
 	LabelsAndProperties
 	LabelSpecification
 	LabelSpecificationOpt
@@ -338,6 +345,9 @@ import (
 	PropertiesSpecificationOpt
 	PropertyName
 	PropertyNameList
+	PropertyOption
+	PropertyOptionList
+	PropertyOptionListOpt
 	QuantifiedPathExpr
 	ReachabilityPathExpr
 	SelectClause
@@ -403,9 +413,11 @@ Statement:
 |	BeginStmt
 |	CommitStmt
 |	CreateGraphStmt
+|	CreateLabelStmt
 |	CreateIndexStmt
 |	DeleteStmt
 |	DropGraphStmt
+|	DropLabelStmt
 |	DropIndexStmt
 |	ExplainStmt
 |	InsertStmt
@@ -438,6 +450,97 @@ CreateGraphStmt:
 		$$ = &ast.CreateGraphStmt{
 			IfNotExists: $3.(bool),
 			Graph:       $4.(model.CIStr),
+		}
+	}
+
+CreateLabelStmt:
+	"CREATE" "LABEL" IfNotExists LabelName LabelPropertyListOpt
+	{
+		cl := &ast.CreateLabelStmt{
+			IfNotExists: $3.(bool),
+			Label:       $4.(model.CIStr),
+		}
+		if $5 != nil {
+			cl.Properties = $5.([]*ast.LabelProperty)
+		}
+		$$ = cl
+	}
+
+
+LabelPropertyListOpt:
+	/* empty */
+	{
+		$$ = nil
+	}
+|	'(' LabelPropertyList ')'
+	{
+		$$ = $2
+	}
+
+LabelPropertyList:
+	LabelPropertyDef
+	{
+		$$ = []*ast.LabelProperty{$1.(*ast.LabelProperty)}
+	}
+|	LabelPropertyList ',' LabelPropertyDef
+	{
+		$$ = append($1.([]*ast.LabelProperty), $3.(*ast.LabelProperty))
+	}
+
+LabelPropertyDef:
+	PropertyName DataType PropertyOptionListOpt
+	{
+		lp := &ast.LabelProperty{
+			Name: $1.(model.CIStr),
+			Type: $2.(ast.DataType),
+		}
+		if $3 != nil {
+			lp.Options = $3.([]*ast.LabelPropertyOption)
+		}
+		$$ = lp
+	}
+
+PropertyOptionListOpt:
+	{
+		$$ = nil
+	}
+|	PropertyOptionList
+
+PropertyOptionList:
+	PropertyOption
+	{
+		$$ = []*ast.LabelPropertyOption{$1.(*ast.LabelPropertyOption)}
+	}
+|	PropertyOptionList PropertyOption
+	{
+		$$ = append($1.([]*ast.LabelPropertyOption), $2.(*ast.LabelPropertyOption))
+	}
+
+PropertyOption:
+	"NOT" "NULL"
+	{
+		$$ = &ast.LabelPropertyOption{
+			Type: ast.LabelPropertyOptionTypeNotNull,
+		}
+	}
+|	"NULL"
+	{
+		$$ = &ast.LabelPropertyOption{
+			Type: ast.LabelPropertyOptionTypeNull,
+		}
+	}
+|	"DEFAULT" Literal
+	{
+		$$ = &ast.LabelPropertyOption{
+			Type: ast.LabelPropertyOptionTypeDefault,
+			Data: $2,
+		}
+	}
+|	"COMMENT" stringLit
+	{
+		$$ = &ast.LabelPropertyOption{
+			Type: ast.LabelPropertyOptionTypeComment,
+			Data: $2,
 		}
 	}
 
@@ -511,6 +614,15 @@ DropGraphStmt:
 		$$ = &ast.DropGraphStmt{
 			IfExists: $3.(bool),
 			Graph:    $4.(model.CIStr),
+		}
+	}
+
+DropLabelStmt:
+	"DROP" "LABEL" IfExists LabelName
+	{
+		$$ = &ast.DropLabelStmt{
+			IfExists: $3.(bool),
+			Label:    $4.(model.CIStr),
 		}
 	}
 
@@ -1208,7 +1320,7 @@ DataType:
 	}
 |	"DATE"
 	{
-		$$ = ast.DataTypeDouble
+		$$ = ast.DataTypeDate
 	}
 |	"TIME"
 	{

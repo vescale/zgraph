@@ -78,14 +78,14 @@ GROUP BY n.prop1, n.prop2
 		      SUM(out.amount) AS totalOutgoing,
 		      LISTAGG(out.amount, ', ') AS amounts
 		 FROM MATCH (a:Account) -[:owner]-> (owner:Person|Company)
-		    , MATCH (a) -[out:transaction]-> (:Account)
+		    , MATCH (a) -[OUT:TRANSACTION]-> (:Account)
 		GROUP BY label(owner)
 		ORDER BY label(owner)`, true, "SELECT LABEL(`owner`),COUNT(1) AS `numTransactions`,SUM(`out`.`amount`) AS `totalOutgoing`,LISTAGG(`out`.`amount`, ', ') AS `amounts` FROM MATCH (`a`:`Account`) -[:`owner`]-> (`owner`:`Person`|`Company`),MATCH (`a`) -[`out`:`transaction`]-> (:`Account`) GROUP BY LABEL(`owner`) ORDER BY LABEL(`owner`)"},
 		{`SELECT COUNT(*) AS numTransactions,
        SUM(out.amount) AS totalOutgoing,
        LISTAGG(out.amount, ', ') AS amounts
   FROM MATCH (a:Account) -[:owner]-> (owner:Person|Company)
-     , MATCH (a) -[out:transaction]-> (:Account)`, true, "SELECT COUNT(1) AS `numTransactions`,SUM(`out`.`amount`) AS `totalOutgoing`,LISTAGG(`out`.`amount`, ', ') AS `amounts` FROM MATCH (`a`:`Account`) -[:`owner`]-> (`owner`:`Person`|`Company`),MATCH (`a`) -[`out`:`transaction`]-> (:`Account`)"},
+     , MATCH (a) -[OUT:TRANSACTION]-> (:Account)`, true, "SELECT COUNT(1) AS `numTransactions`,SUM(`out`.`amount`) AS `totalOutgoing`,LISTAGG(`out`.`amount`, ', ') AS `amounts` FROM MATCH (`a`:`Account`) -[:`owner`]-> (`owner`:`Person`|`Company`),MATCH (`a`) -[`out`:`transaction`]-> (:`Account`)"},
 		{"SELECT COUNT(*) FROM MATCH (m:Person)", true, "SELECT COUNT(1) FROM MATCH (`m`:`Person`)"},
 		{"SELECT AVG(DISTINCT m.age) FROM MATCH (m:Person)", true, "SELECT AVG(DISTINCT `m`.`age`) FROM MATCH (`m`:`Person`)"},
 		{"SELECT n.name FROM MATCH (n) -[:has_friend]-> (m) GROUP BY n HAVING COUNT(m) > 10", true, "SELECT `n`.`name` FROM MATCH (`n`) -[:`has_friend`]-> (`m`) GROUP BY `n` HAVING COUNT(`m`)>10"},
@@ -96,7 +96,7 @@ GROUP BY n.prop1, n.prop2
        b.number AS b,
        COUNT(e) AS pathLength,
        ARRAY_AGG(e.amount) AS amounts
-  FROM MATCH ANY SHORTEST (a:Account) -[e:transaction]->* (b:Account)
+  FROM MATCH ANY SHORTEST (a:Account) -[e:TRANSACTION]->* (b:Account)
  WHERE a.number = 10039 AND b.number = 2090`, true, "SELECT `a`.`number` AS `a`,`b`.`number` AS `b`,COUNT(`e`) AS `pathLength`,ARRAY_AGG(`e`.`amount`) AS `amounts` FROM MATCH ANY SHORTEST (`a`:`Account`) -[`e`:`transaction`]->* (`b`:`Account`) WHERE `a`.`number`=10039 AND `b`.`number`=2090"},
 		{`SELECT dst.number
     FROM MATCH ANY (src:Account) -[e]->+ (dst:Account)
@@ -141,7 +141,7 @@ ORDER BY dst.number`, true, "SELECT `dst`.`number`,LISTAGG(`e`.`amount`, ' + ')|
 		{`SELECT src, ARRAY_AGG(e.weight), dst
   FROM MATCH ANY SHORTEST (src) -[e]->* (dst) WHERE SUM(e.cost) < 100`, true, "SELECT `src`,ARRAY_AGG(`e`.`weight`),`dst` FROM MATCH ANY SHORTEST (`src`) -[`e`]->* (`dst`) WHERE SUM(`e`.`cost`)<100"},
 		{`SELECT LISTAGG(e.amount, ' + ') || ' = ', SUM(e.amount) AS total_amount
-    FROM MATCH ALL SHORTEST (a:Account) -[e:transaction]->* (b:Account)
+    FROM MATCH ALL SHORTEST (a:Account) -[e:TRANSACTION]->* (b:Account)
    WHERE a.number = 10039 AND b.number = 2090
 ORDER BY total_amount`, true, "SELECT LISTAGG(`e`.`amount`, ' + ')||' = ',SUM(`e`.`amount`) AS `total_amount` FROM MATCH ALL SHORTEST (`a`:`Account`) -[`e`:`transaction`]->* (`b`:`Account`) WHERE `a`.`number`=10039 AND `b`.`number`=2090 ORDER BY `total_amount`"},
 		{`SELECT src, SUM(e.weight), dst
@@ -154,33 +154,33 @@ ORDER BY total_amount`, true, "SELECT LISTAGG(`e`.`amount`, ' + ')||' = ',SUM(`e
   FROM MATCH (start) -> (src)
      , MATCH TOP 3 SHORTEST (src) (-[e1]->)* (mid)
      , MATCH ANY SHORTEST (mid) (-[e2]->)* (dst)
-     , MATCH (dst) -> (end)`, true, "SELECT ARRAY_AGG(`e1`.`weight`),ARRAY_AGG(`e2`.`weight`) FROM MATCH (`start`) -> (`src`),MATCH TOP 3 SHORTEST (`src`) -[`e1`]->* (`mid`),MATCH ANY SHORTEST (`mid`) -[`e2`]->* (`dst`),MATCH (`dst`) -> (`end`)"},
+     , MATCH (dst) -> (END)`, true, "SELECT ARRAY_AGG(`e1`.`weight`),ARRAY_AGG(`e2`.`weight`) FROM MATCH (`start`) -> (`src`),MATCH TOP 3 SHORTEST (`src`) -[`e1`]->* (`mid`),MATCH ANY SHORTEST (`mid`) -[`e2`]->* (`dst`),MATCH (`dst`) -> (`end`)"},
 		{`SELECT COUNT(e) AS num_hops
        , SUM(e.amount) AS total_amount
        , ARRAY_AGG(e.amount) AS amounts_along_path
-    FROM MATCH TOP 7 SHORTEST (a:Account) -[e:transaction]->* (b:Account)
+    FROM MATCH TOP 7 SHORTEST (a:Account) -[e:TRANSACTION]->* (b:Account)
    WHERE a.number = 10039 AND a = b
 ORDER BY num_hops, total_amount`, true, "SELECT COUNT(`e`) AS `num_hops`,SUM(`e`.`amount`) AS `total_amount`,ARRAY_AGG(`e`.`amount`) AS `amounts_along_path` FROM MATCH TOP 7 SHORTEST (`a`:`Account`) -[`e`:`transaction`]->* (`b`:`Account`) WHERE `a`.`number`=10039 AND `a`=`b` ORDER BY `num_hops`,`total_amount`"},
 		{`SELECT COUNT(e) AS num_hops
        , SUM(e.amount) AS total_amount
        , ARRAY_AGG(e.amount) AS amounts_along_path
-    FROM MATCH TOP 7 SHORTEST (a:Account) -[e:transaction]->* (b:Account)
+    FROM MATCH TOP 7 SHORTEST (a:Account) -[e:TRANSACTION]->* (b:Account)
    WHERE a.number = 10039 AND a = b AND COUNT(DISTINCT e) = COUNT(e) AND COUNT(e) > 0
 ORDER BY num_hops, total_amount`, true, "SELECT COUNT(`e`) AS `num_hops`,SUM(`e`.`amount`) AS `total_amount`,ARRAY_AGG(`e`.`amount`) AS `amounts_along_path` FROM MATCH TOP 7 SHORTEST (`a`:`Account`) -[`e`:`transaction`]->* (`b`:`Account`) WHERE `a`.`number`=10039 AND `a`=`b` AND COUNT(DISTINCT `e`)=COUNT(`e`) AND COUNT(`e`)>0 ORDER BY `num_hops`,`total_amount`"},
 		{`SELECT COUNT(e) AS num_hops
      , SUM(e.amount) AS total_amount
      , ARRAY_AGG(e.amount) AS amounts_along_path
-  FROM MATCH ANY CHEAPEST (a:Account) (-[e:transaction]-> COST e.amount)* (b:Account)
+  FROM MATCH ANY CHEAPEST (a:Account) (-[e:TRANSACTION]-> COST e.amount)* (b:Account)
  WHERE a.number = 10039 AND b.number = 2090`, true, "SELECT COUNT(`e`) AS `num_hops`,SUM(`e`.`amount`) AS `total_amount`,ARRAY_AGG(`e`.`amount`) AS `amounts_along_path` FROM MATCH ANY CHEAPEST (`a`:`Account`) (-[`e`:`transaction`]-> COST `e`.`amount`)* (`b`:`Account`) WHERE `a`.`number`=10039 AND `b`.`number`=2090"},
 		{`SELECT COUNT(e) AS num_hops
      , SUM(e.amount) AS total_amount
      , ARRAY_AGG(e.amount) AS amounts_along_path
-  FROM MATCH ANY CHEAPEST (a:Account) (-[e:transaction]- COST e.amount)* (b:Account)
+  FROM MATCH ANY CHEAPEST (a:Account) (-[e:TRANSACTION]- COST e.amount)* (b:Account)
  WHERE a.number = 10039 AND b.number = 2090`, true, "SELECT COUNT(`e`) AS `num_hops`,SUM(`e`.`amount`) AS `total_amount`,ARRAY_AGG(`e`.`amount`) AS `amounts_along_path` FROM MATCH ANY CHEAPEST (`a`:`Account`) (-[`e`:`transaction`]- COST `e`.`amount`)* (`b`:`Account`) WHERE `a`.`number`=10039 AND `b`.`number`=2090"},
 		{`SELECT COUNT(e) AS num_hops
      , SUM(e.amount) AS total_amount
      , ARRAY_AGG(e.amount) AS amounts_along_path
-  FROM MATCH ANY CHEAPEST (p1:Person) (-[e:owner|transaction]-
+  FROM MATCH ANY CHEAPEST (p1:Person) (-[e:owner|TRANSACTION]-
                                       COST CASE
                                              WHEN e.amount IS NULL THEN 1
                                              ELSE e.amount
@@ -189,7 +189,7 @@ ORDER BY num_hops, total_amount`, true, "SELECT COUNT(`e`) AS `num_hops`,SUM(`e`
 		{`SELECT COUNT(e) AS num_hops
        , SUM(e.amount) AS total_amount
        , ARRAY_AGG(e.amount) AS amounts_along_path
-    FROM MATCH TOP 3 CHEAPEST (a:Account) (-[e:transaction]-> COST e.amount)* (a)
+    FROM MATCH TOP 3 CHEAPEST (a:Account) (-[e:TRANSACTION]-> COST e.amount)* (a)
    WHERE a.number = 10039
 ORDER BY total_amount`, true, "SELECT COUNT(`e`) AS `num_hops`,SUM(`e`.`amount`) AS `total_amount`,ARRAY_AGG(`e`.`amount`) AS `amounts_along_path` FROM MATCH TOP 3 CHEAPEST (`a`:`Account`) (-[`e`:`transaction`]-> COST `e`.`amount`)* (`a`) WHERE `a`.`number`=10039 ORDER BY `total_amount`"},
 		{`SELECT COUNT(e) AS num_hops
@@ -202,27 +202,27 @@ ORDER BY total_amount`, true, "SELECT COUNT(`e`) AS `num_hops`,SUM(`e`.`amount`)
     FROM MATCH TOP 4 CHEAPEST
           (a:Account)
             (-[e]- (n_x) COST CASE label(n_x) WHEN 'Person' THEN 3 ELSE 1 END)*
-              (c:Company)
-   WHERE a.number = 10039 AND c.name = 'Oracle'
+              (C:Company)
+   WHERE a.number = 10039 AND C.name = 'Oracle'
 ORDER BY total_cost`, true, "SELECT COUNT(`e`) AS `num_hops`,ARRAY_AGG(CASE LABEL(`n_x`) WHEN 'Person' THEN `n_x`.`name` WHEN 'Company' THEN `n_x`.`name` WHEN 'Account' THEN CAST(`n_x`.`number` AS STRING) END) AS `names_or_numbers`,SUM(CASE LABEL(`n_x`) WHEN 'Person' THEN 8 ELSE 1 END) AS `total_cost` FROM MATCH TOP 4 CHEAPEST (`a`:`Account`) (-[`e`]- (`n_x`) COST CASE LABEL(`n_x`) WHEN 'Person' THEN 3 ELSE 1 END)* (`c`:`Company`) WHERE `a`.`number`=10039 AND `c`.`name`='Oracle' ORDER BY `total_cost`"},
 		{`SELECT LISTAGG(e.amount, ' + ') || ' = ', SUM(e.amount) AS total_amount
-    FROM MATCH ALL (a:Account) -[e:transaction]->{,7} (b:Account)
+    FROM MATCH ALL (a:Account) -[e:TRANSACTION]->{,7} (b:Account)
    WHERE a.number = 10039 AND b.number = 2090
 ORDER BY total_amount`, true, "SELECT LISTAGG(`e`.`amount`, ' + ')||' = ',SUM(`e`.`amount`) AS `total_amount` FROM MATCH ALL (`a`:`Account`) -[`e`:`transaction`]->{,7} (`b`:`Account`) WHERE `a`.`number`=10039 AND `b`.`number`=2090 ORDER BY `total_amount`"},
 		{`SELECT SUM(COUNT(e)) AS sumOfPathLengths
-  FROM MATCH ANY SHORTEST (a:Account) -[e:transaction]->* (b:Account)
+  FROM MATCH ANY SHORTEST (a:Account) -[e:TRANSACTION]->* (b:Account)
  WHERE a.number = 10039 AND (b.number = 1001 OR b.number = 2090)`, true, "SELECT SUM(COUNT(`e`)) AS `sumOfPathLengths` FROM MATCH ANY SHORTEST (`a`:`Account`) -[`e`:`transaction`]->* (`b`:`Account`) WHERE `a`.`number`=10039 AND (`b`.`number`=1001 OR `b`.`number`=2090)"},
 		{`SELECT b.number AS b,
          COUNT(e) AS pathLength,
          ARRAY_AGG(e.amount) AS transactions
-    FROM MATCH ANY SHORTEST (a:Account) -[e:transaction]->* (b:Account)
+    FROM MATCH ANY SHORTEST (a:Account) -[e:TRANSACTION]->* (b:Account)
    WHERE a.number = 10039 AND
          (b.number = 8021 OR b.number = 1001 OR b.number = 2090) AND
          COUNT(e) <= 2
 ORDER BY pathLength`, true, "SELECT `b`.`number` AS `b`,COUNT(`e`) AS `pathLength`,ARRAY_AGG(`e`.`amount`) AS `transactions` FROM MATCH ANY SHORTEST (`a`:`Account`) -[`e`:`transaction`]->* (`b`:`Account`) WHERE `a`.`number`=10039 AND (`b`.`number`=8021 OR `b`.`number`=1001 OR `b`.`number`=2090) AND COUNT(`e`)<=2 ORDER BY `pathLength`"},
 		{`SELECT COUNT(e) AS pathLength,
          COUNT(*) AS cnt
-    FROM MATCH ANY SHORTEST (a:Account) -[e:transaction]->* (b:Account)
+    FROM MATCH ANY SHORTEST (a:Account) -[e:TRANSACTION]->* (b:Account)
    WHERE (a.number = 10039 OR a.number = 8021) AND
          (b.number = 1001 OR b.number = 2090)
 GROUP BY COUNT(e)
@@ -235,37 +235,37 @@ ORDER BY pathLength`, true, "SELECT COUNT(`e`) AS `pathLength`,COUNT(1) AS `cnt`
  WHERE a.age > ( SELECT AVG(b.age) FROM MATCH (a) -[:friendOf]-> (b) )`, true, "SELECT `a`.`name` FROM MATCH (`a`) WHERE `a`.`age`>(SELECT AVG(`b`.`age`) FROM MATCH (`a`) -[:`friendOf`]-> (`b`))"},
 		{`SELECT p.name AS name
        , ( SELECT SUM(t.amount)
-             FROM MATCH (a) <-[t:transaction]- (:Account)
+             FROM MATCH (a) <-[t:TRANSACTION]- (:Account)
                      ON financial_transactions
          ) AS sum_incoming
        , ( SELECT SUM(t.amount)
-             FROM MATCH (a) -[t:transaction]-> (:Account)
+             FROM MATCH (a) -[t:TRANSACTION]-> (:Account)
                      ON financial_transactions
          ) AS sum_outgoing
        , ( SELECT COUNT(DISTINCT p2)
-             FROM MATCH (a) -[t:transaction]- (:Account) -[:owner]-> (p2:Person)
+             FROM MATCH (a) -[t:TRANSACTION]- (:Account) -[:owner]-> (p2:Person)
                      ON financial_transactions
             WHERE p2 <> p
          ) AS num_persons_transacted_with
-       , ( SELECT COUNT(DISTINCT c)
-             FROM MATCH (a) -[t:transaction]- (:Account) -[:owner]-> (c:Company)
+       , ( SELECT COUNT(DISTINCT C)
+             FROM MATCH (a) -[t:TRANSACTION]- (:Account) -[:owner]-> (C:Company)
                      ON financial_transactions
          ) AS num_companies_transacted_with
     FROM MATCH (p:Person) <-[:owner]- (a:Account) ON financial_transactions
 ORDER BY sum_outgoing + sum_incoming DESC`, true, "SELECT `p`.`name` AS `name`,(SELECT SUM(`t`.`amount`) FROM MATCH (`a`) <-[`t`:`transaction`]- (:`Account`) ON `financial_transactions`) AS `sum_incoming`,(SELECT SUM(`t`.`amount`) FROM MATCH (`a`) -[`t`:`transaction`]-> (:`Account`) ON `financial_transactions`) AS `sum_outgoing`,(SELECT COUNT(DISTINCT `p2`) FROM MATCH (`a`) -[`t`:`transaction`]- (:`Account`) -[:`owner`]-> (`p2`:`Person`) ON `financial_transactions` WHERE `p2`<>`p`) AS `num_persons_transacted_with`,(SELECT COUNT(DISTINCT `c`) FROM MATCH (`a`) -[`t`:`transaction`]- (:`Account`) -[:`owner`]-> (`c`:`Company`) ON `financial_transactions`) AS `num_companies_transacted_with` FROM MATCH (`p`:`Person`) <-[:`owner`]- (`a`:`Account`) ON `financial_transactions` ORDER BY `sum_outgoing`+`sum_incoming` DESC"},
 		{`SELECT p.name AS name
        , ( SELECT SUM(t.amount)
-             FROM MATCH (a) <-[t:transaction]- (:Account)
+             FROM MATCH (a) <-[t:TRANSACTION]- (:Account)
          ) AS sum_incoming
        , ( SELECT SUM(t.amount)
-             FROM MATCH (a) -[t:transaction]-> (:Account)
+             FROM MATCH (a) -[t:TRANSACTION]-> (:Account)
          ) AS sum_outgoing
        , ( SELECT COUNT(DISTINCT p2)
-             FROM MATCH (a) -[t:transaction]- (:Account) -[:owner]-> (p2:Person)
+             FROM MATCH (a) -[t:TRANSACTION]- (:Account) -[:owner]-> (p2:Person)
             WHERE p2 <> p
          ) AS num_persons_transacted_with
-       , ( SELECT COUNT(DISTINCT c)
-             FROM MATCH (a) -[t:transaction]- (:Account) -[:owner]-> (c:Company)
+       , ( SELECT COUNT(DISTINCT C)
+             FROM MATCH (a) -[t:TRANSACTION]- (:Account) -[:owner]-> (C:Company)
          ) AS num_companies_transacted_with
     FROM MATCH (p:Person) <-[:owner]- (a:Account)
 ORDER BY sum_outgoing + sum_incoming DESC`, true, "SELECT `p`.`name` AS `name`,(SELECT SUM(`t`.`amount`) FROM MATCH (`a`) <-[`t`:`transaction`]- (:`Account`)) AS `sum_incoming`,(SELECT SUM(`t`.`amount`) FROM MATCH (`a`) -[`t`:`transaction`]-> (:`Account`)) AS `sum_outgoing`,(SELECT COUNT(DISTINCT `p2`) FROM MATCH (`a`) -[`t`:`transaction`]- (:`Account`) -[:`owner`]-> (`p2`:`Person`) WHERE `p2`<>`p`) AS `num_persons_transacted_with`,(SELECT COUNT(DISTINCT `c`) FROM MATCH (`a`) -[`t`:`transaction`]- (:`Account`) -[:`owner`]-> (`c`:`Company`)) AS `num_companies_transacted_with` FROM MATCH (`p`:`Person`) <-[:`owner`]- (`a`:`Account`) ORDER BY `sum_outgoing`+`sum_incoming` DESC"},
@@ -287,6 +287,16 @@ WHERE generatorA.name = 'AEH382'`, true, "PATH `macro1` AS (`v1`:`Generator`) -[
 SELECT COUNT(*)
 FROM MATCH (generatorA) -/:macro1+/-> (generatorB)
 WHERE generatorA.name = 'AEH382'`, true, "PATH `macro1` AS (`v2`:`Connector`) <-[`e1`:`has_connector`]- (`v1`:`Generator`) SELECT COUNT(1) FROM MATCH (`generatorA`) -/:`macro1`+/-> (`generatorB`) WHERE `generatorA`.`name`='AEH382'"},
+		// DDL
+		{
+			`CREATE LABEL l (a string,
+b boolean not null default true,
+c date null,
+d FLOAT default 1.1,
+e INT default 10 COMMENT 'test')`,
+			true,
+			"CREATE LABEL `l` (`a` STRING, `b` BOOLEAN NOT NULL DEFAULT 1, `c` DATE NULL, `d` FLOAT DEFAULT 1.1, `e` INT DEFAULT 10 COMMENT 'test')",
+		},
 	}
 	RunTest(t, table)
 }

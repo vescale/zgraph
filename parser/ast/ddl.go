@@ -15,6 +15,9 @@
 package ast
 
 import (
+	"fmt"
+
+	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/parser/format"
 	"github.com/vescale/zgraph/parser/model"
 )
@@ -22,6 +25,8 @@ import (
 var (
 	_ DDLNode = &CreateGraphStmt{}
 	_ DDLNode = &DropGraphStmt{}
+	_ DDLNode = &CreateLabelStmt{}
+	_ DDLNode = &DropLabelStmt{}
 	_ DDLNode = &CreateIndexStmt{}
 	_ DDLNode = &DropIndexStmt{}
 )
@@ -61,6 +66,164 @@ func (n *DropGraphStmt) Restore(ctx *format.RestoreCtx) error {
 }
 
 func (n *DropGraphStmt) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	return v.Leave(newNode)
+}
+
+type CreateLabelStmt struct {
+	ddlNode
+
+	IfNotExists bool
+	Label       model.CIStr
+	Properties  []*LabelProperty
+}
+
+// Restore implements Node interface.
+func (n *CreateLabelStmt) Restore(ctx *format.RestoreCtx) error {
+	ctx.WriteKeyWord("CREATE ")
+	ctx.WriteKeyWord("LABEL ")
+	if n.IfNotExists {
+		ctx.WriteKeyWord("IF NOT EXISTS ")
+	}
+	ctx.WriteName(n.Label.String())
+
+	ctx.WritePlain(" (")
+	for i, prop := range n.Properties {
+		if i != 0 {
+			ctx.WritePlain(", ")
+		}
+		err := prop.Restore(ctx)
+		if err != nil {
+			return errors.Annotatef(err, "An error occurred while restore CreateLabelStmt.Properties[%d]", i)
+		}
+	}
+	ctx.WritePlain(")")
+
+	return nil
+}
+
+// Accept implements Node Accept interface.
+func (n *CreateLabelStmt) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+
+	nn := newNode.(*CreateLabelStmt)
+	for i, prop := range nn.Properties {
+		node, ok := prop.Accept(v)
+		if !ok {
+			return nn, false
+		}
+		nn.Properties[i] = node.(*LabelProperty)
+	}
+
+	return v.Leave(newNode)
+}
+
+type LabelProperty struct {
+	node
+
+	Name    model.CIStr
+	Type    DataType
+	Options []*LabelPropertyOption
+}
+
+// Restore implements Node interface.
+func (n *LabelProperty) Restore(ctx *format.RestoreCtx) error {
+	ctx.WriteName(n.Name.String())
+	ctx.WritePlain(" ")
+	ctx.WriteKeyWord(n.Type.String())
+	for i, opt := range n.Options {
+		ctx.WritePlain(" ")
+		err := opt.Restore(ctx)
+		if err != nil {
+			return errors.Annotatef(err, "An error occurred while restore LabelProperty.Options[%d]", i)
+		}
+	}
+	return nil
+}
+
+// Accept implements Node Accept interface.
+func (n *LabelProperty) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+
+	nn := newNode.(*LabelProperty)
+	for i, opt := range nn.Options {
+		node, ok := opt.Accept(v)
+		if !ok {
+			return nn, false
+		}
+		nn.Options[i] = node.(*LabelPropertyOption)
+	}
+
+	return v.Leave(newNode)
+}
+
+type LabelPropertyOptionType byte
+
+const (
+	LabelPropertyOptionTypeNotNull LabelPropertyOptionType = iota
+	LabelPropertyOptionTypeNull
+	LabelPropertyOptionTypeDefault
+	LabelPropertyOptionTypeComment
+)
+
+type LabelPropertyOption struct {
+	node
+
+	Type LabelPropertyOptionType
+	Data interface{}
+}
+
+func (n *LabelPropertyOption) Restore(ctx *format.RestoreCtx) error {
+	switch n.Type {
+	case LabelPropertyOptionTypeNotNull:
+		ctx.WriteKeyWord("NOT NULL")
+	case LabelPropertyOptionTypeNull:
+		ctx.WriteKeyWord("NULL")
+	case LabelPropertyOptionTypeDefault:
+		ctx.WriteKeyWord("DEFAULT ")
+		expr := n.Data.(ExprNode)
+		err := expr.Restore(ctx)
+		return errors.Annotate(err, "An error occurred while restore LabelPropertyOption.Default")
+	case LabelPropertyOptionTypeComment:
+		ctx.WriteKeyWord("COMMENT ")
+		ctx.WriteString(n.Data.(string))
+	default:
+		return fmt.Errorf("UNKNOWN<%d>", n.Type)
+	}
+	return nil
+}
+
+func (n *LabelPropertyOption) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	return v.Leave(newNode)
+}
+
+type DropLabelStmt struct {
+	ddlNode
+
+	IfExists bool
+	Label    model.CIStr
+}
+
+func (n *DropLabelStmt) Restore(ctx *format.RestoreCtx) error {
+	ctx.WriteKeyWord("DROP LABEL ")
+	ctx.WriteName(n.Label.String())
+	return nil
+}
+
+func (n *DropLabelStmt) Accept(v Visitor) (Node, bool) {
 	newNode, skipChildren := v.Enter(n)
 	if skipChildren {
 		return v.Leave(newNode)
