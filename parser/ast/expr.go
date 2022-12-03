@@ -154,15 +154,15 @@ func (n *ValueExpr) Accept(v Visitor) (Node, bool) {
 type VariableReference struct {
 	exprNode
 
-	VariableName string
+	VariableName model.CIStr
 }
 
 func (n *VariableReference) Format(w io.Writer) {
-	fmt.Fprint(w, n.VariableName)
+	fmt.Fprint(w, n.VariableName.O)
 }
 
 func (n *VariableReference) Restore(ctx *format.RestoreCtx) error {
-	ctx.WriteName(n.VariableName)
+	ctx.WriteName(n.VariableName.O)
 	return nil
 }
 
@@ -174,38 +174,26 @@ func (n *VariableReference) Accept(v Visitor) (node Node, ok bool) {
 type PropertyAccess struct {
 	exprNode
 
-	VariableName *VariableReference
+	VariableName model.CIStr
 	PropertyName model.CIStr
 }
 
 func (n *PropertyAccess) Format(w io.Writer) {
-	n.VariableName.Format(w)
+	fmt.Print(w, n.VariableName.O)
 	fmt.Fprint(w, ".")
 	fmt.Fprint(w, n.PropertyName.O)
 }
 
 func (n *PropertyAccess) Restore(ctx *format.RestoreCtx) error {
-	if err := n.VariableName.Restore(ctx); err != nil {
-		return errors.Annotate(err, "An error occurred while restore PropertyAccess.VariableName")
-	}
+	ctx.WriteName(n.VariableName.O)
 	ctx.WritePlain(".")
 	ctx.WriteName(n.PropertyName.O)
 	return nil
 }
 
 func (n *PropertyAccess) Accept(v Visitor) (node Node, ok bool) {
-	newNode, skipChildren := v.Enter(n)
-	if skipChildren {
-		return v.Leave(newNode)
-	}
-
-	nn, ok := newNode.(*PropertyAccess)
-	node, ok = nn.VariableName.Accept(v)
-	if !ok {
-		return nn, false
-	}
-	nn.VariableName = node.(*VariableReference)
-	return v.Leave(nn)
+	newNode, _ := v.Enter(n)
+	return v.Leave(newNode)
 }
 
 type BindVariable struct {

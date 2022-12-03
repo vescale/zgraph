@@ -287,7 +287,22 @@ WHERE generatorA.name = 'AEH382'`, true, "PATH `macro1` AS (`v1`:`Generator`) -[
 SELECT COUNT(*)
 FROM MATCH (generatorA) -/:macro1+/-> (generatorB)
 WHERE generatorA.name = 'AEH382'`, true, "PATH `macro1` AS (`v2`:`Connector`) <-[`e1`:`has_connector`]- (`v1`:`Generator`) SELECT COUNT(1) FROM MATCH (`generatorA`) -/:`macro1`+/-> (`generatorB`) WHERE `generatorA`.`name`='AEH382'"},
-		// DDL
+	}
+	RunTest(t, table)
+}
+
+func TestDDL(t *testing.T) {
+	table := []testCase{
+		{
+			"CREATE GRAPH g1",
+			true,
+			"CREATE GRAPH `g1`",
+		},
+		{
+			"DROP GRAPH g1",
+			true,
+			"DROP GRAPH `g1`",
+		},
 		{
 			`CREATE LABEL l (a string,
 b boolean not null default true,
@@ -297,6 +312,27 @@ e INT default 10 COMMENT 'test')`,
 			true,
 			"CREATE LABEL `l` (`a` STRING, `b` BOOLEAN NOT NULL DEFAULT 1, `c` DATE NULL, `d` FLOAT DEFAULT 1.1, `e` INT DEFAULT 10 COMMENT 'test')",
 		},
+	}
+	RunTest(t, table)
+}
+
+func TestModify(t *testing.T) {
+	table := []testCase{
+		{
+			"INSERT VERTEX x, VERTEX x",
+			true,
+			"INSERT VERTEX `x`,VERTEX `x`",
+		},
+		{
+			"INSERT VERTEX x LABELS ( Male ) PROPERTIES ( x.age = 22 )",
+			true,
+			"INSERT VERTEX `x` LABELS (`Male`) PROPERTIES (`x`.`age` = 22)",
+		},
+		// {
+		// 	"INSERT VERTEX x LABELS ( Male ) PROPERTIES ( x.age = y.age ) FROM MATCH (y:Male)",
+		// 	true,
+		// 	"INSERT VERTEX x LABELS ( Male ) PROPERTIES ( x.age = y.age ) FROM MATCH (y:Male)",
+		// },
 	}
 	RunTest(t, table)
 }

@@ -278,8 +278,6 @@ import (
 
 %type	<ident>
 	Identifier
-	VariableName
-	VertexReference
 	FunctionName
 	UnReservedKeyword
 
@@ -356,8 +354,9 @@ import (
 	StatementList
 	ValueExpressionList
 	VariableLengthPathPattern
+	VariableName
 	VariableNameOpt
-	VariableReferenceList
+	VariableNameList
 	VariableSpec
 	VertexPattern
 	VertexPatternOpt
@@ -571,11 +570,11 @@ IndexKeyTypeOpt:
 
  ******************************************************************************/
 DeleteStmt:
-	PathPatternMacroOpt "DELETE" VariableReferenceList FromClause WhereClauseOpt GroupByClauseOpt HavingClauseOpt OrderByClauseOpt LimitClauseOpt
+	PathPatternMacroOpt "DELETE" VariableNameList FromClause WhereClauseOpt GroupByClauseOpt HavingClauseOpt OrderByClauseOpt LimitClauseOpt
 	{
 		ds := &ast.DeleteStmt{
-			VariableReferences:  $3.([]*ast.VariableReference),
-			From:                $4.(*ast.MatchClauseList),
+			VariableNames: $3.([]model.CIStr),
+			From:          $4.(*ast.MatchClauseList),
 		}
 		if $1 != nil {
 			ds.PathPatternMacros = $1.([]*ast.PathPatternMacro)
@@ -596,16 +595,6 @@ DeleteStmt:
 			ds.Limit = $9.(*ast.LimitClause)
 		}
 		$$ = ds
-	}
-
-VariableReferenceList:
-	VariableReference
-	{
-		$$ = $1
-	}
-|	VariableReferenceList ',' VariableReference
-	{
-		$$ = append($1.([]*ast.VariableReference), $3.(*ast.VariableReference))
 	}
 
 DropGraphStmt:
@@ -721,26 +710,23 @@ GraphElementInsertion:
 			LabelsAndProperties: $3.(*ast.LabelsAndProperties),
 		}
 		if $2 != nil {
-			insertion.VariableName = $2.(*ast.VariableReference)
+			insertion.VariableName = $2.(model.CIStr)
 		}
 		$$ = insertion
 	}
-|	"EDGE" VariableNameOpt "BETWEEN" VertexReference "AND" VertexReference LabelsAndProperties
+|	"EDGE" VariableNameOpt "BETWEEN" VariableName "AND" VariableName LabelsAndProperties
 	{
 		insertion := &ast.GraphElementInsertion{
 			InsertionType:       ast.InsertionTypeEdge,
-			From:                $4,
-			To:                  $6,
+			From:                $4.(model.CIStr),
+			To:                  $6.(model.CIStr),
 			LabelsAndProperties: $7.(*ast.LabelsAndProperties),
 		}
 		if $2 != nil {
-			insertion.VariableName = $2.(*ast.VariableReference)
+			insertion.VariableName = $2.(model.CIStr)
 		}
 		$$ = insertion
 	}
-
-VertexReference:
-	Identifier
 
 LabelsAndProperties:
 	LabelSpecificationOpt PropertiesSpecificationOpt
@@ -790,7 +776,7 @@ PropertyAssignmentList:
 	}
 
 PropertyAssignment:
-	PropertyAccess '=' ValueExpression
+	PropertyAccess eq ValueExpression
 	{
 		$$ = &ast.PropertyAssignment{
 			PropertyAccess:  $1.(*ast.PropertyAccess),
@@ -799,10 +785,10 @@ PropertyAssignment:
 	}
 
 PropertyAccess:
-	VariableReference '.' PropertyName
+	VariableName '.' PropertyName
 	{
 		$$ = &ast.PropertyAccess{
-			VariableName: $1.(*ast.VariableReference),
+			VariableName: $1.(model.CIStr),
 			PropertyName: $3.(model.CIStr),
 		}
 	}
@@ -834,7 +820,7 @@ VariableReference:
 	VariableName
 	{
 		$$ = &ast.VariableReference{
-			VariableName: $1,
+			VariableName: $1.(model.CIStr),
 		}
 	}
 
@@ -1805,13 +1791,26 @@ VariableSpec:
 		$$ = v
 	}
 
+VariableName:
+	Identifier
+	{
+		$$ = model.NewCIStr($1)
+	}
+
 VariableNameOpt:
 	{
 		$$ = model.CIStr{}
 	}
-|	Identifier
+|	VariableName
+
+VariableNameList:
+	VariableName
 	{
-		$$ = model.NewCIStr($1)
+		$$ = []model.CIStr{$1.(model.CIStr)}
+	}
+|	VariableNameList ',' VariableName
+	{
+		$$ = append($1.([]model.CIStr), $3.(model.CIStr))
 	}
 
 LabelPredicate:
@@ -2103,10 +2102,10 @@ GraphElementUpdateList:
 	}
 
 GraphElementUpdate:
-	VariableReference "SET" '(' PropertyAssignmentList ')'
+	VariableName "SET" '(' PropertyAssignmentList ')'
 	{
 		$$ = &ast.GraphElementUpdate{
-			VariableName: $1.(*ast.VariableReference),
+			VariableName: $1.(model.CIStr),
 			Assignments:  $4.([]*ast.PropertyAssignment),
 		}
 	}
@@ -2158,9 +2157,6 @@ LabelName:
 	{
 		$$ = model.NewCIStr($1)
 	}
-
-VariableName:
-	Identifier
 
 Identifier:
 	identifier

@@ -78,20 +78,53 @@ type GraphElementInsertion struct {
 	node
 
 	InsertionType       InsertionType
-	VariableName        *VariableReference
-	From                string
-	To                  string
+	VariableName        model.CIStr
+	From                model.CIStr
+	To                  model.CIStr
 	LabelsAndProperties *LabelsAndProperties
 }
 
 func (g *GraphElementInsertion) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
+	switch g.InsertionType {
+	case InsertionTypeVertex:
+		ctx.WriteKeyWord("VERTEX")
+		if g.VariableName.O != "" {
+			ctx.WritePlain(" ")
+			ctx.WriteName(g.VariableName.O)
+		}
+	case InsertionTypeEdge:
+		ctx.WriteKeyWord("EDGE")
+		if g.VariableName.O != "" {
+			ctx.WritePlain(" ")
+			ctx.WriteName(g.VariableName.O)
+		}
+		ctx.WritePlain(" BETWEEN ")
+		ctx.WriteName(g.From.O)
+		ctx.WriteKeyWord(" AND ")
+		ctx.WriteName(g.To.O)
+	}
+	if g.LabelsAndProperties != nil {
+		if err := g.LabelsAndProperties.Restore(ctx); err != nil {
+			return errors.Annotate(err, "An error occurred while restore GraphElementInsertion.LabelsAndProperties")
+		}
+	}
+	return nil
 }
 
 func (g *GraphElementInsertion) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
+	newNode, skipChildren := v.Enter(g)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	g = newNode.(*GraphElementInsertion)
+	if g.LabelsAndProperties != nil {
+		node, ok = g.LabelsAndProperties.Accept(v)
+		if !ok {
+			return node, ok
+		}
+		g.LabelsAndProperties = node.(*LabelsAndProperties)
+	}
+	return v.Leave(g)
 }
 
 type LabelsAndProperties struct {
@@ -102,13 +135,47 @@ type LabelsAndProperties struct {
 }
 
 func (l *LabelsAndProperties) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
+	if len(l.Labels) > 0 {
+		ctx.WriteKeyWord(" LABELS ")
+		ctx.WritePlain("(")
+		for i, label := range l.Labels {
+			if i > 0 {
+				ctx.WritePlain(", ")
+			}
+			ctx.WriteName(label.O)
+		}
+		ctx.WritePlain(")")
+	}
+	if len(l.Assignments) > 0 {
+		ctx.WritePlain(" PROPERTIES ")
+		ctx.WritePlain("(")
+		for i, assignment := range l.Assignments {
+			if i > 0 {
+				ctx.WritePlain(", ")
+			}
+			if err := assignment.Restore(ctx); err != nil {
+				return errors.Annotate(err, "An error occurred while restore LabelsAndProperties.Assignments")
+			}
+		}
+		ctx.WritePlain(")")
+	}
+	return nil
 }
 
 func (l *LabelsAndProperties) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
+	newNode, skipChildren := v.Enter(l)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	l = newNode.(*LabelsAndProperties)
+	for i, assignment := range l.Assignments {
+		node, ok = assignment.Accept(v)
+		if !ok {
+			return node, ok
+		}
+		l.Assignments[i] = node.(*PropertyAssignment)
+	}
+	return v.Leave(l)
 }
 
 type PropertyAssignment struct {
@@ -119,19 +186,39 @@ type PropertyAssignment struct {
 }
 
 func (p *PropertyAssignment) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
+	if err := p.PropertyAccess.Restore(ctx); err != nil {
+		return errors.Annotate(err, "An error occurred while restore PropertyAssignment.PropertyAccess")
+	}
+	ctx.WritePlain(" = ")
+	if err := p.ValueExpression.Restore(ctx); err != nil {
+		return errors.Annotate(err, "An error occurred while restore PropertyAssignment.ValueExpression")
+	}
+	return nil
 }
 
 func (p *PropertyAssignment) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
+	newNode, skipChildren := v.Enter(p)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	p = newNode.(*PropertyAssignment)
+	node, ok = p.PropertyAccess.Accept(v)
+	if !ok {
+		return node, ok
+	}
+	p.PropertyAccess = node.(*PropertyAccess)
+	node, ok = p.ValueExpression.Accept(v)
+	if !ok {
+		return node, ok
+	}
+	p.ValueExpression = node.(ExprNode)
+	return v.Leave(p)
 }
 
 type GraphElementUpdate struct {
 	dmlNode
 
-	VariableName *VariableReference
+	VariableName model.CIStr
 	Assignments  []*PropertyAssignment
 }
 
@@ -382,27 +469,145 @@ type InsertStmt struct {
 	Limit   *LimitClause
 }
 
-func (i *InsertStmt) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
+func (n *InsertStmt) Restore(ctx *format.RestoreCtx) error {
+	for _, p := range n.PathPatternMacros {
+		if err := p.Restore(ctx); err != nil {
+			return errors.New("An error occurred while restore SelectStmt.PathPatternMacros")
+		}
+		ctx.WritePlain(" ")
+	}
+	ctx.WriteKeyWord("INSERT ")
+	if n.IntoGraphName.L != "" {
+		ctx.WriteKeyWord("INTO ")
+		ctx.WriteName(n.IntoGraphName.O)
+		ctx.WritePlain(" ")
+	}
+
+	for i, in := range n.Insertions {
+		if i != 0 {
+			ctx.WritePlain(",")
+		}
+		if err := in.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore InsertStmt.Insertions[%d]", i)
+		}
+	}
+
+	if n.From != nil {
+		ctx.WritePlain(" ")
+		if err := n.From.Restore(ctx); err != nil {
+			return errors.Annotate(err, "An error occurred while restore InsertStmt.From")
+		}
+	}
+
+	if n.Where != nil {
+		ctx.WriteKeyWord(" WHERE ")
+		if err := n.Where.Restore(ctx); err != nil {
+			return errors.New("An error occurred while restore InsertStmt.Where")
+		}
+	}
+	if n.GroupBy != nil {
+		ctx.WritePlain(" ")
+		if err := n.GroupBy.Restore(ctx); err != nil {
+			return errors.New("An error occurred while restore InsertStmt.GroupBy")
+		}
+	}
+	if n.Having != nil {
+		ctx.WritePlain(" ")
+		if err := n.Having.Restore(ctx); err != nil {
+			return errors.New("An error occurred while restore InsertStmt.Having")
+		}
+	}
+	if n.OrderBy != nil {
+		ctx.WritePlain(" ")
+		if err := n.OrderBy.Restore(ctx); err != nil {
+			return errors.New("An error occurred while restore InsertStmt.OrderBy")
+		}
+	}
+	if n.Limit != nil {
+		ctx.WritePlain(" ")
+		if err := n.Limit.Restore(ctx); err != nil {
+			return errors.New("An error occurred while restore InsertStmt.Limit")
+		}
+	}
+	return nil
 }
 
-func (i *InsertStmt) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
+func (n *InsertStmt) Accept(v Visitor) (node Node, ok bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	n = newNode.(*InsertStmt)
+	for i, p := range n.PathPatternMacros {
+		node, ok = p.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.PathPatternMacros[i] = node.(*PathPatternMacro)
+	}
+	for i, in := range n.Insertions {
+		node, ok = in.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Insertions[i] = node.(*GraphElementInsertion)
+	}
+	if n.From != nil {
+		node, ok = n.From.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.From = node.(*MatchClauseList)
+	}
+	if n.Where != nil {
+		node, ok = n.Where.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Where = node.(ExprNode)
+	}
+	if n.GroupBy != nil {
+		node, ok = n.GroupBy.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.GroupBy = node.(*GroupByClause)
+	}
+	if n.Having != nil {
+		node, ok = n.Having.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Having = node.(*HavingClause)
+	}
+	if n.OrderBy != nil {
+		node, ok = n.OrderBy.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.OrderBy = node.(*OrderByClause)
+	}
+	if n.Limit != nil {
+		node, ok = n.Limit.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Limit = node.(*LimitClause)
+	}
+	return v.Leave(n)
 }
 
 type DeleteStmt struct {
 	dmlNode
 
-	PathPatternMacros  []*PathPatternMacro
-	VariableReferences []*VariableReference
-	From               *MatchClauseList
-	Where              ExprNode
-	GroupBy            *GroupByClause
-	Having             *HavingClause
-	OrderBy            *OrderByClause
-	Limit              *LimitClause
+	PathPatternMacros []*PathPatternMacro
+	VariableNames     []model.CIStr
+	From              *MatchClauseList
+	Where             ExprNode
+	GroupBy           *GroupByClause
+	Having            *HavingClause
+	OrderBy           *OrderByClause
+	Limit             *LimitClause
 }
 
 func (d *DeleteStmt) Restore(ctx *format.RestoreCtx) error {
@@ -418,13 +623,11 @@ func (d *DeleteStmt) Restore(ctx *format.RestoreCtx) error {
 	}
 	ctx.WriteKeyWord("DELETE ")
 
-	for i, r := range d.VariableReferences {
+	for i, name := range d.VariableNames {
 		if i != 0 {
 			ctx.WritePlain(",")
 		}
-		if err := r.Restore(ctx); err != nil {
-			return errors.Annotatef(err, "An error occurred while restore DeleteStmt.VariableReferences[%d]", i)
-		}
+		ctx.WriteName(name.O)
 	}
 
 	if err := d.From.Restore(ctx); err != nil {
