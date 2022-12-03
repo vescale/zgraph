@@ -154,7 +154,7 @@ ORDER BY total_amount`, true, "SELECT LISTAGG(`e`.`amount`, ' + ')||' = ',SUM(`e
   FROM MATCH (start) -> (src)
      , MATCH TOP 3 SHORTEST (src) (-[e1]->)* (mid)
      , MATCH ANY SHORTEST (mid) (-[e2]->)* (dst)
-     , MATCH (dst) -> ` + "(`end`)", true, "SELECT ARRAY_AGG(`e1`.`weight`),ARRAY_AGG(`e2`.`weight`) FROM MATCH (`start`) -> (`src`),MATCH TOP 3 SHORTEST (`src`) -[`e1`]->* (`mid`),MATCH ANY SHORTEST (`mid`) -[`e2`]->* (`dst`),MATCH (`dst`) -> (`end`)"},
+     , MATCH (dst) -> (end)`, true, "SELECT ARRAY_AGG(`e1`.`weight`),ARRAY_AGG(`e2`.`weight`) FROM MATCH (`start`) -> (`src`),MATCH TOP 3 SHORTEST (`src`) -[`e1`]->* (`mid`),MATCH ANY SHORTEST (`mid`) -[`e2`]->* (`dst`),MATCH (`dst`) -> (`end`)"},
 		{`SELECT COUNT(e) AS num_hops
        , SUM(e.amount) AS total_amount
        , ARRAY_AGG(e.amount) AS amounts_along_path
