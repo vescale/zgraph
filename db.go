@@ -75,6 +75,7 @@ func (db *DB) NewSession() *Session {
 	defer db.mu.Unlock()
 
 	s := newSession(db)
+	s.setCloseCallback(db.onSessionClosed)
 	db.mu.sessions[s.ID()] = s
 	return s
 }
