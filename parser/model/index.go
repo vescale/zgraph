@@ -14,9 +14,8 @@
 
 package model
 
-// GraphInfo provides meta data describing a graph.
-type GraphInfo struct {
-	ID     int64        `json:"id"`
-	Name   CIStr        `json:"name"`
-	Labels []*LabelInfo `json:"labels"`
+// IndexInfo provides meta data describing a index.
+type IndexInfo struct {
+	ID   int64 `json:"id"`
+	Name CIStr `json:"name"`
 }

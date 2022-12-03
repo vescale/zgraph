@@ -16,6 +16,7 @@ package model
 
 // LabelInfo provides meta data describing a label.
 type LabelInfo struct {
-	ID   int64 `json:"id"`
-	Name CIStr `json:"name"`
+	ID      int64        `json:"id"`
+	Name    CIStr        `json:"name"`
+	Indexes []*IndexInfo `json:"indexes"`
 }

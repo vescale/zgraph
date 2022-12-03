@@ -64,11 +64,11 @@ func New(txn kv.Transaction) *Meta {
 }
 
 // NewSnapshot returns a read-only new instance of meta API object.
-func NewSnapshot(txn kv.Transaction) *Meta {
-	t := structure.NewStructure(txn, nil, mMetaKeyPrefix)
+func NewSnapshot(snap kv.Snapshot) *Meta {
+	t := structure.NewStructure(snap, nil, mMetaKeyPrefix)
 	return &Meta{
 		txn:      t,
-		StartVer: txn.StartVer(),
+		StartVer: snap.StartVer(),
 	}
 }
 

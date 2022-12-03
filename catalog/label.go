@@ -12,11 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package catalog
 
-// GraphInfo provides meta data describing a graph.
-type GraphInfo struct {
-	ID     int64        `json:"id"`
-	Name   CIStr        `json:"name"`
-	Labels []*LabelInfo `json:"labels"`
+import (
+	"sync"
+
+	"github.com/vescale/zgraph/parser/model"
+)
+
+// Label represents a runtime label object.
+type Label struct {
+	sync.RWMutex
+
+	meta   *model.LabelInfo
+	byName map[string]*Index
+	byID   map[int64]*Index
+}
+
+// NewLabel returns a label instance.
+func NewLabel(meta *model.LabelInfo) *Label {
+	l := &Label{
+		meta: meta,
+	}
+	for _, i := range meta.Indexes {
+		index := NewIndex(i)
+		l.byName[i.Name.L] = index
+		l.byID[i.ID] = index
+	}
+	return l
+}
+
+// Meta returns the meta information object of this label.
+func (l *Label) Meta() *model.LabelInfo {
+	return l.meta
 }

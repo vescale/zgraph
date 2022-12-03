@@ -106,4 +106,6 @@ type Transaction interface {
 type Snapshot interface {
 	Retriever
 	BatchGetter
+	// StartVer returns the start verstion of the current snapshot.
+	StartVer() Version
 }

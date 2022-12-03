@@ -12,11 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package catalog
 
-// GraphInfo provides meta data describing a graph.
-type GraphInfo struct {
-	ID     int64        `json:"id"`
-	Name   CIStr        `json:"name"`
-	Labels []*LabelInfo `json:"labels"`
+import "github.com/vescale/zgraph/parser/model"
+
+// Index represents a runtime index object.
+type Index struct {
+	meta *model.IndexInfo
+}
+
+// NewIndex returns a new index object.
+func NewIndex(meta *model.IndexInfo) *Index {
+	return &Index{
+		meta: meta,
+	}
+}
+
+// Meta returns the meta information object of this index.
+func (i *Index) Meta() *model.IndexInfo {
+	return i.meta
 }

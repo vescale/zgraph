@@ -14,5 +14,44 @@
 
 package catalog
 
+import (
+	"sync"
+
+	"github.com/vescale/zgraph/meta"
+	"github.com/vescale/zgraph/storage/kv"
+)
+
+// Catalog maintains the catalog of graphs and label information.
 type Catalog struct {
+	mu sync.RWMutex
+
+	byName map[string]*Graph
+	byID   map[int64]*Graph
+}
+
+// New returns a catalog instance.
+func New() *Catalog {
+	return &Catalog{
+		byName: map[string]*Graph{},
+		byID:   map[int64]*Graph{},
+	}
+}
+
+// Load loads the catalog from a kv snapshot.
+func (c *Catalog) Load(snapshot kv.Snapshot) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	meta := meta.NewSnapshot(snapshot)
+	graphs, err := meta.ListGraphs()
+	if err != nil {
+		return err
+	}
+	for _, g := range graphs {
+		graph := NewGraph(g)
+		c.byName[g.Name.L] = graph
+		c.byID[g.ID] = graph
+	}
+
+	return nil
 }
