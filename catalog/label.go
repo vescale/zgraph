@@ -22,7 +22,7 @@ import (
 
 // Label represents a runtime label object.
 type Label struct {
-	sync.RWMutex
+	mu sync.RWMutex
 
 	meta   *model.LabelInfo
 	byName map[string]*Index
@@ -32,7 +32,9 @@ type Label struct {
 // NewLabel returns a label instance.
 func NewLabel(meta *model.LabelInfo) *Label {
 	l := &Label{
-		meta: meta,
+		meta:   meta,
+		byName: map[string]*Index{},
+		byID:   map[int64]*Index{},
 	}
 	for _, i := range meta.Indexes {
 		index := NewIndex(i)

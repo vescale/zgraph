@@ -244,6 +244,11 @@ func (s *KVSnapshot) BatchGet(_ context.Context, keys []kv.Key) (map[string][]by
 	return results, err
 }
 
+// StartVer implements the Snapshot interface.
+func (s *KVSnapshot) StartVer() kv.Version {
+	return s.ver
+}
+
 func (s *KVSnapshot) get(key kv.Key) ([]byte, error) {
 	opt := pebble.IterOptions{LowerBound: mvcc.Encode(key, mvcc.LockVer)}
 	iter := s.db.NewIter(&opt)

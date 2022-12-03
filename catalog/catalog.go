@@ -15,6 +15,7 @@
 package catalog
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/vescale/zgraph/meta"
@@ -29,29 +30,67 @@ type Catalog struct {
 	byID   map[int64]*Graph
 }
 
-// New returns a catalog instance.
-func New() *Catalog {
-	return &Catalog{
+// Load loads the catalog from a kv snapshot.
+func Load(snapshot kv.Snapshot) (*Catalog, error) {
+	c := &Catalog{
 		byName: map[string]*Graph{},
 		byID:   map[int64]*Graph{},
 	}
-}
-
-// Load loads the catalog from a kv snapshot.
-func (c *Catalog) Load(snapshot kv.Snapshot) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 
 	meta := meta.NewSnapshot(snapshot)
 	graphs, err := meta.ListGraphs()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for _, g := range graphs {
+		// Load labels
+		labels, err := meta.ListLabels(g.ID)
+		if err != nil {
+			return nil, err
+		}
+		g.Labels = labels
+
+		// Build graph instance.
 		graph := NewGraph(g)
 		c.byName[g.Name.L] = graph
 		c.byID[g.ID] = graph
 	}
 
-	return nil
+	return c, nil
+}
+
+// Graph returns the graph of specified name.
+func (c *Catalog) Graph(name string) *Graph {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.byName[strings.ToLower(name)]
+}
+
+// GraphByID returns the graph of specified ID.
+func (c *Catalog) GraphByID(id int64) *Graph {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.byID[id]
+}
+
+// Label returns the label of specified graph.
+func (c *Catalog) Label(graphName, labelName string) *Label {
+	g := c.Graph(graphName)
+	if g == nil {
+		return nil
+	}
+
+	return g.Label(labelName)
+}
+
+// LabelByID returns the label of specified graph.
+func (c *Catalog) LabelByID(graphID, labelID int64) *Label {
+	g := c.GraphByID(graphID)
+	if g == nil {
+		return nil
+	}
+
+	return g.LabelByID(labelID)
 }

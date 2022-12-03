@@ -317,7 +317,7 @@ func TestHash(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	err = kv.RunNewTxn(ctx, store, func(ctx context.Context, txn kv.Transaction) error {
+	err = kv.RunNewTxnContext(ctx, store, func(ctx context.Context, txn kv.Transaction) error {
 		newTxn := structure.NewStructure(txn, txn, []byte{0x00})
 		err = newTxn.Set(key, []byte("abc"))
 		require.NoError(t, err)

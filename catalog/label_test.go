@@ -12,11 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package catalog
 
-// GraphInfo provides meta data describing a graph.
-type GraphInfo struct {
-	ID     int64        `json:"id"`
-	Name   CIStr        `json:"name"`
-	Labels []*LabelInfo `json:"-"`
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/vescale/zgraph/parser/model"
+)
+
+func TestNewLabel(t *testing.T) {
+	meta := &model.LabelInfo{
+		ID:   1,
+		Name: model.NewCIStr("test-label"),
+	}
+
+	label := NewLabel(meta)
+	assert := assert.New(t)
+	assert.Equal(label.Meta(), meta)
 }

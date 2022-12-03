@@ -28,7 +28,7 @@ func TestMeta_GlobalID(t *testing.T) {
 	store, err := storage.Open(t.TempDir())
 	assert.Nil(err)
 
-	err = kv.RunNewTxn(context.Background(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.RunNewTxnContext(context.Background(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		id, err := meta.GlobalID()
 		assert.Nil(err)
@@ -37,7 +37,7 @@ func TestMeta_GlobalID(t *testing.T) {
 	})
 	assert.Nil(err)
 
-	err = kv.RunNewTxn(context.Background(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.RunNewTxnContext(context.Background(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		id, err := meta.NextGlobalID()
 		assert.Nil(err)
@@ -46,7 +46,7 @@ func TestMeta_GlobalID(t *testing.T) {
 	})
 	assert.Nil(err)
 
-	err = kv.RunNewTxn(context.Background(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.RunNewTxnContext(context.Background(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		id, err := meta.AdvanceGlobalID(10)
 		assert.Nil(err)
@@ -59,7 +59,7 @@ func TestMeta_GlobalID(t *testing.T) {
 	})
 	assert.Nil(err)
 
-	err = kv.RunNewTxn(context.Background(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.RunNewTxnContext(context.Background(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		ids, err := meta.GenGlobalIDs(3)
 		assert.Nil(err)

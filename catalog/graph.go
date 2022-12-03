@@ -15,6 +15,7 @@
 package catalog
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/vescale/zgraph/parser/model"
@@ -35,6 +36,7 @@ type Graph struct {
 // NewGraph returns a graph instance.
 func NewGraph(meta *model.GraphInfo) *Graph {
 	g := &Graph{
+		meta:   meta,
 		byName: map[string]*Label{},
 		byID:   map[int64]*Label{},
 	}
@@ -49,4 +51,20 @@ func NewGraph(meta *model.GraphInfo) *Graph {
 // Meta returns the meta information object of this graph.
 func (g *Graph) Meta() *model.GraphInfo {
 	return g.meta
+}
+
+// Label returns the label of specified name.
+func (c *Graph) Label(name string) *Label {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.byName[strings.ToLower(name)]
+}
+
+// LabelByID returns the label of specified ID.
+func (c *Graph) LabelByID(id int64) *Label {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.byID[id]
 }

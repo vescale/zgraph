@@ -39,7 +39,7 @@ func TestGraph(t *testing.T) {
 
 	// Create graphs
 	for i, name := range graphNames {
-		err := kv.RunNewTxn(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+		err := kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 			meta := New(txn)
 			info := &model.GraphInfo{
 				ID:   int64(i) + 1,
@@ -51,7 +51,7 @@ func TestGraph(t *testing.T) {
 	}
 
 	// List graphs
-	err = kv.RunNewTxn(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		graphs, err := meta.ListGraphs()
 		assert.Nil(err)
@@ -70,7 +70,7 @@ func TestGraph(t *testing.T) {
 	assert.Nil(err)
 
 	// Update graph
-	err = kv.RunNewTxn(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		err := meta.UpdateGraph(&model.GraphInfo{
 			ID:   4,
@@ -82,7 +82,7 @@ func TestGraph(t *testing.T) {
 	assert.Nil(err)
 
 	// Get graph
-	err = kv.RunNewTxn(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		graph, err := meta.GetGraph(4)
 		assert.Nil(err)
@@ -93,7 +93,7 @@ func TestGraph(t *testing.T) {
 	assert.Nil(err)
 
 	// Drop graph
-	err = kv.RunNewTxn(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		err := meta.DropGraph(3)
 		assert.Nil(err)
@@ -102,7 +102,7 @@ func TestGraph(t *testing.T) {
 	assert.Nil(err)
 
 	// List graphs again
-	err = kv.RunNewTxn(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		graphs, err := meta.ListGraphs()
 		assert.Nil(err)
