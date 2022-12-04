@@ -3534,7 +3534,9 @@ yynewstate:
 		}
 	case 318:
 		{
-			parser.yyVAL.statement = &ast.UseStmt{}
+			parser.yyVAL.statement = &ast.UseStmt{
+				GraphName: yyS[yypt-0].item.(model.CIStr),
+			}
 		}
 	case 319:
 		{

@@ -2116,7 +2116,9 @@ GraphElementUpdate:
 UseStmt:
 	"USE" GraphName
 	{
-		$$ = &ast.UseStmt{}
+		$$ = &ast.UseStmt{
+			GraphName: $2.(model.CIStr),
+		}
 	}
 
 IfExists:

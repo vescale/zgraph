@@ -31,7 +31,6 @@ type Builder struct {
 	sc      *stmtctx.Context
 	catalog *catalog.Catalog
 	stacks  []*builderContext
-	err     error
 }
 
 // NewBuilder returns a plan builder.
@@ -51,17 +50,14 @@ func (b *Builder) Build(node ast.StmtNode) (planner.Plan, error) {
 	switch stmt := node.(type) {
 	case ast.DDLNode:
 		err = b.buildDDL(stmt)
+	case *ast.UseStmt:
+		err = b.buildSimple(stmt)
 	}
 	if err != nil {
 		return nil, err
 	}
 
 	return b.plan(), nil
-}
-
-// Error returns the internal error of the builder.
-func (b *Builder) Error() error {
-	return b.err
 }
 
 func (b *Builder) pushContext() {
@@ -83,6 +79,13 @@ func (b *Builder) setPlan(plan planner.Plan) {
 func (b *Builder) buildDDL(ddl ast.DDLNode) error {
 	b.setPlan(&planner.DDL{
 		Statement: ddl,
+	})
+	return nil
+}
+
+func (b *Builder) buildSimple(stmt ast.StmtNode) error {
+	b.setPlan(&planner.Simple{
+		Statement: stmt,
 	})
 	return nil
 }

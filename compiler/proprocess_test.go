@@ -169,6 +169,14 @@ func TestPreprocess(t *testing.T) {
 			graph: "graph2",
 			query: "drop index if exists label4_index2 on label2",
 		},
+		{
+			query: "use graph100",
+			err:   "graph not exists",
+		},
+
+		{
+			query: "use graph1",
+		},
 	}
 
 	db, err := zgraph.Open(tempDir, nil)

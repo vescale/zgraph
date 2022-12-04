@@ -57,3 +57,36 @@ func TestBuilder_BuildDDL(t *testing.T) {
 		assert.Equal(stmt, ddl.Statement)
 	}
 }
+
+func TestBuilder_BuildSimple(t *testing.T) {
+	assert := assert.New(t)
+
+	cases := []struct {
+		query string
+		err   string
+	}{
+		// Catalog information refer: initCatalog
+		{
+			query: "use graph100",
+		},
+		{
+			query: "use graph1",
+		},
+	}
+
+	db, err := zgraph.Open(t.TempDir(), nil)
+	assert.Nil(err)
+
+	for _, c := range cases {
+		parser := parser.New()
+		stmt, err := parser.ParseOneStmt(c.query)
+		assert.Nil(err)
+
+		builder := compiler.NewBuilder(stmtctx.New(), db.Catalog())
+		plan, err := builder.Build(stmt)
+		assert.Nil(err)
+		ddl, ok := plan.(*planner.Simple)
+		assert.True(ok)
+		assert.Equal(stmt, ddl.Statement)
+	}
+}

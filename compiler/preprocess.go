@@ -51,6 +51,8 @@ func (p *Preprocess) Enter(n ast.Node) (node ast.Node, skipChildren bool) {
 		p.checkDropLabelStmt(stmt)
 	case *ast.DropIndexStmt:
 		p.checkDropIndexStmt(stmt)
+	case *ast.UseStmt:
+		p.checkUseStmt(stmt)
 	}
 	return n, p.err != nil
 }
@@ -188,6 +190,19 @@ func (p *Preprocess) checkDropIndexStmt(stmt *ast.DropIndexStmt) {
 	index := label.Index(stmt.IndexName.L)
 	if index == nil && !stmt.IfExists {
 		p.err = meta.ErrIndexNotExists
+		return
+	}
+}
+
+func (p *Preprocess) checkUseStmt(stmt *ast.UseStmt) {
+	if isIncorrectName(stmt.GraphName.L) {
+		p.err = ErrIncorrectGraphName
+		return
+	}
+
+	graph := p.catalog.Graph(stmt.GraphName.L)
+	if graph == nil {
+		p.err = meta.ErrGraphNotExists
 		return
 	}
 }
