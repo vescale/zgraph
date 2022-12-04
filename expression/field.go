@@ -18,6 +18,11 @@ type Field struct {
 	Expr Expression
 }
 
+func (f *Field) Clone() *Field {
+	fc := *f
+	return &fc
+}
+
 // String implements the fmt.Stringer interface
 func (f *Field) String() string {
 	return ""

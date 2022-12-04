@@ -21,11 +21,31 @@ type Schema struct {
 	Fields []*Field
 }
 
+// NewSchema returns a schema made by its parameter.
+func NewSchema(fields ...*Field) *Schema {
+	return &Schema{Fields: fields}
+}
+
+// Len returns the number of columns in schema.
+func (s *Schema) Len() int {
+	return len(s.Fields)
+}
+
+// Clone copies the total schema.
+func (s *Schema) Clone() *Schema {
+	fields := make([]*Field, 0, s.Len())
+	for _, field := range s.Fields {
+		fields = append(fields, field.Clone())
+	}
+	schema := NewSchema(fields...)
+	return schema
+}
+
 // String implements fmt.Stringer interface.
 func (s *Schema) String() string {
 	colStrs := make([]string, 0, len(s.Fields))
 	for _, col := range s.Fields {
 		colStrs = append(colStrs, col.String())
 	}
-	return "Column: [" + strings.Join(colStrs, ",") + "]"
+	return "Fields: [" + strings.Join(colStrs, ",") + "]"
 }

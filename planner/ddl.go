@@ -13,3 +13,12 @@
 // limitations under the License.
 
 package planner
+
+import "github.com/vescale/zgraph/parser/ast"
+
+// DDL represents the physical plan of DDL statement.
+type DDL struct {
+	baseSchemaProducer
+
+	Statement ast.DDLNode
+}

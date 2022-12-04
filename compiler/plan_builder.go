@@ -15,14 +15,74 @@
 package compiler
 
 import (
+	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/planner"
+	"github.com/vescale/zgraph/stmtctx"
 )
 
+// builderContext represents the context of building plan.
+type builderContext struct {
+	plan planner.Plan
+}
+
+// Builder is used to build the AST into a plan.
 type Builder struct {
+	sc      *stmtctx.Context
+	catalog *catalog.Catalog
+	stacks  []*builderContext
+	err     error
+}
+
+// NewBuilder returns a plan builder.
+func NewBuilder(sc *stmtctx.Context, catalog *catalog.Catalog) *Builder {
+	return &Builder{
+		sc:      sc,
+		catalog: catalog,
+	}
 }
 
 // Build builds a statement AST node into a Plan.
-func (b *Builder) Build(stmt ast.StmtNode) (planner.Plan, error) {
-	return nil, nil
+func (b *Builder) Build(node ast.StmtNode) (planner.Plan, error) {
+	b.pushContext()
+	defer b.popContext()
+
+	var err error
+	switch stmt := node.(type) {
+	case ast.DDLNode:
+		err = b.buildDDL(stmt)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return b.plan(), nil
+}
+
+// Error returns the internal error of the builder.
+func (b *Builder) Error() error {
+	return b.err
+}
+
+func (b *Builder) pushContext() {
+	b.stacks = append(b.stacks, &builderContext{})
+}
+
+func (b *Builder) popContext() {
+	b.stacks = b.stacks[:len(b.stacks)-1]
+}
+
+func (b *Builder) plan() planner.Plan {
+	return b.stacks[len(b.stacks)-1].plan
+}
+
+func (b *Builder) setPlan(plan planner.Plan) {
+	b.stacks[len(b.stacks)-1].plan = plan
+}
+
+func (b *Builder) buildDDL(ddl ast.DDLNode) error {
+	b.setPlan(&planner.DDL{
+		Statement: ddl,
+	})
+	return nil
 }

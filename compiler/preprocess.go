@@ -21,12 +21,14 @@ import (
 	"github.com/vescale/zgraph/stmtctx"
 )
 
+// Preprocess is used to validate the AST to ensure the AST is valid.
 type Preprocess struct {
 	sc      *stmtctx.Context
 	catalog *catalog.Catalog
 	err     error
 }
 
+// NewPreprocess returns a preprocess visitor.
 func NewPreprocess(sc *stmtctx.Context, catalog *catalog.Catalog) *Preprocess {
 	return &Preprocess{
 		sc:      sc,

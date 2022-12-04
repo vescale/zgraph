@@ -31,12 +31,13 @@ func Compile(sc *stmtctx.Context, catalog *catalog.Catalog, node ast.StmtNode) (
 	node.Accept(prep)
 
 	// Build plan tree from a valid AST.
-	builder := Builder{}
+	builder := NewBuilder(sc, catalog)
 	plan, err := builder.Build(node)
 	if err != nil {
 		return nil, err
 	}
-	if p, ok := plan.(planner.PhysicalPlan); ok {
+	p, isLogicalPlan := plan.(planner.LogicalPlan)
+	if !isLogicalPlan {
 		return executor.NewStatement(p), nil
 	}
 
