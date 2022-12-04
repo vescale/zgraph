@@ -48,6 +48,7 @@ func TestGraph_Label(t *testing.T) {
 	assert := assert.New(t)
 	assert.Equal(graph.Label("label1").Meta(), meta.Labels[0])
 }
+
 func TestGraph_LabelByID(t *testing.T) {
 	meta := &model.GraphInfo{
 		ID:   1,
