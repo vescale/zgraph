@@ -15,6 +15,8 @@
 package session
 
 import (
+	"context"
+
 	"github.com/vescale/zgraph/executor"
 	"github.com/vescale/zgraph/internal/chunk"
 )
@@ -36,7 +38,7 @@ type ResultSet interface {
 	// Valid reports whether the current result set valid.
 	Valid() bool
 	// Next advances the current result set to the next row of query result.
-	Next() error
+	Next(ctx context.Context) error
 	// Scan reads the current row.
 	Scan(fields ...interface{}) error
 	// Close closes the current result set, which will release all query intermediate resources..
@@ -56,7 +58,7 @@ func (e emptyResultSet) Valid() bool {
 }
 
 // Next implements the ResultSet interface.
-func (e emptyResultSet) Next() error {
+func (e emptyResultSet) Next(_ context.Context) error {
 	return nil
 }
 
@@ -75,6 +77,7 @@ type queryResultSet struct {
 	valid  bool
 	alloc  *chunk.Allocator
 	rs     executor.RecordSet
+	chunk  *chunk.Chunk
 	fields []*Field
 }
 
@@ -83,10 +86,12 @@ func retrieveFields(rs executor.RecordSet) []*Field {
 }
 
 func newQueryResultSet(rs executor.RecordSet) ResultSet {
+	alloc := chunk.NewAllocator()
 	return &queryResultSet{
-		alloc:  chunk.NewAllocator(),
+		alloc:  alloc,
 		valid:  true,
 		rs:     rs,
+		chunk:  rs.NewChunk(alloc),
 		fields: retrieveFields(rs),
 	}
 }
@@ -102,9 +107,8 @@ func (q *queryResultSet) Valid() bool {
 }
 
 // Next implements the ResultSet interface.
-func (q *queryResultSet) Next() error {
-	//TODO implement me
-	panic("implement me")
+func (q *queryResultSet) Next(ctx context.Context) error {
+	return q.rs.Next(ctx, q.chunk)
 }
 
 // Scan implements the ResultSet interface.

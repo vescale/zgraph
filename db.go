@@ -15,7 +15,6 @@
 package zgraph
 
 import (
-	"context"
 	"sync"
 
 	"github.com/vescale/zgraph/catalog"
@@ -89,11 +88,6 @@ func (db *DB) NewSession() *session.Session {
 	s.OnClosed(db.onSessionClosed)
 	db.mu.sessions[s.ID()] = s
 	return s
-}
-
-// Execute executes a query and reports whether the query executed successfully or not.
-func (db *DB) Execute(ctx context.Context, query string) (session.ResultSet, error) {
-	return db.NewSession().Execute(ctx, query)
 }
 
 // Close destroys the zGraph database instances and all sessions will be terminated.

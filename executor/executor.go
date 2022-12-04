@@ -19,9 +19,8 @@ import (
 
 	"github.com/vescale/zgraph/expression"
 	"github.com/vescale/zgraph/internal/chunk"
+	"github.com/vescale/zgraph/stmtctx"
 )
-
-type baseExecutor struct{}
 
 // Executor is the physical implementation of a algebra operator.
 //
@@ -39,4 +38,61 @@ type Executor interface {
 	Next(ctx context.Context, req *chunk.Chunk) error
 	Close() error
 	Schema() *expression.Schema
+}
+
+type baseExecutor struct {
+	ctx      *stmtctx.Context
+	id       int
+	schema   *expression.Schema // output schema
+	children []Executor
+}
+
+func newBaseExecutor(ctx *stmtctx.Context, schema *expression.Schema, id int, children ...Executor) baseExecutor {
+	e := baseExecutor{
+		children: children,
+		ctx:      ctx,
+		id:       id,
+		schema:   schema,
+	}
+	return e
+}
+
+// base returns the baseExecutor of an executor, don't override this method!
+func (e *baseExecutor) base() *baseExecutor {
+	return e
+}
+
+// Open initializes children recursively and "childrenResults" according to children's schemas.
+func (e *baseExecutor) Open(ctx context.Context) error {
+	for _, child := range e.children {
+		err := child.Open(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Next fills multiple rows into a chunk.
+func (e *baseExecutor) Next(ctx context.Context, req *chunk.Chunk) error {
+	return nil
+}
+
+// Close closes all executors and release all resources.
+func (e *baseExecutor) Close() error {
+	var firstErr error
+	for _, src := range e.children {
+		if err := src.Close(); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
+}
+
+// Schema returns the current baseExecutor's schema. If it is nil, then create and return a new one.
+func (e *baseExecutor) Schema() *expression.Schema {
+	if e.schema == nil {
+		return expression.NewSchema()
+	}
+	return e.schema
 }

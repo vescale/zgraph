@@ -17,7 +17,9 @@ package executor
 import (
 	"context"
 
+	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/planner"
+	"github.com/vescale/zgraph/stmtctx"
 )
 
 // Statement represents an executable statement.
@@ -26,16 +28,33 @@ type Statement interface {
 }
 
 type executableStmt struct {
-	plan planner.Plan
+	sc      *stmtctx.Context
+	catalog *catalog.Catalog
+	plan    planner.Plan
 }
 
-func NewStatement(plan planner.Plan) Statement {
+// NewStatement returns an executable statement.
+func NewStatement(sc *stmtctx.Context, catalog *catalog.Catalog, plan planner.Plan) Statement {
 	return &executableStmt{
-		plan: plan,
+		sc:      sc,
+		catalog: catalog,
+		plan:    plan,
 	}
 }
 
+// Execute executes the statement and returns a record set.
 func (e *executableStmt) Execute(ctx context.Context) (RecordSet, error) {
-	//TODO implement me
-	panic("implement me")
+	builder := NewBuilder(e.sc, e.catalog)
+	exec := builder.Build(e.plan)
+	err := builder.Error()
+	if err != nil {
+		return nil, err
+	}
+	
+	err = exec.Open(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &execRecordSet{exec: exec}, nil
 }

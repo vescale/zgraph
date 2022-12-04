@@ -12,9 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package planner
+package executor
 
-// Optimize optimizes the plan to the optimal physical plan.
-func Optimize(plan LogicalPlan) Plan {
-	return nil
+import "github.com/vescale/zgraph/parser/ast"
+
+// SimpleExec is used to execute some simple tasks.
+type SimpleExec struct {
+	baseExecutor
+
+	statement ast.StmtNode
 }

@@ -15,6 +15,7 @@
 package zgraph
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,4 +26,27 @@ func TestOpen(t *testing.T) {
 	db, err := Open(t.TempDir(), nil)
 	assert.Nil(err)
 	assert.NotNil(db)
+}
+
+func TestDB_NewSession(t *testing.T) {
+	assert := assert.New(t)
+	db, err := Open(t.TempDir(), nil)
+	assert.Nil(err)
+	assert.NotNil(db)
+	defer db.Close()
+
+	session := db.NewSession()
+	assert.NotNil(session)
+
+	ctx := context.Background()
+	rs, err := session.Execute(ctx, "create graph graph1000")
+	assert.Nil(err)
+
+	err = rs.Next(ctx)
+	assert.Nil(err)
+
+	// Check the catalog.
+	catalog := db.Catalog()
+	graph := catalog.Graph("graph1000")
+	assert.NotNil(graph)
 }

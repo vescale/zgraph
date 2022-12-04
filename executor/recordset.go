@@ -30,9 +30,31 @@ type RecordSet interface {
 	Next(ctx context.Context, req *chunk.Chunk) error
 
 	// NewChunk create a chunk, if allocator is nil, the default one is used.
-	NewChunk(chunk.Allocator) *chunk.Chunk
+	NewChunk(*chunk.Allocator) *chunk.Chunk
 
 	// Close closes the underlying iterator, call Next after Close will
 	// restart the iteration.
 	Close() error
+}
+
+type execRecordSet struct {
+	exec Executor
+}
+
+func (e *execRecordSet) Fields() []*ast.ResultSetNode {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *execRecordSet) Next(ctx context.Context, req *chunk.Chunk) error {
+	return e.exec.Next(ctx, req)
+}
+
+func (e *execRecordSet) NewChunk(allocator *chunk.Allocator) *chunk.Chunk {
+	// TODO: support alloc chunk from allocator.
+	return &chunk.Chunk{}
+}
+
+func (e *execRecordSet) Close() error {
+	return e.exec.Close()
 }

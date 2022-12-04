@@ -16,11 +16,15 @@ package stmtctx
 
 import (
 	"sync"
+
+	"github.com/vescale/zgraph/storage/kv"
 )
 
 // Context represent the intermediate state of a query execution and will be
 // reset after a query finished.
 type Context struct {
+	store kv.Storage
+
 	mu struct {
 		sync.RWMutex
 
@@ -40,8 +44,10 @@ type Context struct {
 }
 
 // New returns a session statement context instance.
-func New() *Context {
-	return &Context{}
+func New(store kv.Storage) *Context {
+	return &Context{
+		store: store,
+	}
 }
 
 // Reset resets all variables associated to execute a query.
@@ -60,12 +66,9 @@ func (sc *Context) Reset() {
 	sc.mu.errorCount = 0
 }
 
-// SetCurrentGraph changes the current graph name.
-func (sc *Context) SetCurrentGraph(graphName string) {
-	sc.mu.Lock()
-	defer sc.mu.Unlock()
-
-	sc.mu.currentGraph = graphName
+// Store returns the storage instance.
+func (sc *Context) Store() kv.Storage {
+	return sc.store
 }
 
 // CurrentGraph returns the current chosen graph name.
@@ -74,4 +77,12 @@ func (sc *Context) CurrentGraph() string {
 	defer sc.mu.RUnlock()
 
 	return sc.mu.currentGraph
+}
+
+// SetCurrentGraph changes the current graph name.
+func (sc *Context) SetCurrentGraph(graphName string) {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+
+	sc.mu.currentGraph = graphName
 }

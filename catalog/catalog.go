@@ -24,7 +24,8 @@ import (
 
 // Catalog maintains the catalog of graphs and label information.
 type Catalog struct {
-	mu sync.RWMutex
+	mdl sync.Mutex   // mdl prevent executing DDL concurrently.
+	mu  sync.RWMutex // mu protect the catalog fields.
 
 	byName map[string]*Graph
 	byID   map[int64]*Graph
@@ -93,4 +94,14 @@ func (c *Catalog) LabelByID(graphID, labelID int64) *Label {
 	}
 
 	return g.LabelByID(labelID)
+}
+
+// MDLock locks the catalog to prevent executing DDL concurrently.
+func (c *Catalog) MDLock() {
+	c.mdl.Lock()
+}
+
+// MDUnlock unlocks the catalog.
+func (c *Catalog) MDUnlock() {
+	c.mdl.Unlock()
 }

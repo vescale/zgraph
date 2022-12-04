@@ -36,13 +36,13 @@ func Compile(sc *stmtctx.Context, catalog *catalog.Catalog, node ast.StmtNode) (
 	if err != nil {
 		return nil, err
 	}
-	p, isLogicalPlan := plan.(planner.LogicalPlan)
+	logicalPlan, isLogicalPlan := plan.(planner.LogicalPlan)
 	if !isLogicalPlan {
-		return executor.NewStatement(p), nil
+		return executor.NewStatement(sc, catalog, plan), nil
 	}
 
 	// Optimize the logical plan and generate physical plan.
-	optimized := planner.Optimize(plan)
+	optimized := planner.Optimize(logicalPlan)
 
-	return executor.NewStatement(optimized), nil
+	return executor.NewStatement(sc, catalog, optimized), nil
 }

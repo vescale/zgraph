@@ -56,7 +56,7 @@ type Session struct {
 func New(store kv.Storage, catalog *catalog.Catalog) *Session {
 	return &Session{
 		id:      idGenerator.Add(1),
-		sc:      stmtctx.New(),
+		sc:      stmtctx.New(store),
 		store:   store,
 		catalog: catalog,
 	}
@@ -67,7 +67,8 @@ func (s *Session) ID() int64 {
 	return s.id
 }
 
-// Execute executes a query.
+// Execute executes a query and reports whether the query executed successfully or not.
+// A result set will be non-empty if execute successfully.
 func (s *Session) Execute(ctx context.Context, query string) (ResultSet, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

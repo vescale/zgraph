@@ -68,3 +68,18 @@ func (g *Graph) LabelByID(id int64) *Label {
 
 	return g.byID[id]
 }
+
+// Labels returns the labels.
+func (g *Graph) Labels() []*Label {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	if len(g.byID) < 1 {
+		return nil
+	}
+	labels := make([]*Label, 0, len(g.byID))
+	for _, label := range g.byID {
+		labels = append(labels, label)
+	}
+	return labels
+}
