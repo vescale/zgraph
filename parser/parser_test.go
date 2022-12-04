@@ -392,6 +392,75 @@ func TestModify(t *testing.T) {
 			true,
 			"INSERT EDGE `e` BETWEEN `x` AND `y` FROM MATCH (`x`),MATCH (`y`) -> (`z`) WHERE ID(`x`)=1",
 		},
+		{
+			`UPDATE x SET ( x.age = 42 )
+  FROM MATCH (x:Person)
+ WHERE x.name = 'John'`,
+			true,
+			"UPDATE `x` SET (`x`.`age` = 42) FROM MATCH (`x`:`Person`) WHERE `x`.`name`='John'",
+		},
+		{
+			`UPDATE v SET ( v.carOwner = true )
+     , u SET ( u.weight = 3500 )
+     , e SET ( e.since = DATE '2010-01-03' )
+  FROM MATCH (v:Person) <-[e:belongs_to]- (u:Car)
+ WHERE v.name = 'John'`,
+			true,
+			"UPDATE `v` SET (`v`.`carOwner` = 1),`u` SET (`u`.`weight` = 3500),`e` SET (`e`.`since` = DATE '2010-01-03') FROM MATCH (`v`:`Person`) <-[`e`:`belongs_to`]- (`u`:`Car`) WHERE `v`.`name`='John'",
+		},
+		{
+			`UPDATE x SET ( x.a = y.b, x.b = 12 ) FROM MATCH (x) -> (y)`,
+			true,
+			"UPDATE `x` SET (`x`.`a` = `y`.`b`, `x`.`b` = 12) FROM MATCH (`x`) -> (`y`)",
+		},
+		{
+			`UPDATE x SET ( x.a = y.a ) FROM MATCH (x) -> (y)`,
+			true,
+			"UPDATE `x` SET (`x`.`a` = `y`.`a`) FROM MATCH (`x`) -> (`y`)",
+		},
+		{
+			`UPDATE v SET ( v.a = 65 - v.age )
+  FROM MATCH (v:Person) -> (u:Person)
+ WHERE v.name = 'John'`,
+			true,
+			"UPDATE `v` SET (`v`.`a` = 65-`v`.`age`) FROM MATCH (`v`:`Person`) -> (`u`:`Person`) WHERE `v`.`name`='John'",
+		},
+		{
+			`UPDATE v SET ( v.a = 65 - u.age )
+  FROM MATCH (v:Person) -> (u:Person)
+ WHERE v.name = 'John'`,
+			true,
+			"UPDATE `v` SET (`v`.`a` = 65-`u`.`age`) FROM MATCH (`v`:`Person`) -> (`u`:`Person`) WHERE `v`.`name`='John'",
+		},
+		{
+			`DELETE e FROM MATCH () -[e]-> ()`,
+			true,
+			"DELETE `e` FROM MATCH () -[`e`]-> ()",
+		},
+		{
+			`DELETE x, y FROM MATCH (x) -> (y)`,
+			true,
+			"DELETE `x`,`y` FROM MATCH (`x`) -> (`y`)",
+		},
+		{
+			`DELETE x FROM MATCH (x) WHERE id(x) = 11`,
+			true,
+			"DELETE `x` FROM MATCH (`x`) WHERE ID(`x`)=11",
+		},
+		{
+			`DELETE x FROM MATCH (x)`,
+			true,
+			"DELETE `x` FROM MATCH (`x`)",
+		},
+		//		{
+		//			`INSERT EDGE e BETWEEN x AND y
+		//UPDATE y SET ( y.a = 12 )
+		//  FROM MATCH (x), MATCH (y)
+		// WHERE id(x) = 1 AND id(y) = 2
+		//`,
+		//			true,
+		//			"INSERT EDGE `e` BETWEEN `x` AND `y` UPDATE `y` SET (`y`.`a` = 12) FROM MATCH (`x`),MATCH (`y`) WHERE ID(`x`)=1 AND ID(`y`)=2",
+		//		},
 	}
 	RunTest(t, table)
 }

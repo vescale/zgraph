@@ -223,13 +223,35 @@ type GraphElementUpdate struct {
 }
 
 func (g *GraphElementUpdate) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
+	ctx.WriteName(g.VariableName.O)
+	ctx.WriteKeyWord(" SET ")
+	ctx.WritePlain("(")
+	for i, assignment := range g.Assignments {
+		if i > 0 {
+			ctx.WritePlain(", ")
+		}
+		if err := assignment.Restore(ctx); err != nil {
+			return errors.Annotate(err, "An error occurred while restore GraphElementUpdate.Assignments")
+		}
+	}
+	ctx.WritePlain(")")
+	return nil
 }
 
 func (g *GraphElementUpdate) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
+	newNode, skipChildren := v.Enter(g)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	g = newNode.(*GraphElementUpdate)
+	for i, assignment := range g.Assignments {
+		node, ok = assignment.Accept(v)
+		if !ok {
+			return node, ok
+		}
+		g.Assignments[i] = node.(*PropertyAssignment)
+	}
+	return v.Leave(g)
 }
 
 type ExpAsVar struct {
@@ -630,10 +652,14 @@ func (d *DeleteStmt) Restore(ctx *format.RestoreCtx) error {
 		ctx.WriteName(name.O)
 	}
 
-	if err := d.From.Restore(ctx); err != nil {
-		return errors.Annotatef(err, "An error occurred while restore DeleteStmt.From")
+	if d.From != nil {
+		ctx.WriteKeyWord(" FROM ")
+		if err := d.From.Restore(ctx); err != nil {
+			return errors.Annotate(err, "An error occurred while restore DeleteStmt.From")
+		}
 	}
 	if d.Where != nil {
+		ctx.WriteKeyWord(" WHERE ")
 		if err := d.Where.Restore(ctx); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore DeleteStmt.Where")
 		}
@@ -738,14 +764,125 @@ type UpdateStmt struct {
 	Limit   *LimitClause
 }
 
-func (u *UpdateStmt) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
+func (n *UpdateStmt) Restore(ctx *format.RestoreCtx) error {
+	for _, p := range n.PathPatternMacros {
+		if err := p.Restore(ctx); err != nil {
+			return errors.New("An error occurred while restore UpdateStmt.PathPatternMacros")
+		}
+		ctx.WritePlain(" ")
+	}
+	ctx.WriteKeyWord("UPDATE ")
+	for i, update := range n.Updates {
+		if i != 0 {
+			ctx.WritePlain(",")
+		}
+		if err := update.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore UpdateStmt.Updates[%d]", i)
+		}
+	}
+	if n.From != nil {
+		ctx.WriteKeyWord(" FROM ")
+		if err := n.From.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore UpdateStmt.From")
+		}
+	}
+	if n.Where != nil {
+		ctx.WriteKeyWord(" WHERE ")
+		if err := n.Where.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore UpdateStmt.Where")
+		}
+	}
+	if n.GroupBy != nil {
+		ctx.WritePlain(" ")
+		if err := n.GroupBy.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore UpdateStmt.GroupBy")
+		}
+	}
+	if n.Having != nil {
+		ctx.WritePlain(" ")
+		if err := n.Having.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore UpdateStmt.Having")
+		}
+	}
+	if n.OrderBy != nil {
+		ctx.WritePlain(" ")
+		if err := n.OrderBy.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore UpdateStmt.OrderBy")
+		}
+	}
+	if n.Limit != nil {
+		ctx.WritePlain(" ")
+		if err := n.Limit.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore UpdateStmt.Limit")
+		}
+	}
+	return nil
 }
 
-func (u *UpdateStmt) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
+func (n *UpdateStmt) Accept(v Visitor) (node Node, ok bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+
+	n = newNode.(*UpdateStmt)
+	for i, p := range n.PathPatternMacros {
+		node, ok = p.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.PathPatternMacros[i] = node.(*PathPatternMacro)
+	}
+	for i, u := range n.Updates {
+		node, ok = u.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Updates[i] = node.(*GraphElementUpdate)
+	}
+	if n.From != nil {
+		node, ok = n.From.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.From = node.(*MatchClauseList)
+	}
+	if n.Where != nil {
+		node, ok = n.Where.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Where = node.(ExprNode)
+	}
+	if n.GroupBy != nil {
+		node, ok = n.GroupBy.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.GroupBy = node.(*GroupByClause)
+	}
+	if n.Having != nil {
+		node, ok = n.Having.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Having = node.(*HavingClause)
+	}
+	if n.OrderBy != nil {
+		node, ok = n.OrderBy.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.OrderBy = node.(*OrderByClause)
+	}
+	if n.Limit != nil {
+		node, ok = n.Limit.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Limit = node.(*LimitClause)
+	}
+	return v.Leave(n)
 }
 
 // SelectElement represents a result field which can be a property from a label,

@@ -2067,7 +2067,7 @@ LengthNum:
 
  ******************************************************************************/
 UpdateStmt:
-	PathPatternMacroOpt "UPDATE" GraphElementUpdateList FromClause  WhereClauseOpt GroupByClauseOpt HavingClauseOpt OrderByClauseOpt LimitClauseOpt
+	PathPatternMacroOpt "UPDATE" GraphElementUpdateList FromClause WhereClauseOpt GroupByClauseOpt HavingClauseOpt OrderByClauseOpt LimitClauseOpt
 	{
 		us := &ast.UpdateStmt{
 			Updates:  $3.([]*ast.GraphElementUpdate),
