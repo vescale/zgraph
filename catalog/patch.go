@@ -14,7 +14,10 @@
 
 package catalog
 
-import "github.com/vescale/zgraph/parser/model"
+import (
+	"github.com/vescale/zgraph/internal/logutil"
+	"github.com/vescale/zgraph/parser/model"
+)
 
 // PatchType represents the type of patch.
 type PatchType byte
@@ -28,11 +31,19 @@ const (
 	PatchTypeDropIndex
 )
 
-// Patch represents patch which contains a DDL change.
-type Patch struct {
-	Type PatchType
-	Data interface{}
-}
+type (
+	// Patch represents patch which contains a DDL change.
+	Patch struct {
+		Type PatchType
+		Data interface{}
+	}
+
+	// PatchLabel represents the payload of patch create/drop label DDL.
+	PatchLabel struct {
+		GraphID   int64
+		LabelInfo *model.LabelInfo
+	}
+)
 
 // Apply applies the patch to catalog.
 // Note: we need to ensure the DDL changes have applied to persistent storage first.
@@ -52,5 +63,22 @@ func (c *Catalog) Apply(patch *Patch) {
 		delete(c.byName, data.Name.L)
 		delete(c.byID, data.ID)
 		c.mu.Unlock()
+
+	case PatchTypeCreateLabel:
+		data := patch.Data.(*PatchLabel)
+		graph := c.GraphByID(data.GraphID)
+		if graph == nil {
+			logutil.Errorf("Create label on not exists graph. GraphID: %d", data.GraphID)
+			return
+		}
+		graph.CreateLabel(data.LabelInfo)
+	case PatchTypeDropLabel:
+		data := patch.Data.(*PatchLabel)
+		graph := c.GraphByID(data.GraphID)
+		if graph == nil {
+			logutil.Errorf("Drop label on not exists graph. GraphID: %d", data.GraphID)
+			return
+		}
+		graph.DropLabel(data.LabelInfo)
 	}
 }

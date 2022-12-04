@@ -37,7 +37,7 @@ func runQuery(ctx context.Context, session *session.Session, query string) error
 	return rs.Next(ctx)
 }
 
-func TestDB_NewSession(t *testing.T) {
+func TestDB_DDL(t *testing.T) {
 	assert := assert.New(t)
 	db, err := Open(t.TempDir(), nil)
 	assert.Nil(err)
@@ -51,7 +51,24 @@ func TestDB_NewSession(t *testing.T) {
 	ctx := context.Background()
 	err = runQuery(ctx, session, "CREATE GRAPH graph101")
 	assert.Nil(err)
-	assert.NotNil(catalog.Graph("graph101"))
+	graph := catalog.Graph("graph101")
+	assert.NotNil(graph)
+
+	session.StmtContext().SetCurrentGraph("graph101")
+	err = runQuery(ctx, session, "CREATE LABEL label01(a STRING, b INTEGER DEFAULT 1)")
+	assert.Nil(err)
+	assert.NotNil(graph.Label("label01"))
+
+	err = runQuery(ctx, session, "CREATE LABEL IF NOT EXISTS label01(a STRING, b INTEGER DEFAULT 1)")
+	assert.Nil(err)
+
+	err = runQuery(ctx, session, "DROP LABEL label01")
+	assert.Nil(err)
+	assert.Nil(graph.Label("label01"))
+
+	err = runQuery(ctx, session, "DROP LABEL IF EXISTS label01")
+	assert.Nil(err)
+	assert.Nil(graph.Label("label01"))
 
 	err = runQuery(ctx, session, "DROP GRAPH graph101")
 	assert.Nil(err)

@@ -15,6 +15,7 @@
 package stmtctx
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/vescale/zgraph/storage/kv"
@@ -84,5 +85,5 @@ func (sc *Context) SetCurrentGraph(graphName string) {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 
-	sc.mu.currentGraph = graphName
+	sc.mu.currentGraph = strings.ToLower(graphName)
 }

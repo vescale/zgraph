@@ -83,3 +83,22 @@ func (g *Graph) Labels() []*Label {
 	}
 	return labels
 }
+
+// CreateLabel create a new label and append to the graph labels list.
+func (g *Graph) CreateLabel(labelInfo *model.LabelInfo) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	label := NewLabel(labelInfo)
+	g.byName[labelInfo.Name.L] = label
+	g.byID[labelInfo.ID] = label
+}
+
+// DropLabel removes specified label from graph.
+func (g *Graph) DropLabel(labelInfo *model.LabelInfo) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	delete(g.byName, labelInfo.Name.L)
+	delete(g.byID, labelInfo.ID)
+}

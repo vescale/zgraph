@@ -67,6 +67,11 @@ func (s *Session) ID() int64 {
 	return s.id
 }
 
+// StmtContext returns the statement context object.
+func (s *Session) StmtContext() *stmtctx.Context {
+	return s.sc
+}
+
 // Execute executes a query and reports whether the query executed successfully or not.
 // A result set will be non-empty if execute successfully.
 func (s *Session) Execute(ctx context.Context, query string) (ResultSet, error) {

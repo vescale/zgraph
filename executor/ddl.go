@@ -58,6 +58,11 @@ func (e *DDLExec) Next(_ context.Context, _ *chunk.Chunk) error {
 			patch, err = e.createGraph(m, stmt)
 		case *ast.DropGraphStmt:
 			patch, err = e.dropGraph(m, stmt)
+		case *ast.CreateLabelStmt:
+			patch, err = e.createLabel(m, stmt)
+		case *ast.DropLabelStmt:
+			patch, err = e.dropLabel(m, stmt)
+
 		default:
 			return errors.Errorf("unknown DDL(%T)", e.statement)
 		}
@@ -130,6 +135,74 @@ func (e *DDLExec) dropGraph(m *meta.Meta, stmt *ast.DropGraphStmt) (*catalog.Pat
 	patch := &catalog.Patch{
 		Type: catalog.PatchTypeDropGraph,
 		Data: graph.Meta(),
+	}
+	return patch, nil
+}
+
+func (e *DDLExec) createLabel(m *meta.Meta, stmt *ast.CreateLabelStmt) (*catalog.Patch, error) {
+	graphName := e.sc.CurrentGraph()
+	graph := e.catalog.Graph(graphName)
+	if graph == nil {
+		return nil, meta.ErrGraphNotExists
+	}
+	label := graph.Label(stmt.Label.L)
+	if label != nil {
+		if stmt.IfNotExists {
+			return nil, nil
+		}
+		return nil, meta.ErrLabelExists
+	}
+
+	// Persistent to storage.
+	id, err := m.NextGlobalID()
+	if err != nil {
+		return nil, err
+	}
+	labelInfo := &model.LabelInfo{
+		ID:   id,
+		Name: stmt.Label,
+	}
+	err = m.CreateLabel(graph.Meta().ID, labelInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	patch := &catalog.Patch{
+		Type: catalog.PatchTypeCreateLabel,
+		Data: &catalog.PatchLabel{
+			GraphID:   graph.Meta().ID,
+			LabelInfo: labelInfo,
+		},
+	}
+	return patch, nil
+}
+
+func (e *DDLExec) dropLabel(m *meta.Meta, stmt *ast.DropLabelStmt) (*catalog.Patch, error) {
+	graphName := e.sc.CurrentGraph()
+	graph := e.catalog.Graph(graphName)
+	if graph == nil {
+		return nil, meta.ErrGraphNotExists
+	}
+	label := graph.Label(stmt.Label.L)
+	if label == nil {
+		if stmt.IfExists {
+			return nil, nil
+		}
+		return nil, meta.ErrLabelNotExists
+	}
+
+	// Persistent to storage.
+	err := m.DropLabel(graph.Meta().ID, label.Meta().ID)
+	if err != nil {
+		return nil, err
+	}
+
+	patch := &catalog.Patch{
+		Type: catalog.PatchTypeDropLabel,
+		Data: &catalog.PatchLabel{
+			GraphID:   graph.Meta().ID,
+			LabelInfo: label.Meta(),
+		},
 	}
 	return patch, nil
 }
