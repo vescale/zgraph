@@ -17,26 +17,22 @@ package executor
 import (
 	"context"
 
-	"github.com/vescale/zgraph/expression"
 	"github.com/vescale/zgraph/internal/chunk"
+	"github.com/vescale/zgraph/parser/ast"
 )
 
-type baseExecutor struct{}
+// RecordSet is an abstract result set interface to help get data from Plan.
+type RecordSet interface {
+	// Fields gets result fields.
+	Fields() []*ast.ResultSetNode
 
-// Executor is the physical implementation of a algebra operator.
-//
-// In TiDB, all algebra operators are implemented as iterators, i.e., they
-// support a simple Open-Next-Close protocol. See this paper for more details:
-//
-// "Volcano-An Extensible and Parallel Query Evaluation System"
-//
-// Different from Volcano's execution model, a "Next" function call in zGraph will
-// return a batch of rows, other than a single row in Volcano.
-// NOTE: Executors must call "chk.Reset()" before appending their results to it.
-type Executor interface {
-	base() *baseExecutor
-	Open(context.Context) error
+	// Next reads records into chunk.
 	Next(ctx context.Context, req *chunk.Chunk) error
+
+	// NewChunk create a chunk, if allocator is nil, the default one is used.
+	NewChunk(chunk.Allocator) *chunk.Chunk
+
+	// Close closes the underlying iterator, call Next after Close will
+	// restart the iteration.
 	Close() error
-	Schema() *expression.Schema
 }

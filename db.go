@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/vescale/zgraph/catalog"
+	"github.com/vescale/zgraph/session"
 	"github.com/vescale/zgraph/storage"
 	"github.com/vescale/zgraph/storage/kv"
 )
@@ -32,7 +33,7 @@ type DB struct {
 
 	mu struct {
 		sync.RWMutex
-		sessions map[int64]*Session
+		sessions map[int64]*session.Session
 	}
 }
 
@@ -63,25 +64,35 @@ func Open(dirname string, opt *Options) (*DB, error) {
 		store:   store,
 		catalog: catalog,
 	}
-	db.mu.sessions = map[int64]*Session{}
+	db.mu.sessions = map[int64]*session.Session{}
 
 	return db, nil
 }
 
+// Store returns the storage engine object.
+func (db *DB) Store() kv.Storage {
+	return db.store
+}
+
+// Catalog returns the catalog object.
+func (db *DB) Catalog() *catalog.Catalog {
+	return db.catalog
+}
+
 // NewSession returns a new session.
-func (db *DB) NewSession() *Session {
+func (db *DB) NewSession() *session.Session {
 	// TODO: concurrency limitation
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	s := newSession(db)
-	s.setCloseCallback(db.onSessionClosed)
+	s := session.New(db.store, db.catalog)
+	s.OnClosed(db.onSessionClosed)
 	db.mu.sessions[s.ID()] = s
 	return s
 }
 
 // Execute executes a query and reports whether the query executed successfully or not.
-func (db *DB) Execute(ctx context.Context, query string) (ResultSet, error) {
+func (db *DB) Execute(ctx context.Context, query string) (session.ResultSet, error) {
 	return db.NewSession().Execute(ctx, query)
 }
 
@@ -91,19 +102,19 @@ func (db *DB) Close() error {
 	defer db.mu.Unlock()
 
 	for _, s := range db.mu.sessions {
-		s.setCloseCallback(db.onSessionClosedLocked)
+		s.OnClosed(db.onSessionClosedLocked)
 		s.Close()
 	}
 
 	return nil
 }
 
-func (db *DB) onSessionClosed(s *Session) {
+func (db *DB) onSessionClosed(s *session.Session) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 	db.onSessionClosedLocked(s)
 }
 
-func (db *DB) onSessionClosedLocked(s *Session) {
+func (db *DB) onSessionClosedLocked(s *session.Session) {
 	delete(db.mu.sessions, s.ID())
 }

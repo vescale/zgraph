@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package zgraph
+package session
 
-// SelectField represents a field information.
-type SelectField struct {
+// Field represents a field information.
+type Field struct {
 	Graph        string
 	Label        string
 	OrgLabel     string
@@ -27,7 +27,7 @@ type SelectField struct {
 // ResultSet represents the result of a query.
 type ResultSet interface {
 	// Fields returns the fields information of the current query.
-	Fields() []*SelectField
+	Fields() []*Field
 	// Valid reports whether the current result set valid.
 	Valid() bool
 	// Next advances the current result set to the next row of query result.
@@ -36,4 +36,31 @@ type ResultSet interface {
 	Scan(fields ...interface{}) error
 	// Close closes the current result set, which will release all query intermediate resources..
 	Close() error
+}
+
+type emptyResultSet struct{}
+
+// Fields implements the ResultSet interface.
+func (e emptyResultSet) Fields() []*Field {
+	return []*Field{}
+}
+
+// Valid implements the ResultSet interface.
+func (e emptyResultSet) Valid() bool {
+	return false
+}
+
+// Next implements the ResultSet interface.
+func (e emptyResultSet) Next() error {
+	return nil
+}
+
+// Scan implements the ResultSet interface.
+func (e emptyResultSet) Scan(fields ...interface{}) error {
+	return nil
+}
+
+// Close implements the ResultSet interface.
+func (e emptyResultSet) Close() error {
+	return nil
 }

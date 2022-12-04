@@ -21,6 +21,7 @@ import (
 	"io"
 
 	"github.com/vescale/zgraph/parser/format"
+	"github.com/vescale/zgraph/parser/model"
 )
 
 // Node is the basic element of the AST.
@@ -99,6 +100,30 @@ type DDLNode interface {
 type DMLNode interface {
 	StmtNode
 	dmlStatement()
+}
+
+// ResultField represents a result field which can be a column from a table,
+// or an expression in select field. It is a generated property during
+// binding process. ResultField is the key element to evaluate a ColumnNameExpr.
+// After resolving process, every ColumnNameExpr will be resolved to a ResultField.
+// During execution, every row retrieved from table will set the row value to
+// ResultFields of that table, so ColumnNameExpr resolved to that ResultField can be
+// easily evaluated.
+type ResultField struct {
+	Property       *model.PropertyInfo
+	PropertyAsName model.CIStr
+	Label          *model.LabelInfo
+	LabelAsName    model.CIStr
+	DBName         model.CIStr
+
+	// Expr represents the expression for the result field. If it is generated from a select field, it would
+	// be the expression of that select field, otherwise the type would be ValueExpr and value
+	// will be set for every retrieved row.
+	Expr ExprNode
+
+	// Referenced indicates the result field has been referenced or not.
+	// If not, we don't need to get the values.
+	Referenced bool
 }
 
 // ResultSetNode interface has a ResultFields property, represents a Node that returns result set.

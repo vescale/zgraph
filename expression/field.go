@@ -12,9 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package executor
+package expression
 
-// Statement represents an executable statement.
-type Statement interface {
-	Execute() (RecordSet, error)
+type Field struct {
+	Expr Expression
+}
+
+// String implements the fmt.Stringer interface
+func (f *Field) String() string {
+	return ""
 }

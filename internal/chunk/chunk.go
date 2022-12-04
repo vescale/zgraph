@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package executor
+package chunk
 
-// Statement represents an executable statement.
-type Statement interface {
-	Execute() (RecordSet, error)
-}
+type Chunk struct{}

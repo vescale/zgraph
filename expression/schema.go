@@ -12,9 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package executor
+package expression
 
-// Statement represents an executable statement.
-type Statement interface {
-	Execute() (RecordSet, error)
+import "strings"
+
+// Schema stands for the row schema information get from input.
+type Schema struct {
+	Fields []*Field
+}
+
+// String implements fmt.Stringer interface.
+func (s *Schema) String() string {
+	colStrs := make([]string, 0, len(s.Fields))
+	for _, col := range s.Fields {
+		colStrs = append(colStrs, col.String())
+	}
+	return "Column: [" + strings.Join(colStrs, ",") + "]"
 }

@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package executor
+package model
 
-// Statement represents an executable statement.
-type Statement interface {
-	Execute() (RecordSet, error)
+type PropertyInfo struct {
+	ID   int64 `json:"id"`
+	Name CIStr `json:"name"`
 }

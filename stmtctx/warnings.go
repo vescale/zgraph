@@ -42,3 +42,30 @@ func (sc *Context) AppendError(warn error) {
 		sc.mu.errorCount++
 	}
 }
+
+// AppendWarning appends a warning with level 'Warning'.
+func (sc *Context) AppendWarning(warn error) {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+	if len(sc.mu.warnings) < math.MaxUint16 {
+		sc.mu.warnings = append(sc.mu.warnings, SQLWarn{WarnLevelWarning, warn})
+	}
+}
+
+// AppendWarnings appends some warnings.
+func (sc *Context) AppendWarnings(warns []SQLWarn) {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+	if len(sc.mu.warnings) < math.MaxUint16 {
+		sc.mu.warnings = append(sc.mu.warnings, warns...)
+	}
+}
+
+// AppendNote appends a warning with level 'Note'.
+func (sc *Context) AppendNote(warn error) {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+	if len(sc.mu.warnings) < math.MaxUint16 {
+		sc.mu.warnings = append(sc.mu.warnings, SQLWarn{WarnLevelNote, warn})
+	}
+}
