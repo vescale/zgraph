@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/vescale/zgraph/session"
 )
 
 func TestOpen(t *testing.T) {
@@ -28,6 +29,14 @@ func TestOpen(t *testing.T) {
 	assert.NotNil(db)
 }
 
+func runQuery(ctx context.Context, session *session.Session, query string) error {
+	rs, err := session.Execute(ctx, query)
+	if err != nil {
+		return err
+	}
+	return rs.Next(ctx)
+}
+
 func TestDB_NewSession(t *testing.T) {
 	assert := assert.New(t)
 	db, err := Open(t.TempDir(), nil)
@@ -35,18 +44,16 @@ func TestDB_NewSession(t *testing.T) {
 	assert.NotNil(db)
 	defer db.Close()
 
+	catalog := db.Catalog()
 	session := db.NewSession()
 	assert.NotNil(session)
 
 	ctx := context.Background()
-	rs, err := session.Execute(ctx, "create graph graph1000")
+	err = runQuery(ctx, session, "CREATE GRAPH graph101")
 	assert.Nil(err)
+	assert.NotNil(catalog.Graph("graph101"))
 
-	err = rs.Next(ctx)
+	err = runQuery(ctx, session, "DROP GRAPH graph101")
 	assert.Nil(err)
-
-	// Check the catalog.
-	catalog := db.Catalog()
-	graph := catalog.Graph("graph1000")
-	assert.NotNil(graph)
+	assert.Nil(catalog.Graph("graph101"))
 }
