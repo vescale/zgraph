@@ -14,7 +14,28 @@
 
 package executor
 
+import (
+	"context"
+
+	"github.com/vescale/zgraph/planner"
+)
+
 // Statement represents an executable statement.
 type Statement interface {
-	Execute() (RecordSet, error)
+	Execute(ctx context.Context) (RecordSet, error)
+}
+
+type executableStmt struct {
+	plan planner.Plan
+}
+
+func NewStatement(plan planner.Plan) Statement {
+	return &executableStmt{
+		plan: plan,
+	}
+}
+
+func (e *executableStmt) Execute(ctx context.Context) (RecordSet, error) {
+	//TODO implement me
+	panic("implement me")
 }

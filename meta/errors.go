@@ -24,4 +24,6 @@ var (
 	ErrInvalidString  = errors.New("invalid string")
 	ErrLabelExists    = errors.New("label exists")
 	ErrLabelNotExists = errors.New("label not exists")
+	ErrIndexExists    = errors.New("index exists")
+	ErrIndexNotExists = errors.New("index not exists")
 )

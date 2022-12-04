@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package chunk
+package compiler
 
-type Allocator struct {
-}
+import "github.com/pingcap/errors"
 
-func NewAllocator() *Allocator {
-	return &Allocator{}
-}
+var (
+	ErrIncorrectGraphName = errors.New("incorrect graph name")
+	ErrIncorrectLabelName = errors.New("incorrect label name")
+	ErrIncorrectIndexName = errors.New("incorrect index name")
+	ErrGraphNotChosen     = errors.New("please choose graph first")
+)

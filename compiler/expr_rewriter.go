@@ -12,14 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package planner
+package compiler
 
 import "github.com/vescale/zgraph/parser/ast"
 
-type Builder struct {
+type exprRewriter struct {
 }
 
-// Build builds a statement AST node into a Plan.
-func (b *Builder) Build(stmt ast.StmtNode) (Plan, error) {
-	return nil, nil
+// Enter implements the ast.Visitor interface.
+func (e *exprRewriter) Enter(n ast.Node) (node ast.Node, skipChildren bool) {
+	return n, false
+}
+
+// Leave implements the ast.Visitor interface.
+func (e *exprRewriter) Leave(n ast.Node) (node ast.Node, ok bool) {
+	return n, true
 }

@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package chunk
+package planner
 
-type Allocator struct {
-}
-
-func NewAllocator() *Allocator {
-	return &Allocator{}
+// Optimize optimizes the plan to the optimal physical plan.
+func Optimize(plan Plan) Plan {
+	return nil
 }

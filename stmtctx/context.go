@@ -24,6 +24,8 @@ type Context struct {
 	mu struct {
 		sync.RWMutex
 
+		currentGraph string
+
 		affectedRows uint64
 		foundRows    uint64
 		records      uint64
@@ -56,4 +58,20 @@ func (sc *Context) Reset() {
 	sc.mu.touched = 0
 	sc.mu.warnings = sc.mu.warnings[:0]
 	sc.mu.errorCount = 0
+}
+
+// SetCurrentGraph changes the current graph name.
+func (sc *Context) SetCurrentGraph(graphName string) {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+
+	sc.mu.currentGraph = graphName
+}
+
+// CurrentGraph returns the current chosen graph name.
+func (sc *Context) CurrentGraph() string {
+	sc.mu.RLock()
+	defer sc.mu.RUnlock()
+
+	return sc.mu.currentGraph
 }

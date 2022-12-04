@@ -545,13 +545,14 @@ PropertyOption:
 	}
 
 CreateIndexStmt:
-	"CREATE" IndexKeyTypeOpt "INDEX" IfNotExists "ON" LabelName '(' PropertyNameList ')'
+	"CREATE" IndexKeyTypeOpt "INDEX" IfNotExists IndexName "ON" LabelName '(' PropertyNameList ')'
 	{
 		$$ = &ast.CreateIndexStmt{
 			KeyType:     $2.(ast.IndexKeyType),
 			IfNotExists: $4.(bool),
-			LabelName:   $6.(model.CIStr),
-			Properties:  $8.([]model.CIStr),
+			IndexName:   $5.(model.CIStr),
+			LabelName:   $7.(model.CIStr),
+			Properties:  $9.([]model.CIStr),
 		}
 	}
 
@@ -2211,6 +2212,9 @@ UnReservedKeyword:
 
 PropertyNameList:
 	PropertyName
+	{
+		$$ = []model.CIStr{$1.(model.CIStr)}
+	}
 |	PropertyNameList ',' PropertyName
 	{
 		$$ = append($1.([]model.CIStr), $3.(model.CIStr))

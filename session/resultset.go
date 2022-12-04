@@ -14,6 +14,11 @@
 
 package session
 
+import (
+	"github.com/vescale/zgraph/executor"
+	"github.com/vescale/zgraph/internal/chunk"
+)
+
 // Field represents a field information.
 type Field struct {
 	Graph        string
@@ -63,4 +68,53 @@ func (e emptyResultSet) Scan(fields ...interface{}) error {
 // Close implements the ResultSet interface.
 func (e emptyResultSet) Close() error {
 	return nil
+}
+
+// queryResultSet is a wrapper of executor.RecordSet. It
+type queryResultSet struct {
+	valid  bool
+	alloc  *chunk.Allocator
+	rs     executor.RecordSet
+	fields []*Field
+}
+
+func retrieveFields(rs executor.RecordSet) []*Field {
+	return nil
+}
+
+func newQueryResultSet(rs executor.RecordSet) ResultSet {
+	return &queryResultSet{
+		alloc:  chunk.NewAllocator(),
+		valid:  true,
+		rs:     rs,
+		fields: retrieveFields(rs),
+	}
+}
+
+// Fields implements the ResultSet interface.
+func (q *queryResultSet) Fields() []*Field {
+	return q.fields
+}
+
+// Valid implements the ResultSet interface.
+func (q *queryResultSet) Valid() bool {
+	return q.valid
+}
+
+// Next implements the ResultSet interface.
+func (q *queryResultSet) Next() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+// Scan implements the ResultSet interface.
+func (q *queryResultSet) Scan(fields ...interface{}) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+// Close implements the ResultSet interface.
+func (q *queryResultSet) Close() error {
+	q.valid = false
+	return q.rs.Close()
 }

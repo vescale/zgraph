@@ -54,17 +54,17 @@ func (g *Graph) Meta() *model.GraphInfo {
 }
 
 // Label returns the label of specified name.
-func (c *Graph) Label(name string) *Label {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+func (g *Graph) Label(name string) *Label {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
 
-	return c.byName[strings.ToLower(name)]
+	return g.byName[strings.ToLower(name)]
 }
 
 // LabelByID returns the label of specified ID.
-func (c *Graph) LabelByID(id int64) *Label {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+func (g *Graph) LabelByID(id int64) *Label {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
 
-	return c.byID[id]
+	return g.byID[id]
 }

@@ -15,11 +15,33 @@
 package compiler
 
 import (
+	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/executor"
 	"github.com/vescale/zgraph/parser/ast"
+	"github.com/vescale/zgraph/planner"
+	"github.com/vescale/zgraph/stmtctx"
 )
 
-// Compile compiles the statement AST node into an executable statement.
-func Compile(stmt ast.StmtNode) (executor.Statement, error) {
-	return nil, nil
+// Compile compiles the statement AST node into an executable statement. The compiler relay
+// on the statement context to retrieve some environment information and set some intermediate
+// variables while compiling. The catalog is used to resolve names in the query.
+func Compile(sc *stmtctx.Context, catalog *catalog.Catalog, node ast.StmtNode) (executor.Statement, error) {
+	// Check the AST to ensure it is valid.
+	prep := NewPreprocess(sc, catalog)
+	node.Accept(prep)
+
+	// Build plan tree from a valid AST.
+	builder := Builder{}
+	plan, err := builder.Build(node)
+	if err != nil {
+		return nil, err
+	}
+	if p, ok := plan.(planner.PhysicalPlan); ok {
+		return executor.NewStatement(p), nil
+	}
+
+	// Optimize the logical plan and generate physical plan.
+	optimized := planner.Optimize(plan)
+
+	return executor.NewStatement(optimized), nil
 }

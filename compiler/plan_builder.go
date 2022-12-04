@@ -12,11 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package chunk
+package compiler
 
-type Allocator struct {
+import (
+	"github.com/vescale/zgraph/parser/ast"
+	"github.com/vescale/zgraph/planner"
+)
+
+type Builder struct {
 }
 
-func NewAllocator() *Allocator {
-	return &Allocator{}
+// Build builds a statement AST node into a Plan.
+func (b *Builder) Build(stmt ast.StmtNode) (planner.Plan, error) {
+	return nil, nil
 }

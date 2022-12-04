@@ -21,6 +21,7 @@ import (
 
 	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/catalog"
+	"github.com/vescale/zgraph/compiler"
 	"github.com/vescale/zgraph/parser"
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/stmtctx"
@@ -96,8 +97,22 @@ func (s *Session) Execute(ctx context.Context, query string) (ResultSet, error) 
 	return s.executeStmt(ctx, stmts[0])
 }
 
-func (s *Session) executeStmt(ctx context.Context, stmt ast.StmtNode) (ResultSet, error) {
-	return nil, nil
+func (s *Session) executeStmt(ctx context.Context, node ast.StmtNode) (ResultSet, error) {
+	// TODO: support transaction
+
+	// Reset the current statement context and prepare for executing the next statement.
+	s.sc.Reset()
+
+	stmt, err := compiler.Compile(s.sc, s.catalog, node)
+	if err != nil {
+		return nil, err
+	}
+	rs, err := stmt.Execute(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return newQueryResultSet(rs), nil
 }
 
 // Close terminates the current session.

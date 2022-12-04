@@ -15,6 +15,7 @@
 package catalog
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/vescale/zgraph/parser/model"
@@ -47,4 +48,20 @@ func NewLabel(meta *model.LabelInfo) *Label {
 // Meta returns the meta information object of this label.
 func (l *Label) Meta() *model.LabelInfo {
 	return l.meta
+}
+
+// Index returns the label of specified name.
+func (l *Label) Index(name string) *Index {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+
+	return l.byName[strings.ToLower(name)]
+}
+
+// IndexByID returns the label of specified ID.
+func (l *Label) IndexByID(id int64) *Index {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+
+	return l.byID[id]
 }
