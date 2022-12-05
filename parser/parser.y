@@ -85,7 +85,6 @@ import (
 	insert                "INSERT"
 	integerType           "INTEGER"
 	into                  "INTO"
-	intType               "INT"
 	is                    "IS"
 	limit                 "LIMIT"
 	match                 "MATCH"
@@ -120,6 +119,7 @@ import (
 	comment               "COMMENT"
 	commit                "COMMIT"
 	booleanType           "BOOLEAN"
+	decimalType           "DECIMAL"
 	explain               "EXPLAIN"
 	yearType              "YEAR"
 	dateType              "DATE"
@@ -154,7 +154,6 @@ import (
 	timezoneHour          "TIMEZONE_HOUR"
 	timezoneMinute       "TIMEZONE_MINUTE"
 	cast                  "CAST"
-	long                  "LONG"
 	stringKwd             "STRING"
 	with                  "WITH"
 	zone                  "ZONE"
@@ -1282,14 +1281,6 @@ DataType:
 	{
 		$$ = ast.DataTypeInteger
 	}
-|	"INT"
-	{
-		$$ = ast.DataTypeInt
-	}
-|	"LONG"
-	{
-		$$ = ast.DataTypeLong
-	}
 |	"FLOAT"
 	{
 		$$ = ast.DataTypeFloat
@@ -1297,6 +1288,10 @@ DataType:
 |	"DOUBLE"
 	{
 		$$ = ast.DataTypeDouble
+	}
+|	"DECIMAL"
+	{
+		$$ = ast.DataTypeDecimal
 	}
 |	"DATE"
 	{
@@ -2206,7 +2201,6 @@ UnReservedKeyword:
 |	"TIMEZONE_HOUR"
 |	"TIMEZONE_MINUTE"
 |	"CAST"
-|	"LONG"
 |	"STRING"
 |	"WITH"
 |	"ZONE"

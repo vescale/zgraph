@@ -642,10 +642,9 @@ const (
 	DataTypeString DataType = iota
 	DataTypeBoolean
 	DataTypeInteger
-	DataTypeInt
-	DataTypeLong
 	DataTypeFloat
 	DataTypeDouble
+	DataTypeDecimal
 	DataTypeDate
 	DataTypeTime
 	DataTypeTimeWithZone
@@ -661,14 +660,12 @@ func (d DataType) String() string {
 		return "BOOLEAN"
 	case DataTypeInteger:
 		return "INTEGER"
-	case DataTypeInt:
-		return "INT"
-	case DataTypeLong:
-		return "LONG"
 	case DataTypeFloat:
 		return "FLOAT"
 	case DataTypeDouble:
 		return "DOUBLE"
+	case DataTypeDecimal:
+		return "DECIMAL"
 	case DataTypeDate:
 		return "DATE"
 	case DataTypeTime:
