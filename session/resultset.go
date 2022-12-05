@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/vescale/zgraph/executor"
+	"github.com/vescale/zgraph/expression"
 	"github.com/vescale/zgraph/internal/chunk"
 )
 
@@ -76,23 +77,24 @@ func (e emptyResultSet) Close() error {
 type queryResultSet struct {
 	valid  bool
 	alloc  *chunk.Allocator
-	rs     executor.RecordSet
 	chunk  *chunk.Chunk
 	fields []*Field
+	exec   executor.Executor
 }
 
-func retrieveFields(rs executor.RecordSet) []*Field {
+func retrieveFields(schema *expression.Schema) []*Field {
 	return nil
 }
 
-func newQueryResultSet(rs executor.RecordSet) ResultSet {
+func newQueryResultSet(exec executor.Executor) ResultSet {
 	alloc := chunk.NewAllocator()
 	return &queryResultSet{
 		alloc:  alloc,
 		valid:  true,
-		rs:     rs,
-		chunk:  rs.NewChunk(alloc),
-		fields: retrieveFields(rs),
+		exec:   exec,
+		fields: retrieveFields(exec.Schema()),
+		// TODO: implement chunk
+		// chunk:  exec.NewChunk(alloc),
 	}
 }
 
@@ -108,7 +110,7 @@ func (q *queryResultSet) Valid() bool {
 
 // Next implements the ResultSet interface.
 func (q *queryResultSet) Next(ctx context.Context) error {
-	return q.rs.Next(ctx, q.chunk)
+	return q.exec.Next(ctx, q.chunk)
 }
 
 // Scan implements the ResultSet interface.
@@ -120,5 +122,5 @@ func (q *queryResultSet) Scan(fields ...interface{}) error {
 // Close implements the ResultSet interface.
 func (q *queryResultSet) Close() error {
 	q.valid = false
-	return q.rs.Close()
+	return q.exec.Close()
 }

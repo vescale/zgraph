@@ -56,7 +56,7 @@ type Session struct {
 func New(store kv.Storage, catalog *catalog.Catalog) *Session {
 	return &Session{
 		id:      idGenerator.Add(1),
-		sc:      stmtctx.New(store),
+		sc:      stmtctx.New(store, catalog),
 		store:   store,
 		catalog: catalog,
 	}
@@ -109,16 +109,16 @@ func (s *Session) executeStmt(ctx context.Context, node ast.StmtNode) (ResultSet
 	// Reset the current statement context and prepare for executing the next statement.
 	s.sc.Reset()
 
-	stmt, err := compiler.Compile(s.sc, s.catalog, node)
+	exec, err := compiler.Compile(s.sc, node)
 	if err != nil {
 		return nil, err
 	}
-	rs, err := stmt.Execute(ctx)
+	err = exec.Open(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return newQueryResultSet(rs), nil
+	return newQueryResultSet(exec), nil
 }
 
 // Close terminates the current session.

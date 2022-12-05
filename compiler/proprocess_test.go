@@ -186,10 +186,10 @@ func TestPreprocess(t *testing.T) {
 		parser := parser.New()
 		stmt, err := parser.ParseOneStmt(c.query)
 		assert.Nil(err)
-		sc := stmtctx.New()
+		sc := stmtctx.New(db.Store(), db.Catalog())
 		sc.SetCurrentGraph(c.graph)
 
-		prep := compiler.NewPreprocess(sc, db.Catalog())
+		prep := compiler.NewPreprocess(sc)
 		stmt.Accept(prep)
 		if c.err == "" {
 			assert.Nil(prep.Error())

@@ -15,6 +15,7 @@
 package session
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,7 +24,7 @@ import (
 func TestEmptyResultSet(t *testing.T) {
 	assert := assert.New(t)
 	rs := emptyResultSet{}
-	assert.Nil(rs.Next())
+	assert.Nil(rs.Next(context.Background()))
 	assert.False(rs.Valid())
 	assert.Zero(len(rs.Fields()))
 	assert.Nil(rs.Scan())

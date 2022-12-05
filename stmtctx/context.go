@@ -18,13 +18,15 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/storage/kv"
 )
 
 // Context represent the intermediate state of a query execution and will be
 // reset after a query finished.
 type Context struct {
-	store kv.Storage
+	store   kv.Storage
+	catalog *catalog.Catalog
 
 	mu struct {
 		sync.RWMutex
@@ -45,9 +47,10 @@ type Context struct {
 }
 
 // New returns a session statement context instance.
-func New(store kv.Storage) *Context {
+func New(store kv.Storage, catalog *catalog.Catalog) *Context {
 	return &Context{
-		store: store,
+		store:   store,
+		catalog: catalog,
 	}
 }
 
@@ -70,6 +73,11 @@ func (sc *Context) Reset() {
 // Store returns the storage instance.
 func (sc *Context) Store() kv.Storage {
 	return sc.store
+}
+
+// Catalog returns the catalog object.
+func (sc *Context) Catalog() *catalog.Catalog {
+	return sc.catalog
 }
 
 // CurrentGraph returns the current chosen graph name.

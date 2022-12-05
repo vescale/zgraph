@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package compiler_test
+package planner_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/vescale/zgraph"
-	"github.com/vescale/zgraph/compiler"
 	"github.com/vescale/zgraph/parser"
 	"github.com/vescale/zgraph/planner"
 	"github.com/vescale/zgraph/stmtctx"
@@ -48,7 +47,7 @@ func TestBuilder_BuildDDL(t *testing.T) {
 		stmt, err := parser.ParseOneStmt(c)
 		assert.Nil(err)
 
-		builder := compiler.NewBuilder(stmtctx.New(), db.Catalog())
+		builder := planner.NewBuilder(stmtctx.New(db.Store(), db.Catalog()))
 		plan, err := builder.Build(stmt)
 		assert.Nil(err)
 
@@ -82,7 +81,7 @@ func TestBuilder_BuildSimple(t *testing.T) {
 		stmt, err := parser.ParseOneStmt(c.query)
 		assert.Nil(err)
 
-		builder := compiler.NewBuilder(stmtctx.New(), db.Catalog())
+		builder := planner.NewBuilder(stmtctx.New(db.Store(), db.Catalog()))
 		plan, err := builder.Build(stmt)
 		assert.Nil(err)
 		ddl, ok := plan.(*planner.Simple)

@@ -12,37 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package compiler
+package planner
 
 import (
-	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/parser/ast"
-	"github.com/vescale/zgraph/planner"
 	"github.com/vescale/zgraph/stmtctx"
 )
 
 // builderContext represents the context of building plan.
 type builderContext struct {
-	plan planner.Plan
+	plan Plan
 }
 
 // Builder is used to build the AST into a plan.
 type Builder struct {
-	sc      *stmtctx.Context
-	catalog *catalog.Catalog
-	stacks  []*builderContext
+	sc     *stmtctx.Context
+	stacks []*builderContext
 }
 
 // NewBuilder returns a plan builder.
-func NewBuilder(sc *stmtctx.Context, catalog *catalog.Catalog) *Builder {
+func NewBuilder(sc *stmtctx.Context) *Builder {
 	return &Builder{
-		sc:      sc,
-		catalog: catalog,
+		sc: sc,
 	}
 }
 
 // Build builds a statement AST node into a Plan.
-func (b *Builder) Build(node ast.StmtNode) (planner.Plan, error) {
+func (b *Builder) Build(node ast.StmtNode) (Plan, error) {
 	b.pushContext()
 	defer b.popContext()
 
@@ -68,23 +64,23 @@ func (b *Builder) popContext() {
 	b.stacks = b.stacks[:len(b.stacks)-1]
 }
 
-func (b *Builder) plan() planner.Plan {
+func (b *Builder) plan() Plan {
 	return b.stacks[len(b.stacks)-1].plan
 }
 
-func (b *Builder) setPlan(plan planner.Plan) {
+func (b *Builder) setPlan(plan Plan) {
 	b.stacks[len(b.stacks)-1].plan = plan
 }
 
 func (b *Builder) buildDDL(ddl ast.DDLNode) error {
-	b.setPlan(&planner.DDL{
+	b.setPlan(&DDL{
 		Statement: ddl,
 	})
 	return nil
 }
 
 func (b *Builder) buildSimple(stmt ast.StmtNode) error {
-	b.setPlan(&planner.Simple{
+	b.setPlan(&Simple{
 		Statement: stmt,
 	})
 	return nil

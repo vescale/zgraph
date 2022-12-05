@@ -15,7 +15,6 @@
 package compiler
 
 import (
-	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/meta"
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/stmtctx"
@@ -23,16 +22,14 @@ import (
 
 // Preprocess is used to validate the AST to ensure the AST is valid.
 type Preprocess struct {
-	sc      *stmtctx.Context
-	catalog *catalog.Catalog
-	err     error
+	sc  *stmtctx.Context
+	err error
 }
 
 // NewPreprocess returns a preprocess visitor.
-func NewPreprocess(sc *stmtctx.Context, catalog *catalog.Catalog) *Preprocess {
+func NewPreprocess(sc *stmtctx.Context) *Preprocess {
 	return &Preprocess{
-		sc:      sc,
-		catalog: catalog,
+		sc: sc,
 	}
 }
 
@@ -77,7 +74,7 @@ func (p *Preprocess) checkCreateGraphStmt(stmt *ast.CreateGraphStmt) {
 	}
 
 	if !stmt.IfNotExists {
-		graph := p.catalog.Graph(stmt.Graph.L)
+		graph := p.sc.Catalog().Graph(stmt.Graph.L)
 		if graph != nil {
 			p.err = meta.ErrGraphExists
 			return
@@ -98,7 +95,7 @@ func (p *Preprocess) checkCreateLabelStmt(stmt *ast.CreateLabelStmt) {
 			return
 		}
 
-		graph := p.catalog.Graph(graphName)
+		graph := p.sc.Catalog().Graph(graphName)
 		if graph == nil {
 			p.err = meta.ErrGraphNotExists
 			return
@@ -123,7 +120,7 @@ func (p *Preprocess) checkCreateIndexStmt(stmt *ast.CreateIndexStmt) {
 		return
 	}
 
-	graph := p.catalog.Graph(graphName)
+	graph := p.sc.Catalog().Graph(graphName)
 	if graph == nil {
 		p.err = meta.ErrGraphNotExists
 		return
@@ -144,7 +141,7 @@ func (p *Preprocess) checkCreateIndexStmt(stmt *ast.CreateIndexStmt) {
 }
 
 func (p *Preprocess) checkDropGraphStmt(stmt *ast.DropGraphStmt) {
-	graph := p.catalog.Graph(stmt.Graph.L)
+	graph := p.sc.Catalog().Graph(stmt.Graph.L)
 	if graph == nil && !stmt.IfExists {
 		p.err = meta.ErrGraphNotExists
 		return
@@ -158,7 +155,7 @@ func (p *Preprocess) checkDropLabelStmt(stmt *ast.DropLabelStmt) {
 		return
 	}
 
-	graph := p.catalog.Graph(graphName)
+	graph := p.sc.Catalog().Graph(graphName)
 	if graph == nil && !stmt.IfExists {
 		p.err = meta.ErrGraphNotExists
 		return
@@ -177,7 +174,7 @@ func (p *Preprocess) checkDropIndexStmt(stmt *ast.DropIndexStmt) {
 		return
 	}
 
-	graph := p.catalog.Graph(graphName)
+	graph := p.sc.Catalog().Graph(graphName)
 	if graph == nil && !stmt.IfExists {
 		p.err = meta.ErrGraphNotExists
 		return
@@ -200,7 +197,7 @@ func (p *Preprocess) checkUseStmt(stmt *ast.UseStmt) {
 		return
 	}
 
-	graph := p.catalog.Graph(stmt.GraphName.L)
+	graph := p.sc.Catalog().Graph(stmt.GraphName.L)
 	if graph == nil {
 		p.err = meta.ErrGraphNotExists
 		return

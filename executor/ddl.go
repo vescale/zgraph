@@ -34,7 +34,6 @@ type DDLExec struct {
 	sc        *stmtctx.Context
 	done      bool
 	statement ast.DDLNode
-	catalog   *catalog.Catalog
 }
 
 // Next implements the Executor interface.
@@ -46,8 +45,8 @@ func (e *DDLExec) Next(_ context.Context, _ *chunk.Chunk) error {
 
 	// TODO: prevent executing DDL in transaction context.
 	// Prevent executing DDL concurrently.
-	e.catalog.MDLock()
-	defer e.catalog.MDUnlock()
+	e.sc.Catalog().MDLock()
+	defer e.sc.Catalog().MDUnlock()
 
 	var patch *catalog.Patch
 	err := kv.RunNewTxn(e.sc.Store(), func(txn kv.Transaction) error {
@@ -74,13 +73,13 @@ func (e *DDLExec) Next(_ context.Context, _ *chunk.Chunk) error {
 
 	// Apply the patch to catalog after the DDL changes have persistent in storage.
 	if patch != nil {
-		e.catalog.Apply(patch)
+		e.sc.Catalog().Apply(patch)
 	}
 	return nil
 }
 
 func (e *DDLExec) createGraph(m *meta.Meta, stmt *ast.CreateGraphStmt) (*catalog.Patch, error) {
-	graph := e.catalog.Graph(stmt.Graph.L)
+	graph := e.sc.Catalog().Graph(stmt.Graph.L)
 	if graph != nil {
 		if stmt.IfNotExists {
 			return nil, nil
@@ -110,7 +109,7 @@ func (e *DDLExec) createGraph(m *meta.Meta, stmt *ast.CreateGraphStmt) (*catalog
 }
 
 func (e *DDLExec) dropGraph(m *meta.Meta, stmt *ast.DropGraphStmt) (*catalog.Patch, error) {
-	graph := e.catalog.Graph(stmt.Graph.L)
+	graph := e.sc.Catalog().Graph(stmt.Graph.L)
 	if graph == nil {
 		if stmt.IfExists {
 			return nil, nil
@@ -141,7 +140,7 @@ func (e *DDLExec) dropGraph(m *meta.Meta, stmt *ast.DropGraphStmt) (*catalog.Pat
 
 func (e *DDLExec) createLabel(m *meta.Meta, stmt *ast.CreateLabelStmt) (*catalog.Patch, error) {
 	graphName := e.sc.CurrentGraph()
-	graph := e.catalog.Graph(graphName)
+	graph := e.sc.Catalog().Graph(graphName)
 	if graph == nil {
 		return nil, meta.ErrGraphNotExists
 	}
@@ -179,7 +178,7 @@ func (e *DDLExec) createLabel(m *meta.Meta, stmt *ast.CreateLabelStmt) (*catalog
 
 func (e *DDLExec) dropLabel(m *meta.Meta, stmt *ast.DropLabelStmt) (*catalog.Patch, error) {
 	graphName := e.sc.CurrentGraph()
-	graph := e.catalog.Graph(graphName)
+	graph := e.sc.Catalog().Graph(graphName)
 	if graph == nil {
 		return nil, meta.ErrGraphNotExists
 	}

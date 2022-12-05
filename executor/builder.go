@@ -16,23 +16,20 @@ package executor
 
 import (
 	"github.com/pingcap/errors"
-	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/planner"
 	"github.com/vescale/zgraph/stmtctx"
 )
 
 // Builder is used to build from a plan into executor.
 type Builder struct {
-	sc      *stmtctx.Context
-	catalog *catalog.Catalog
-	err     error
+	sc  *stmtctx.Context
+	err error
 }
 
 // NewBuilder returns a build instance.
-func NewBuilder(sc *stmtctx.Context, catalog *catalog.Catalog) *Builder {
+func NewBuilder(sc *stmtctx.Context) *Builder {
 	return &Builder{
-		sc:      sc,
-		catalog: catalog,
+		sc: sc,
 	}
 }
 
@@ -59,7 +56,6 @@ func (b *Builder) buildDDL(plan *planner.DDL) Executor {
 		baseExecutor: newBaseExecutor(b.sc, plan.Schema(), plan.ID()),
 		sc:           b.sc,
 		statement:    plan.Statement,
-		catalog:      b.catalog,
 	}
 	return exec
 }

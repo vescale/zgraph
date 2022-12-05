@@ -15,7 +15,6 @@
 package compiler
 
 import (
-	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/executor"
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/planner"
@@ -25,24 +24,29 @@ import (
 // Compile compiles the statement AST node into an executable statement. The compiler relay
 // on the statement context to retrieve some environment information and set some intermediate
 // variables while compiling. The catalog is used to resolve names in the query.
-func Compile(sc *stmtctx.Context, catalog *catalog.Catalog, node ast.StmtNode) (executor.Statement, error) {
+func Compile(sc *stmtctx.Context, node ast.StmtNode) (executor.Executor, error) {
 	// Check the AST to ensure it is valid.
-	prep := NewPreprocess(sc, catalog)
+	prep := NewPreprocess(sc)
 	node.Accept(prep)
 
 	// Build plan tree from a valid AST.
-	builder := NewBuilder(sc, catalog)
-	plan, err := builder.Build(node)
+	planBuilder := planner.NewBuilder(sc)
+	plan, err := planBuilder.Build(node)
 	if err != nil {
 		return nil, err
 	}
 	logicalPlan, isLogicalPlan := plan.(planner.LogicalPlan)
-	if !isLogicalPlan {
-		return executor.NewStatement(sc, catalog, plan), nil
+	if isLogicalPlan {
+		// Optimize the logical plan and generate physical plan.
+		plan = planner.Optimize(logicalPlan)
 	}
 
-	// Optimize the logical plan and generate physical plan.
-	optimized := planner.Optimize(logicalPlan)
+	execBuilder := executor.NewBuilder(sc)
+	exec := execBuilder.Build(plan)
+	err = execBuilder.Error()
+	if err != nil {
+		return nil, err
+	}
 
-	return executor.NewStatement(sc, catalog, optimized), nil
+	return exec, nil
 }
