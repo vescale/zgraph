@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/parser/format"
 	"github.com/vescale/zgraph/parser/model"
+	"github.com/vescale/zgraph/parser/types"
 )
 
 var (
@@ -128,7 +129,7 @@ type LabelProperty struct {
 	node
 
 	Name    model.CIStr
-	Type    DataType
+	Type    types.DataType
 	Options []*LabelPropertyOption
 }
 
@@ -192,7 +193,9 @@ func (n *LabelPropertyOption) Restore(ctx *format.RestoreCtx) error {
 		ctx.WriteKeyWord("DEFAULT ")
 		expr := n.Data.(ExprNode)
 		err := expr.Restore(ctx)
-		return errors.Annotate(err, "An error occurred while restore LabelPropertyOption.Default")
+		if err != nil {
+			return errors.Annotate(err, "An error occurred while restore LabelPropertyOption.Default")
+		}
 	case LabelPropertyOptionTypeComment:
 		ctx.WriteKeyWord("COMMENT ")
 		ctx.WriteString(n.Data.(string))

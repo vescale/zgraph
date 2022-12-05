@@ -2242,7 +2242,7 @@ yynewstate:
 		{
 			lp := &ast.LabelProperty{
 				Name: yyS[yypt-2].item.(model.CIStr),
-				Type: yyS[yypt-1].item.(ast.DataType),
+				Type: yyS[yypt-1].item.(types.DataType),
 			}
 			if yyS[yypt-0].item != nil {
 				lp.Options = yyS[yypt-0].item.([]*ast.LabelPropertyOption)
@@ -2830,52 +2830,52 @@ yynewstate:
 		{
 			parser.yyVAL.expr = &ast.CastFuncExpr{
 				Expr:     yyS[yypt-3].expr,
-				DataType: yyS[yypt-1].item.(ast.DataType),
+				DataType: yyS[yypt-1].item.(types.DataType),
 			}
 		}
 	case 178:
 		{
-			parser.yyVAL.item = ast.DataTypeString
+			parser.yyVAL.item = types.DataTypeString
 		}
 	case 179:
 		{
-			parser.yyVAL.item = ast.DataTypeBoolean
+			parser.yyVAL.item = types.DataTypeBoolean
 		}
 	case 180:
 		{
-			parser.yyVAL.item = ast.DataTypeInteger
+			parser.yyVAL.item = types.DataTypeInteger
 		}
 	case 181:
 		{
-			parser.yyVAL.item = ast.DataTypeFloat
+			parser.yyVAL.item = types.DataTypeFloat
 		}
 	case 182:
 		{
-			parser.yyVAL.item = ast.DataTypeDouble
+			parser.yyVAL.item = types.DataTypeDouble
 		}
 	case 183:
 		{
-			parser.yyVAL.item = ast.DataTypeDecimal
+			parser.yyVAL.item = types.DataTypeDecimal
 		}
 	case 184:
 		{
-			parser.yyVAL.item = ast.DataTypeDate
+			parser.yyVAL.item = types.DataTypeDate
 		}
 	case 185:
 		{
-			parser.yyVAL.item = ast.DataTypeTime
+			parser.yyVAL.item = types.DataTypeTime
 		}
 	case 186:
 		{
-			parser.yyVAL.item = ast.DataTypeTimeWithZone
+			parser.yyVAL.item = types.DataTypeTimeWithZone
 		}
 	case 187:
 		{
-			parser.yyVAL.item = ast.DataTypeTimestamp
+			parser.yyVAL.item = types.DataTypeTimestamp
 		}
 	case 188:
 		{
-			parser.yyVAL.item = ast.DataTypeTimestampWithZone
+			parser.yyVAL.item = types.DataTypeTimestampWithZone
 		}
 	case 191:
 		{

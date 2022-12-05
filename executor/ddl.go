@@ -93,8 +93,9 @@ func (e *DDLExec) createGraph(m *meta.Meta, stmt *ast.CreateGraphStmt) (*catalog
 		return nil, err
 	}
 	graphInfo := &model.GraphInfo{
-		ID:   id,
-		Name: stmt.Graph,
+		ID:    id,
+		Name:  stmt.Graph,
+		Query: stmt.Text(),
 	}
 	err = m.CreateGraph(graphInfo)
 	if err != nil {
@@ -152,14 +153,44 @@ func (e *DDLExec) createLabel(m *meta.Meta, stmt *ast.CreateLabelStmt) (*catalog
 		return nil, meta.ErrLabelExists
 	}
 
+	var properties []*model.PropertyInfo
+	for _, p := range stmt.Properties {
+		id, err := m.NextGlobalID()
+		if err != nil {
+			return nil, err
+		}
+		prop := &model.PropertyInfo{
+			ID:   id,
+			Name: p.Name,
+			Type: p.Type,
+		}
+		for _, opt := range p.Options {
+			switch opt.Type {
+			case ast.LabelPropertyOptionTypeNotNull:
+				prop.Flag |= model.PropertyFlagNotNull
+			case ast.LabelPropertyOptionTypeNull:
+				prop.Flag |= model.PropertyFlagNull
+			case ast.LabelPropertyOptionTypeDefault:
+				prop.Flag |= model.PropertyFlagDefault
+				// TODO: set the default value.
+			case ast.LabelPropertyOptionTypeComment:
+				prop.Flag |= model.PropertyFlagComment
+				prop.Comment = opt.Data.(string)
+			}
+		}
+		properties = append(properties, prop)
+	}
+
 	// Persistent to storage.
 	id, err := m.NextGlobalID()
 	if err != nil {
 		return nil, err
 	}
 	labelInfo := &model.LabelInfo{
-		ID:   id,
-		Name: stmt.Label,
+		ID:         id,
+		Name:       stmt.Label,
+		Query:      stmt.Text(),
+		Properties: properties,
 	}
 	err = m.CreateLabel(graph.Meta().ID, labelInfo)
 	if err != nil {

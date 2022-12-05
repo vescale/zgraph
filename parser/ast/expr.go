@@ -636,57 +636,12 @@ func (n *IsNullExpr) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
-type DataType byte
-
-const (
-	DataTypeString DataType = iota
-	DataTypeBoolean
-	DataTypeInteger
-	DataTypeFloat
-	DataTypeDouble
-	DataTypeDecimal
-	DataTypeDate
-	DataTypeTime
-	DataTypeTimeWithZone
-	DataTypeTimestamp
-	DataTypeTimestampWithZone
-)
-
-func (d DataType) String() string {
-	switch d {
-	case DataTypeString:
-		return "STRING"
-	case DataTypeBoolean:
-		return "BOOLEAN"
-	case DataTypeInteger:
-		return "INTEGER"
-	case DataTypeFloat:
-		return "FLOAT"
-	case DataTypeDouble:
-		return "DOUBLE"
-	case DataTypeDecimal:
-		return "DECIMAL"
-	case DataTypeDate:
-		return "DATE"
-	case DataTypeTime:
-		return "TIME"
-	case DataTypeTimeWithZone:
-		return "TIME WITH TIME ZONE"
-	case DataTypeTimestamp:
-		return "TIMESTAMP"
-	case DataTypeTimestampWithZone:
-		return "TIMESTAMP WITH TIME ZONE"
-	default:
-		return fmt.Sprintf("UNKNOWN<%d>", d)
-	}
-}
-
 type CastFuncExpr struct {
 	funcNode
 	// Expr is the expression to be converted.
 	Expr ExprNode
 	// DataType is the conversion type.
-	DataType DataType
+	DataType types.DataType
 }
 
 // Restore implements Node interface.

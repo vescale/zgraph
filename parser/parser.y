@@ -491,7 +491,7 @@ LabelPropertyDef:
 	{
 		lp := &ast.LabelProperty{
 			Name: $1.(model.CIStr),
-			Type: $2.(ast.DataType),
+			Type: $2.(types.DataType),
 		}
 		if $3 != nil {
 			lp.Options = $3.([]*ast.LabelPropertyOption)
@@ -1264,54 +1264,54 @@ CastSpecification:
 	{
 		$$ = &ast.CastFuncExpr{
 			Expr:     $3,
-			DataType: $5.(ast.DataType),
+			DataType: $5.(types.DataType),
 		}
 	}
 
 DataType:
 	"STRING"
 	{
-		$$ = ast.DataTypeString
+		$$ = types.DataTypeString
 	}
 |	"BOOLEAN"
 	{
-		$$ = ast.DataTypeBoolean
+		$$ = types.DataTypeBoolean
 	}
 |	"INTEGER"
 	{
-		$$ = ast.DataTypeInteger
+		$$ = types.DataTypeInteger
 	}
 |	"FLOAT"
 	{
-		$$ = ast.DataTypeFloat
+		$$ = types.DataTypeFloat
 	}
 |	"DOUBLE"
 	{
-		$$ = ast.DataTypeDouble
+		$$ = types.DataTypeDouble
 	}
 |	"DECIMAL"
 	{
-		$$ = ast.DataTypeDecimal
+		$$ = types.DataTypeDecimal
 	}
 |	"DATE"
 	{
-		$$ = ast.DataTypeDate
+		$$ = types.DataTypeDate
 	}
 |	"TIME"
 	{
-		$$ = ast.DataTypeTime
+		$$ = types.DataTypeTime
 	}
 |	"TIME" "WITH" "TIME" "ZONE"
 	{
-		$$ = ast.DataTypeTimeWithZone
+		$$ = types.DataTypeTimeWithZone
 	}
 |	"TIMESTAMP"
 	{
-		$$ = ast.DataTypeTimestamp
+		$$ = types.DataTypeTimestamp
 	}
 |	"TIMESTAMP" "WITH" "TIME" "ZONE"
 	{
-		$$ = ast.DataTypeTimestampWithZone
+		$$ = types.DataTypeTimestampWithZone
 	}
 
 CaseExpression:
