@@ -14,11 +14,46 @@
 
 package executor
 
-import "github.com/vescale/zgraph/parser/ast"
+import (
+	"context"
+
+	"github.com/pingcap/errors"
+	"github.com/vescale/zgraph/internal/chunk"
+	"github.com/vescale/zgraph/meta"
+	"github.com/vescale/zgraph/parser/ast"
+	"github.com/vescale/zgraph/stmtctx"
+)
 
 // SimpleExec is used to execute some simple tasks.
 type SimpleExec struct {
 	baseExecutor
 
+	done      bool
+	sc        *stmtctx.Context
 	statement ast.StmtNode
+}
+
+func (e *SimpleExec) Next(_ context.Context, _ *chunk.Chunk) error {
+	if e.done {
+		return nil
+	}
+	e.done = true
+
+	switch stmt := e.statement.(type) {
+	case *ast.UseStmt:
+		return e.execUse(stmt)
+	default:
+		return errors.Errorf("unknown statement: %T", e.statement)
+	}
+}
+
+func (e *SimpleExec) execUse(stmt *ast.UseStmt) error {
+	graph := e.sc.Catalog().Graph(stmt.GraphName.L)
+	if graph == nil {
+		return meta.ErrGraphNotExists
+	}
+
+	e.sc.SetCurrentGraph(stmt.GraphName.L)
+
+	return nil
 }

@@ -63,6 +63,7 @@ func (b *Builder) buildDDL(plan *planner.DDL) Executor {
 func (b *Builder) buildSimple(plan *planner.Simple) Executor {
 	exec := &SimpleExec{
 		baseExecutor: newBaseExecutor(b.sc, plan.Schema(), plan.ID()),
+		sc:           b.sc,
 		statement:    plan.Statement,
 	}
 	return exec
