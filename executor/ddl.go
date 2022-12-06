@@ -127,6 +127,13 @@ func (e *DDLExec) dropGraph(m *meta.Meta, stmt *ast.DropGraphStmt) (*catalog.Pat
 			return nil, err
 		}
 	}
+	properties := graph.Properties()
+	for _, property := range properties {
+		err := m.DropProperty(graphID, property.ID)
+		if err != nil {
+			return nil, err
+		}
+	}
 	err := m.DropGraph(graphID)
 	if err != nil {
 		return nil, err

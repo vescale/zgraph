@@ -96,6 +96,30 @@ func TestCatalog_Apply(t *testing.T) {
 		},
 		{
 			patch: &Patch{
+				Type: PatchTypeCreateProperties,
+				Data: &PatchProperties{
+					GraphID:   1,
+					MaxPropID: 2,
+					Properties: []*model.PropertyInfo{
+						{
+							ID:   1,
+							Name: model.NewCIStr("property1"),
+						},
+						{
+							ID:   2,
+							Name: model.NewCIStr("property2"),
+						},
+					},
+				},
+			},
+			checker: func() {
+				graph := catalog.Graph("graph1")
+				assert.NotNil(graph.Property("property1"))
+				assert.NotNil(graph.Property("property2"))
+			},
+		},
+		{
+			patch: &Patch{
 				Type: PatchTypeDropGraph,
 				Data: &model.GraphInfo{
 					ID:   1,

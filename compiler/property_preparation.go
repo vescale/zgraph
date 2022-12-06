@@ -102,7 +102,7 @@ func (p *PropertyPreparation) CreateMissing() error {
 		}
 
 		patch = &catalog.PatchProperties{
-			NextPropID: nextPropID,
+			MaxPropID:  nextPropID,
 			GraphID:    graphInfo.ID,
 			Properties: properties,
 		}

@@ -53,6 +53,21 @@ func TestDDLExec_Next(t *testing.T) {
 				assert.Equal("l1", labelInfo.Name.L)
 			},
 		},
+		{
+			graph: "g1",
+			query: "drop label l1",
+			check: func() {
+				graph := catalog.Graph("g1")
+				label := graph.Label("l1")
+				assert.Nil(label)
+			},
+		},
+		{
+			query: "drop graph g1",
+			check: func() {
+				assert.Nil(catalog.Graph("g1"))
+			},
+		},
 	}
 
 	ctx := context.Background()

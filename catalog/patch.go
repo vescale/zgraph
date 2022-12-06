@@ -47,7 +47,7 @@ type (
 
 	// PatchProperties represents the payload of patching create properties
 	PatchProperties struct {
-		NextPropID uint16
+		MaxPropID  uint16
 		GraphID    int64
 		Properties []*model.PropertyInfo
 	}
@@ -93,7 +93,7 @@ func (c *Catalog) Apply(patch *Patch) {
 	case PatchTypeCreateProperties:
 		data := patch.Data.(*PatchProperties)
 		graph := c.GraphByID(data.GraphID)
-		graph.SetNextPropID(data.NextPropID)
+		graph.SetNextPropID(data.MaxPropID)
 		for _, p := range data.Properties {
 			graph.CreateProperty(p)
 		}
