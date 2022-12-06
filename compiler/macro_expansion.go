@@ -127,6 +127,7 @@ func (m *MacroExpansion) macroExpansion(matchList *ast.MatchClauseList) (node as
 				oldConn := oldPath.Connections[connIndex].(*ast.ReachabilityPathExpr)
 				newConn := &ast.ReachabilityPathExpr{}
 				*newConn = *oldConn
+				newConn.Macros = map[string]*ast.PathPattern{}
 				for _, label := range newConn.Labels {
 					macro, found := m.mapping[label.L]
 					if !found {
@@ -137,6 +138,7 @@ func (m *MacroExpansion) macroExpansion(matchList *ast.MatchClauseList) (node as
 						m.wheres[macro.Where] = struct{}{}
 					}
 				}
+				newPath.Connections[connIndex] = newConn
 			}
 		}
 	}

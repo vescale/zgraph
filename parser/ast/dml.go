@@ -1051,6 +1051,14 @@ func (n *SelectStmt) Accept(v Visitor) (node Node, ok bool) {
 		nn.PathPatternMacros[i] = node.(*PathPatternMacro)
 	}
 
+	if nn.From != nil {
+		node, ok := nn.From.Accept(v)
+		if !ok {
+			return nn, false
+		}
+		nn.From = node.(*MatchClauseList)
+	}
+
 	if nn.Where != nil {
 		node, ok := nn.Where.Accept(v)
 		if !ok {
