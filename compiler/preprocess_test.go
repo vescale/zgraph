@@ -76,11 +76,11 @@ func initCatalog(assert *assert.Assertions, dirname string) {
 			},
 			Properties: []*model.PropertyInfo{
 				{
-					ID:   ID.Add(1),
+					ID:   uint16(ID.Add(1)),
 					Name: model.NewCIStr("property"),
 				},
 				{
-					ID:   ID.Add(1),
+					ID:   uint16(ID.Add(1)),
 					Name: model.NewCIStr("property2"),
 				},
 			},
@@ -183,9 +183,31 @@ func TestPreprocess(t *testing.T) {
 			query: "use graph100",
 			err:   "graph not exists",
 		},
-
 		{
 			query: "use graph1",
+		},
+		{
+			query: "INSERT VERTEX x",
+			err:   "graph not exists",
+		},
+		{
+			query: "INSERT INTO graph1 VERTEX x",
+		},
+		{
+			query: "INSERT INTO graph1 VERTEX x LABELS (label1, label2) PROPERTIES ( x.name = 'test')",
+		},
+		{
+			query: "INSERT INTO graph1 VERTEX x LABELS (label0, label2) PROPERTIES ( x.name = 'test')",
+			err:   "label not exists",
+		},
+		{
+			query: "INSERT INTO graph1 VERTEX x LABELS (label1, label2) PROPERTIES ( y.name = 'test')",
+			err:   "reference not exists variable",
+		},
+		{
+			graph: "graph2",
+			query: "INSERT VERTEX x LABELS (label1, label2) PROPERTIES ( y.name = 'test')",
+			err:   "reference not exists variable",
 		},
 	}
 

@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,14 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package compiler
+package expression
 
-import "github.com/pingcap/errors"
+import "github.com/vescale/zgraph/parser/types"
 
-var (
-	ErrIncorrectGraphName        = errors.New("incorrect graph name")
-	ErrIncorrectLabelName        = errors.New("incorrect label name")
-	ErrIncorrectIndexName        = errors.New("incorrect index name")
-	ErrGraphNotChosen            = errors.New("please choose graph first")
-	ErrVariableReferenceNotExits = errors.New("reference not exists variable")
-)
+// Constant represents a literal constant.
+type Constant struct {
+	data types.Datum
+}
+
+func (c *Constant) Clone() *Constant {
+	cc := *c
+	return &cc
+}

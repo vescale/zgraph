@@ -12,14 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package compiler
+package planner
 
-import "github.com/pingcap/errors"
+import "github.com/vescale/zgraph/parser/ast"
 
-var (
-	ErrIncorrectGraphName        = errors.New("incorrect graph name")
-	ErrIncorrectLabelName        = errors.New("incorrect label name")
-	ErrIncorrectIndexName        = errors.New("incorrect index name")
-	ErrGraphNotChosen            = errors.New("please choose graph first")
-	ErrVariableReferenceNotExits = errors.New("reference not exists variable")
-)
+type exprRewriter struct {
+}
+
+// Enter implements the ast.Visitor interface.
+func (e *exprRewriter) Enter(n ast.Node) (node ast.Node, skipChildren bool) {
+	return n, false
+}
+
+// Leave implements the ast.Visitor interface.
+func (e *exprRewriter) Leave(n ast.Node) (node ast.Node, ok bool) {
+	return n, true
+}

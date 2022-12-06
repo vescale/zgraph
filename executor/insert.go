@@ -12,14 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package compiler
+package executor
 
-import "github.com/pingcap/errors"
+import (
+	"context"
 
-var (
-	ErrIncorrectGraphName        = errors.New("incorrect graph name")
-	ErrIncorrectLabelName        = errors.New("incorrect label name")
-	ErrIncorrectIndexName        = errors.New("incorrect index name")
-	ErrGraphNotChosen            = errors.New("please choose graph first")
-	ErrVariableReferenceNotExits = errors.New("reference not exists variable")
+	"github.com/vescale/zgraph/catalog"
+	"github.com/vescale/zgraph/internal/chunk"
+	"github.com/vescale/zgraph/planner"
 )
+
+// InsertExec represents the executor of INSERT statement.
+type InsertExec struct {
+	baseExecutor
+
+	graph      *catalog.Graph
+	insertions []*planner.GraphInsertion
+}
+
+func (e *InsertExec) Next(_ context.Context, _ *chunk.Chunk) error {
+	return nil
+}

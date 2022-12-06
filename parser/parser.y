@@ -317,6 +317,7 @@ import (
 	IndexName
 	LabelName
 	LabelNameList
+	LabelNameListWithComma
 	LabelPredicate
 	LabelPredicateOpt
 	LabelsAndProperties
@@ -652,7 +653,7 @@ LabelSpecificationOpt:
 |	LabelSpecification
 
 LabelSpecification:
-	"LABELS" '(' LabelNameList ')'
+	"LABELS" '(' LabelNameListWithComma ')'
 	{
 		$$ = $3
 	}
@@ -1738,6 +1739,16 @@ LabelPredicateOpt:
 ColonOrIsKeyword:
 	':'
 |	"IS"
+
+LabelNameListWithComma:
+	LabelName
+	{
+		$$ = []model.CIStr{$1.(model.CIStr)}
+	}
+|	LabelNameList ',' LabelName
+	{
+		$$ = append($1.([]model.CIStr), $3.(model.CIStr))
+	}
 
 LabelNameList:
 	LabelName

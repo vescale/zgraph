@@ -12,18 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package expression
+package codec
 
-type Field struct {
-	Expr Expression
+// VERTEX CODEC DOCUMENTATIONS:
+//
+// - Key Format:
+//   $Prefix_$GraphID_$SrcVertexID
+// - Value Format:
+//   [($PropertyID, $PropertyValue), ...]
+
+// VertexKey encodes the vertex key described as above.
+func VertexKey(graphID, srcVertexID int64) []byte {
+	return nil
 }
 
-func (f *Field) Clone() *Field {
-	fc := *f
-	return &fc
-}
-
-// String implements the fmt.Stringer interface
-func (f *Field) String() string {
-	return ""
+// ParseVertexKey parses the vertex key.
+func ParseVertexKey(key []byte) (graphID, srcVertexID int64, err error) {
+	return
 }

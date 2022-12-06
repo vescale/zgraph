@@ -54,7 +54,7 @@ func TestProperty(t *testing.T) {
 		err := kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 			meta := New(txn)
 			info := &model.PropertyInfo{
-				ID:   int64(i) + 1,
+				ID:   uint16(i) + 1,
 				Name: model.NewCIStr(name),
 			}
 			return meta.CreateProperty(graphID, info)
@@ -68,14 +68,14 @@ func TestProperty(t *testing.T) {
 		propertys, err := meta.ListProperties(graphID)
 		assert.Nil(err)
 		names := make([]string, 0, len(propertys))
-		ids := make([]int64, 0, len(propertys))
+		ids := make([]uint16, 0, len(propertys))
 		for _, g := range propertys {
 			names = append(names, g.Name.L)
 			ids = append(ids, g.ID)
 		}
 
 		assert.Equal(propertyNames, names)
-		assert.Equal([]int64{1, 2, 3, 4, 5}, ids)
+		assert.Equal([]uint16{1, 2, 3, 4, 5}, ids)
 
 		return nil
 	})
@@ -98,7 +98,7 @@ func TestProperty(t *testing.T) {
 		meta := New(txn)
 		property, err := meta.GetProperty(graphID, 4)
 		assert.Nil(err)
-		assert.Equal(int64(4), property.ID)
+		assert.Equal(uint16(4), property.ID)
 		assert.Equal("property4-modified", property.Name.L)
 		return nil
 	})
@@ -119,7 +119,7 @@ func TestProperty(t *testing.T) {
 		propertys, err := meta.ListProperties(graphID)
 		assert.Nil(err)
 		names := make([]string, 0, len(propertys))
-		ids := make([]int64, 0, len(propertys))
+		ids := make([]uint16, 0, len(propertys))
 		for _, g := range propertys {
 			names = append(names, g.Name.L)
 			ids = append(ids, g.ID)
@@ -132,7 +132,7 @@ func TestProperty(t *testing.T) {
 			"property5",
 		}
 		assert.Equal(propertyNames, names)
-		assert.Equal([]int64{1, 2, 4, 5}, ids)
+		assert.Equal([]uint16{1, 2, 4, 5}, ids)
 
 		return nil
 	})

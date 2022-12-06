@@ -29,6 +29,7 @@ const (
 	PatchTypeDropGraph
 	PatchTypeDropLabel
 	PatchTypeDropIndex
+	PatchTypeCreateProperties
 )
 
 type (
@@ -38,10 +39,17 @@ type (
 		Data interface{}
 	}
 
-	// PatchLabel represents the payload of patch create/drop label DDL.
+	// PatchLabel represents the payload of patching create/drop label DDL.
 	PatchLabel struct {
 		GraphID   int64
 		LabelInfo *model.LabelInfo
+	}
+
+	// PatchProperties represents the payload of patching create properties
+	PatchProperties struct {
+		NextPropID uint16
+		GraphID    int64
+		Properties []*model.PropertyInfo
 	}
 )
 
@@ -72,6 +80,7 @@ func (c *Catalog) Apply(patch *Patch) {
 			return
 		}
 		graph.CreateLabel(data.LabelInfo)
+
 	case PatchTypeDropLabel:
 		data := patch.Data.(*PatchLabel)
 		graph := c.GraphByID(data.GraphID)
@@ -80,5 +89,13 @@ func (c *Catalog) Apply(patch *Patch) {
 			return
 		}
 		graph.DropLabel(data.LabelInfo)
+
+	case PatchTypeCreateProperties:
+		data := patch.Data.(*PatchProperties)
+		graph := c.GraphByID(data.GraphID)
+		graph.SetNextPropID(data.NextPropID)
+		for _, p := range data.Properties {
+			graph.CreateProperty(p)
+		}
 	}
 }

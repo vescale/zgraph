@@ -35,7 +35,7 @@ type Graph struct {
 	}
 	properties struct {
 		byName map[string]*model.PropertyInfo
-		byID   map[int64]*model.PropertyInfo
+		byID   map[uint16]*model.PropertyInfo
 	}
 	indexes struct {
 		byName map[string]*Index
@@ -56,7 +56,7 @@ func NewGraph(meta *model.GraphInfo) *Graph {
 	}
 
 	g.properties.byName = map[string]*model.PropertyInfo{}
-	g.properties.byID = map[int64]*model.PropertyInfo{}
+	g.properties.byID = map[uint16]*model.PropertyInfo{}
 	for _, p := range meta.Properties {
 		g.properties.byName[p.Name.L] = p
 		g.properties.byID[p.ID] = p
@@ -103,7 +103,7 @@ func (g *Graph) Property(name string) *model.PropertyInfo {
 }
 
 // PropertyByID returns the property of specified ID.
-func (g *Graph) PropertyByID(id int64) *model.PropertyInfo {
+func (g *Graph) PropertyByID(id uint16) *model.PropertyInfo {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 
@@ -199,4 +199,10 @@ func (g *Graph) Indexes() []*Index {
 		indexes = append(indexes, index)
 	}
 	return indexes
+}
+
+func (g *Graph) SetNextPropID(propID uint16) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.meta.NextPropID = propID
 }

@@ -18,11 +18,11 @@ import "strings"
 
 // Schema stands for the row schema information get from input.
 type Schema struct {
-	Fields []*Field
+	Fields []*Property
 }
 
 // NewSchema returns a schema made by its parameter.
-func NewSchema(fields ...*Field) *Schema {
+func NewSchema(fields ...*Property) *Schema {
 	return &Schema{Fields: fields}
 }
 
@@ -33,7 +33,7 @@ func (s *Schema) Len() int {
 
 // Clone copies the total schema.
 func (s *Schema) Clone() *Schema {
-	fields := make([]*Field, 0, s.Len())
+	fields := make([]*Property, 0, s.Len())
 	for _, field := range s.Fields {
 		fields = append(fields, field.Clone())
 	}

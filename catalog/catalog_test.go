@@ -62,11 +62,11 @@ func Test_Load(t *testing.T) {
 			},
 			Properties: []*model.PropertyInfo{
 				{
-					ID:   ID.Add(1),
+					ID:   uint16(ID.Add(1)),
 					Name: model.NewCIStr("property1"),
 				},
 				{
-					ID:   ID.Add(1),
+					ID:   uint16(ID.Add(1)),
 					Name: model.NewCIStr("property2"),
 				},
 			},

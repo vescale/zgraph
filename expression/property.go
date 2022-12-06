@@ -14,27 +14,23 @@
 
 package expression
 
-import "github.com/vescale/zgraph/parser/model"
+import (
+	"github.com/vescale/zgraph/parser/model"
+	"github.com/vescale/zgraph/parser/types"
+)
 
-type Expression interface {
+// Property represents the accessor of vertex/edge's property.
+type Property struct {
+	RetType  types.Datum
+	Property *model.PropertyInfo
 }
 
-// Assignment represents an assignment in INSERT/UPDATE statements.
-//
-// e.g:
-// INSERT VERTEX x LABELS ( Male ) PROPERTIES ( x.age = 22 )
-// UPDATE x SET ( x.age = 42 ) FROM MATCH (x:Person) WHERE x.name = 'John'
-type Assignment struct {
-	VarReference *Variable
-	Property     *Property
-	Expr         Expression
+func (f *Property) Clone() *Property {
+	fc := *f
+	return &fc
 }
 
-// Variable represents a variable referenced by other scope.
-//
-// e.g:
-// INSERT VERTEX x LABELS ( Male ) PROPERTIES ( x.age = 22 )
-// --------------^------------------------------^----------
-type Variable struct {
-	Name model.CIStr
+// String implements the fmt.Stringer interface
+func (f *Property) String() string {
+	return ""
 }

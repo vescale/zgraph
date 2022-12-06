@@ -19,15 +19,25 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/vescale/zgraph"
+	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/compiler"
 	"github.com/vescale/zgraph/executor"
 	"github.com/vescale/zgraph/parser"
+	"github.com/vescale/zgraph/parser/model"
 )
 
 func TestCompile(t *testing.T) {
 	assert := assert.New(t)
 	db, err := zgraph.Open(t.TempDir(), nil)
 	assert.Nil(err)
+
+	db.Catalog().Apply(&catalog.Patch{
+		Type: catalog.PatchTypeCreateGraph,
+		Data: &model.GraphInfo{
+			ID:   1,
+			Name: model.NewCIStr("g1"),
+		},
+	})
 
 	ddl := func(exec executor.Executor) {
 		_, ok := exec.(*executor.DDLExec)
@@ -44,7 +54,11 @@ func TestCompile(t *testing.T) {
 		check func(exec executor.Executor)
 	}{
 		{
-			query: "create graph g1",
+			query: "create graph g2",
+			check: ddl,
+		},
+		{
+			query: "create graph if not exists g1",
 			check: ddl,
 		},
 		{
@@ -61,13 +75,15 @@ func TestCompile(t *testing.T) {
 		},
 	}
 
+	sc := db.NewSession().StmtContext()
+	sc.SetCurrentGraph("g1")
+
 	for _, c := range cases {
 		parser := parser.New()
 		stmt, err := parser.ParseOneStmt(c.query)
 		assert.Nil(err, c.query)
-		sc := db.NewSession().StmtContext()
 		exec, err := compiler.Compile(sc, stmt)
-		assert.Nil(err)
+		assert.Nil(err, c.query)
 		c.check(exec)
 	}
 }

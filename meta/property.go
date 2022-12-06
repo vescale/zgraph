@@ -24,12 +24,12 @@ import (
 	"github.com/vescale/zgraph/parser/model"
 )
 
-func (*Meta) propertyKey(propertyID int64) []byte {
+func (*Meta) propertyKey(propertyID uint16) []byte {
 	return PropertyKey(propertyID)
 }
 
 // PropertyKey encodes the propertyID into property key.
-func PropertyKey(propertyID int64) []byte {
+func PropertyKey(propertyID uint16) []byte {
 	return []byte(fmt.Sprintf("%s:%d", mPropertyPrefix, propertyID))
 }
 
@@ -111,7 +111,7 @@ func (m *Meta) UpdateProperty(graphID int64, propertyInfo *model.PropertyInfo) e
 }
 
 // DropProperty drops property in graph.
-func (m *Meta) DropProperty(graphID int64, propertyID int64) error {
+func (m *Meta) DropProperty(graphID int64, propertyID uint16) error {
 	// Check if graph exists.
 	graphKey := m.graphKey(graphID)
 	if err := m.checkGraphExists(graphKey); err != nil {
@@ -163,7 +163,7 @@ func (m *Meta) ListProperties(graphID int64) ([]*model.PropertyInfo, error) {
 }
 
 // GetProperty gets the property value in a graph.
-func (m *Meta) GetProperty(graphID int64, propertyID int64) (*model.PropertyInfo, error) {
+func (m *Meta) GetProperty(graphID int64, propertyID uint16) (*model.PropertyInfo, error) {
 	// Check if graph exists.
 	graphKey := m.graphKey(graphID)
 	if err := m.checkGraphExists(graphKey); err != nil {
