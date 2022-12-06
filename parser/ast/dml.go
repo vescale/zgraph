@@ -1396,6 +1396,9 @@ type ReachabilityPathExpr struct {
 	// Variable name is not supported in ReachabilityPathExpr.
 	// But we need an anonymous name for building logical plan.
 	AnonymousName model.CIStr
+	// Macros will be assigned in MacroExpansion stage.
+	// LabelName(lower) -> PathPattern
+	Macros map[string]*PathPattern
 }
 
 func (n *ReachabilityPathExpr) vertexPairConnection() {}
