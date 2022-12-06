@@ -31,6 +31,7 @@ var (
 	mGraphs          = []byte("graphs")
 	mGraphPrefix     = "graph"
 	mLabelPrefix     = "label"
+	mPropertyPrefix  = "property"
 )
 
 const (

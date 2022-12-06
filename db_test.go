@@ -55,11 +55,11 @@ func TestDB_DDL(t *testing.T) {
 	assert.NotNil(graph)
 
 	session.StmtContext().SetCurrentGraph("graph101")
-	err = runQuery(ctx, session, "CREATE LABEL label01(a STRING, b INTEGER DEFAULT 1)")
+	err = runQuery(ctx, session, "CREATE LABEL label01")
 	assert.Nil(err)
 	assert.NotNil(graph.Label("label01"))
 
-	err = runQuery(ctx, session, "CREATE LABEL IF NOT EXISTS label01(a STRING, b INTEGER DEFAULT 1)")
+	err = runQuery(ctx, session, "CREATE LABEL IF NOT EXISTS label01")
 	assert.Nil(err)
 
 	err = runQuery(ctx, session, "DROP LABEL label01")

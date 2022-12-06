@@ -22,8 +22,6 @@ import (
 	"github.com/vescale/zgraph"
 	"github.com/vescale/zgraph/compiler"
 	"github.com/vescale/zgraph/parser"
-	"github.com/vescale/zgraph/parser/model"
-	"github.com/vescale/zgraph/parser/types"
 )
 
 func TestDDLExec_Next(t *testing.T) {
@@ -46,19 +44,13 @@ func TestDDLExec_Next(t *testing.T) {
 		},
 		{
 			graph: "g1",
-			query: "create label l1(a integer default 10, b decimal not null comment 'b-comment')",
+			query: "create label l1",
 			check: func() {
 				graph := catalog.Graph("g1")
 				label := graph.Label("l1")
 				assert.NotNil(label)
 				labelInfo := label.Meta()
-				assert.Equal(2, len(labelInfo.Properties))
-				// FIXME: set the default value properly
-				// assert.Equal("10", labelInfo.Properties[0].Default)
-				assert.Equal(types.DataTypeInteger, labelInfo.Properties[0].Type)
-				assert.Equal(types.DataTypeDecimal, labelInfo.Properties[1].Type)
-				assert.Equal(model.PropertyFlagNotNull, labelInfo.Properties[1].Flag&model.PropertyFlagNotNull)
-				assert.Equal("b-comment", labelInfo.Properties[1].Comment)
+				assert.Equal("l1", labelInfo.Name.L)
 			},
 		},
 	}

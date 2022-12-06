@@ -319,9 +319,6 @@ import (
 	LabelNameList
 	LabelPredicate
 	LabelPredicateOpt
-	LabelPropertyDef
-	LabelPropertyList
-	LabelPropertyListOpt
 	LabelsAndProperties
 	LabelSpecification
 	LabelSpecificationOpt
@@ -343,9 +340,6 @@ import (
 	PropertiesSpecificationOpt
 	PropertyName
 	PropertyNameList
-	PropertyOption
-	PropertyOptionList
-	PropertyOptionListOpt
 	QuantifiedPathExpr
 	ReachabilityPathExpr
 	SelectClause
@@ -453,105 +447,23 @@ CreateGraphStmt:
 	}
 
 CreateLabelStmt:
-	"CREATE" "LABEL" IfNotExists LabelName LabelPropertyListOpt
+	"CREATE" "LABEL" IfNotExists LabelName
 	{
 		cl := &ast.CreateLabelStmt{
 			IfNotExists: $3.(bool),
 			Label:       $4.(model.CIStr),
 		}
-		if $5 != nil {
-			cl.Properties = $5.([]*ast.LabelProperty)
-		}
 		$$ = cl
 	}
 
-
-LabelPropertyListOpt:
-	/* empty */
-	{
-		$$ = nil
-	}
-|	'(' LabelPropertyList ')'
-	{
-		$$ = $2
-	}
-
-LabelPropertyList:
-	LabelPropertyDef
-	{
-		$$ = []*ast.LabelProperty{$1.(*ast.LabelProperty)}
-	}
-|	LabelPropertyList ',' LabelPropertyDef
-	{
-		$$ = append($1.([]*ast.LabelProperty), $3.(*ast.LabelProperty))
-	}
-
-LabelPropertyDef:
-	PropertyName DataType PropertyOptionListOpt
-	{
-		lp := &ast.LabelProperty{
-			Name: $1.(model.CIStr),
-			Type: $2.(types.DataType),
-		}
-		if $3 != nil {
-			lp.Options = $3.([]*ast.LabelPropertyOption)
-		}
-		$$ = lp
-	}
-
-PropertyOptionListOpt:
-	{
-		$$ = nil
-	}
-|	PropertyOptionList
-
-PropertyOptionList:
-	PropertyOption
-	{
-		$$ = []*ast.LabelPropertyOption{$1.(*ast.LabelPropertyOption)}
-	}
-|	PropertyOptionList PropertyOption
-	{
-		$$ = append($1.([]*ast.LabelPropertyOption), $2.(*ast.LabelPropertyOption))
-	}
-
-PropertyOption:
-	"NOT" "NULL"
-	{
-		$$ = &ast.LabelPropertyOption{
-			Type: ast.LabelPropertyOptionTypeNotNull,
-		}
-	}
-|	"NULL"
-	{
-		$$ = &ast.LabelPropertyOption{
-			Type: ast.LabelPropertyOptionTypeNull,
-		}
-	}
-|	"DEFAULT" Literal
-	{
-		$$ = &ast.LabelPropertyOption{
-			Type: ast.LabelPropertyOptionTypeDefault,
-			Data: $2,
-		}
-	}
-|	"COMMENT" stringLit
-	{
-		$$ = &ast.LabelPropertyOption{
-			Type: ast.LabelPropertyOptionTypeComment,
-			Data: $2,
-		}
-	}
-
 CreateIndexStmt:
-	"CREATE" IndexKeyTypeOpt "INDEX" IfNotExists IndexName "ON" LabelName '(' PropertyNameList ')'
+	"CREATE" IndexKeyTypeOpt "INDEX" IfNotExists IndexName '(' PropertyNameList ')'
 	{
 		$$ = &ast.CreateIndexStmt{
 			KeyType:     $2.(ast.IndexKeyType),
 			IfNotExists: $4.(bool),
 			IndexName:   $5.(model.CIStr),
-			LabelName:   $7.(model.CIStr),
-			Properties:  $9.([]model.CIStr),
+			Properties:  $7.([]model.CIStr),
 		}
 	}
 
@@ -617,12 +529,11 @@ DropLabelStmt:
 	}
 
 DropIndexStmt:
-	"DROP" "INDEX" IfExists Identifier "ON" LabelName
+	"DROP" "INDEX" IfExists Identifier
 	{
 		$$ = &ast.DropIndexStmt{
 			IfExists:  $3.(bool),
 			IndexName: model.NewCIStr($4),
-			LabelName: $6.(model.CIStr),
 		}
 	}
 

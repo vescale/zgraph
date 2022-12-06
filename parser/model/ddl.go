@@ -14,14 +14,15 @@
 
 package model
 
-import "github.com/vescale/zgraph/parser/types"
-
 // GraphInfo provides meta data describing a graph.
 type GraphInfo struct {
-	ID     int64        `json:"id"`
-	Name   CIStr        `json:"name"`
-	Labels []*LabelInfo `json:"-"`
-	Query  string       `json:"query"`
+	ID         int64           `json:"id"`
+	Name       CIStr           `json:"name"`
+	Indexes    []*IndexInfo    `json:"indexes"`
+	NextPropID int64           `json:"next_prop_id"`
+	Query      string          `json:"query"`
+	Labels     []*LabelInfo    `json:"-"`
+	Properties []*PropertyInfo `json:"-"`
 }
 
 // IndexInfo provides meta data describing a index.
@@ -34,27 +35,12 @@ type IndexInfo struct {
 
 // LabelInfo provides meta data describing a label.
 type LabelInfo struct {
-	ID         int64           `json:"id"`
-	Name       CIStr           `json:"name"`
-	Indexes    []*IndexInfo    `json:"indexes"`
-	Properties []*PropertyInfo `json:"properties"`
-	Query      string          `json:"query"`
+	ID    int64  `json:"id"`
+	Name  CIStr  `json:"name"`
+	Query string `json:"query"`
 }
 
-type PropertyFlag uint16
-
-const (
-	PropertyFlagNotNull PropertyFlag = 1 << iota
-	PropertyFlagNull
-	PropertyFlagDefault
-	PropertyFlagComment
-)
-
 type PropertyInfo struct {
-	ID      int64          `json:"id"`
-	Name    CIStr          `json:"name"`
-	Type    types.DataType `json:"type"`
-	Flag    PropertyFlag   `json:"flag"`
-	Default string         `json:"default"`
-	Comment string         `json:"comment"`
+	ID   int64 `json:"id"`
+	Name CIStr `json:"name"`
 }

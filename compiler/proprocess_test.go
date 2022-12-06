@@ -62,16 +62,26 @@ func initCatalog(assert *assert.Assertions, dirname string) {
 				{
 					ID:   ID.Add(1),
 					Name: model.NewCIStr("label2"),
-					Indexes: []*model.IndexInfo{
-						{
-							ID:   ID.Add(1),
-							Name: model.NewCIStr("label2_index"),
-						},
-						{
-							ID:   ID.Add(1),
-							Name: model.NewCIStr("label2_index2"),
-						},
-					},
+				},
+			},
+			Indexes: []*model.IndexInfo{
+				{
+					ID:   ID.Add(1),
+					Name: model.NewCIStr("index"),
+				},
+				{
+					ID:   ID.Add(1),
+					Name: model.NewCIStr("index2"),
+				},
+			},
+			Properties: []*model.PropertyInfo{
+				{
+					ID:   ID.Add(1),
+					Name: model.NewCIStr("property"),
+				},
+				{
+					ID:   ID.Add(1),
+					Name: model.NewCIStr("property2"),
 				},
 			},
 		},
@@ -122,12 +132,12 @@ func TestPreprocess(t *testing.T) {
 		},
 		{
 			graph: "graph0",
-			query: "create label label1 (a integer, b string)",
+			query: "create label label1",
 			err:   "graph not exists",
 		},
 		{
 			graph: "graph1",
-			query: "create label label1 (a integer, b string)",
+			query: "create label label1",
 			err:   "label exists",
 		},
 		{
@@ -145,29 +155,29 @@ func TestPreprocess(t *testing.T) {
 		},
 		{
 			graph: "graph1",
-			query: "create label if not exists label2 (a integer, b string)",
+			query: "create label if not exists label2",
 		},
 		{
 			graph: "graph2",
-			query: "create index if not exists idx_name on label2 (a, b)",
+			query: "create index if not exists idx_name (a, b)",
 		},
 		{
 			graph: "graph2",
-			query: "create index label2_index2 on label2 (a, b)",
+			query: "create index index2 (a, b)",
 			err:   "index exists",
 		},
 		{
 			graph: "graph2",
-			query: "drop index label2_index2 on label2",
+			query: "drop index index2",
 		},
 		{
 			graph: "graph2",
-			query: "drop index label4_index2 on label2",
+			query: "drop index label4_index2",
 			err:   "index not exists",
 		},
 		{
 			graph: "graph2",
-			query: "drop index if exists label4_index2 on label2",
+			query: "drop index if exists label4_index2",
 		},
 		{
 			query: "use graph100",
@@ -192,9 +202,9 @@ func TestPreprocess(t *testing.T) {
 		prep := compiler.NewPreprocess(sc)
 		stmt.Accept(prep)
 		if c.err == "" {
-			assert.Nil(prep.Error())
+			assert.Nil(prep.Error(), c.query)
 		} else {
-			assert.ErrorContains(prep.Error(), c.err)
+			assert.ErrorContains(prep.Error(), c.err, c.query)
 		}
 	}
 }

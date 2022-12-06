@@ -40,6 +40,8 @@ func main() {
 			defer session.Close()
 
 			interact(session)
+
+			return nil
 		},
 		SilenceErrors: true,
 	}

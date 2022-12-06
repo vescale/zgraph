@@ -304,14 +304,14 @@ func TestDDL(t *testing.T) {
 			"DROP GRAPH `g1`",
 		},
 		{
-			`CREATE LABEL l (a string,
-				b BOOLEAN NOT NULL DEFAULT true,
-				c DATE null,
-				d FLOAT DEFAULT 1.1,
-				e INTEGER DEFAULT 10 COMMENT 'test',
-				f DECIMAL)`,
+			`CREATE LABEL l`,
 			true,
-			"CREATE LABEL `l` (`a` STRING, `b` BOOLEAN NOT NULL DEFAULT 1, `c` DATE NULL, `d` FLOAT DEFAULT 1.1, `e` INTEGER DEFAULT 10 COMMENT 'test', `f` DECIMAL)",
+			"CREATE LABEL `l`",
+		},
+		{
+			`Drop LABEL l`,
+			true,
+			"DROP LABEL `l`",
 		},
 	}
 	RunTest(t, table)

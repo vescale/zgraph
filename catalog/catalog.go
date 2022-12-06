@@ -51,6 +51,13 @@ func Load(snapshot kv.Snapshot) (*Catalog, error) {
 		}
 		g.Labels = labels
 
+		// Load properties
+		properties, err := meta.ListProperties(g.ID)
+		if err != nil {
+			return nil, err
+		}
+		g.Properties = properties
+
 		// Build graph instance.
 		graph := NewGraph(g)
 		c.byName[g.Name.L] = graph

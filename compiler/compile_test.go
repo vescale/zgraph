@@ -48,11 +48,11 @@ func TestCompile(t *testing.T) {
 			check: ddl,
 		},
 		{
-			query: "create label if not exists l1 (a string)",
+			query: "create label if not exists l1",
 			check: ddl,
 		},
 		{
-			query: "create index if not exists i1 on l1 (a)",
+			query: "create index if not exists i1 (a)",
 			check: ddl,
 		},
 		{
@@ -64,7 +64,7 @@ func TestCompile(t *testing.T) {
 	for _, c := range cases {
 		parser := parser.New()
 		stmt, err := parser.ParseOneStmt(c.query)
-		assert.Nil(err)
+		assert.Nil(err, c.query)
 		sc := db.NewSession().StmtContext()
 		exec, err := compiler.Compile(sc, stmt)
 		assert.Nil(err)

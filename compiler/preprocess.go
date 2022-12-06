@@ -125,13 +125,8 @@ func (p *Preprocess) checkCreateIndexStmt(stmt *ast.CreateIndexStmt) {
 		p.err = meta.ErrGraphNotExists
 		return
 	}
-	label := graph.Label(stmt.LabelName.L)
-	if label == nil {
-		p.err = meta.ErrLabelNotExists
-		return
-	}
 
-	index := label.Index(stmt.IndexName.L)
+	index := graph.Index(stmt.IndexName.L)
 	if index != nil && !stmt.IfNotExists {
 		p.err = meta.ErrIndexExists
 		return
@@ -179,12 +174,7 @@ func (p *Preprocess) checkDropIndexStmt(stmt *ast.DropIndexStmt) {
 		p.err = meta.ErrGraphNotExists
 		return
 	}
-	label := graph.Label(stmt.LabelName.L)
-	if label == nil && !stmt.IfExists {
-		p.err = meta.ErrLabelNotExists
-		return
-	}
-	index := label.Index(stmt.IndexName.L)
+	index := graph.Index(stmt.IndexName.L)
 	if index == nil && !stmt.IfExists {
 		p.err = meta.ErrIndexNotExists
 		return

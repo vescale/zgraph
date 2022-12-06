@@ -15,7 +15,6 @@
 package catalog
 
 import (
-	"strings"
 	"sync"
 
 	"github.com/vescale/zgraph/parser/model"
@@ -25,22 +24,13 @@ import (
 type Label struct {
 	mu sync.RWMutex
 
-	meta   *model.LabelInfo
-	byName map[string]*Index
-	byID   map[int64]*Index
+	meta *model.LabelInfo
 }
 
 // NewLabel returns a label instance.
 func NewLabel(meta *model.LabelInfo) *Label {
 	l := &Label{
-		meta:   meta,
-		byName: map[string]*Index{},
-		byID:   map[int64]*Index{},
-	}
-	for _, i := range meta.Indexes {
-		index := NewIndex(i)
-		l.byName[i.Name.L] = index
-		l.byID[i.ID] = index
+		meta: meta,
 	}
 	return l
 }
@@ -48,20 +38,4 @@ func NewLabel(meta *model.LabelInfo) *Label {
 // Meta returns the meta information object of this label.
 func (l *Label) Meta() *model.LabelInfo {
 	return l.meta
-}
-
-// Index returns the label of specified name.
-func (l *Label) Index(name string) *Index {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
-
-	return l.byName[strings.ToLower(name)]
-}
-
-// IndexByID returns the label of specified ID.
-func (l *Label) IndexByID(id int64) *Index {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
-
-	return l.byID[id]
 }

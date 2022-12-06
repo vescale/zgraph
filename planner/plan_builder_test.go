@@ -30,13 +30,13 @@ func TestBuilder_BuildDDL(t *testing.T) {
 	cases := []string{
 		"create graph if not exists graph5",
 		"create graph graph5",
-		"create label label1 (a string, b integer)",
-		"create label if not exists label1 (a string, b integer)",
-		"create index index1 on label1 (a, b)",
-		"create index if not exists index1 on label1 (a, b)",
+		"create label label1",
+		"create label if not exists label1",
+		"create index index1 (a, b)",
+		"create index if not exists index1 (a, b)",
 		"drop graph graph5",
 		"drop label label1",
-		"drop index index1 on label1",
+		"drop index index1",
 	}
 
 	db, err := zgraph.Open(t.TempDir(), nil)

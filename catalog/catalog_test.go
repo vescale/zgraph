@@ -58,16 +58,16 @@ func Test_Load(t *testing.T) {
 				{
 					ID:   ID.Add(1),
 					Name: model.NewCIStr("label2"),
-					Indexes: []*model.IndexInfo{
-						{
-							ID:   ID.Add(1),
-							Name: model.NewCIStr("label2_index"),
-						},
-						{
-							ID:   ID.Add(1),
-							Name: model.NewCIStr("label2_index2"),
-						},
-					},
+				},
+			},
+			Properties: []*model.PropertyInfo{
+				{
+					ID:   ID.Add(1),
+					Name: model.NewCIStr("property1"),
+				},
+				{
+					ID:   ID.Add(1),
+					Name: model.NewCIStr("property2"),
 				},
 			},
 		},
@@ -81,6 +81,10 @@ func Test_Load(t *testing.T) {
 			assert.Nil(err)
 			for _, l := range g.Labels {
 				err := meta.CreateLabel(g.ID, l)
+				assert.Nil(err)
+			}
+			for _, p := range g.Properties {
+				err := meta.CreateProperty(g.ID, p)
 				assert.Nil(err)
 			}
 		}
@@ -106,6 +110,13 @@ func Test_Load(t *testing.T) {
 			label := graph.Label(l.Name.L)
 			assert.Equal(l, label.Meta())
 			assert.Equal(label, graph.LabelByID(l.ID))
+		}
+
+		// Properties
+		for _, p := range g.Properties {
+			property := graph.Property(p.Name.L)
+			assert.Equal(p, property)
+			assert.Equal(property, graph.PropertyByID(p.ID))
 		}
 	}
 }
