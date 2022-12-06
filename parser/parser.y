@@ -1745,7 +1745,7 @@ LabelNameListWithComma:
 	{
 		$$ = []model.CIStr{$1.(model.CIStr)}
 	}
-|	LabelNameList ',' LabelName
+|	LabelNameListWithComma ',' LabelName
 	{
 		$$ = append($1.([]model.CIStr), $3.(model.CIStr))
 	}

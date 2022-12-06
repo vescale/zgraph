@@ -325,9 +325,9 @@ func TestModify(t *testing.T) {
 			"INSERT VERTEX `x`,VERTEX `x`",
 		},
 		{
-			"INSERT VERTEX x LABELS ( Male ) PROPERTIES ( x.age = 22 )",
+			"INSERT VERTEX x LABELS ( Male, Female ) PROPERTIES ( x.age = 22 )",
 			true,
-			"INSERT VERTEX `x` LABELS (`Male`) PROPERTIES (`x`.`age` = 22)",
+			"INSERT VERTEX `x` LABELS (`Male`, `Female`) PROPERTIES (`x`.`age` = 22)",
 		},
 		{
 			"INSERT VERTEX x LABELS ( Male ) PROPERTIES ( x.age = y.age ) FROM MATCH (y:Male)",
