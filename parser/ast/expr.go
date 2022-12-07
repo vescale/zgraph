@@ -83,8 +83,8 @@ func (n *ValueExpr) Restore(ctx *format.RestoreCtx) error {
 		ctx.WriteString(n.GetString())
 	case types.KindBytes:
 		ctx.WriteString(n.GetString())
-	case types.KindMysqlDecimal:
-		ctx.WritePlain(n.GetMysqlDecimal().String())
+	case types.KindDecimal:
+		ctx.WritePlain(n.GetDecimal().String())
 	case types.KindBinaryLiteral:
 		ctx.WritePlain(n.GetBinaryLiteral().ToBitLiteralString(true))
 	case types.KindDate:
@@ -131,8 +131,8 @@ func (n *ValueExpr) Format(w io.Writer) {
 		s = strconv.FormatFloat(n.GetFloat64(), 'e', -1, 64)
 	case types.KindString, types.KindBytes:
 		s = strconv.Quote(n.GetString())
-	case types.KindMysqlDecimal:
-		s = n.GetMysqlDecimal().String()
+	case types.KindDecimal:
+		s = n.GetDecimal().String()
 	case types.KindBinaryLiteral:
 		s = n.GetBinaryLiteral().ToBitLiteralString(true)
 	default:

@@ -15,6 +15,8 @@
 package codec
 
 import (
+	"bytes"
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -116,5 +118,63 @@ func TestBytesCodecExt(t *testing.T) {
 	for _, input := range inputs {
 		assertEqual(input.enc, EncodeBytesExt(nil, input.enc, true))
 		assertEqual(input.dec, EncodeBytesExt(nil, input.enc, false))
+	}
+}
+
+func TestFloatCodec(t *testing.T) {
+	tblFloat := []float64{
+		-1,
+		0,
+		1,
+		math.MaxFloat64,
+		math.MaxFloat32,
+		math.SmallestNonzeroFloat32,
+		math.SmallestNonzeroFloat64,
+		math.Inf(-1),
+		math.Inf(1),
+	}
+
+	for _, floatNum := range tblFloat {
+		b := EncodeFloat(nil, floatNum)
+		_, v, err := DecodeFloat(b)
+		require.NoError(t, err)
+		require.Equal(t, floatNum, v)
+
+		b = EncodeFloatDesc(nil, floatNum)
+		_, v, err = DecodeFloatDesc(b)
+		require.NoError(t, err)
+		require.Equal(t, floatNum, v)
+	}
+
+	tblCmp := []struct {
+		Arg1 float64
+		Arg2 float64
+		Ret  int
+	}{
+		{1, -1, 1},
+		{1, 0, 1},
+		{0, -1, 1},
+		{0, 0, 0},
+		{math.MaxFloat64, 1, 1},
+		{math.MaxFloat32, math.MaxFloat64, -1},
+		{math.MaxFloat64, 0, 1},
+		{math.MaxFloat64, math.SmallestNonzeroFloat64, 1},
+		{math.Inf(-1), 0, -1},
+		{math.Inf(1), 0, 1},
+		{math.Inf(-1), math.Inf(1), -1},
+	}
+
+	for _, floatNums := range tblCmp {
+		b1 := EncodeFloat(nil, floatNums.Arg1)
+		b2 := EncodeFloat(nil, floatNums.Arg2)
+
+		ret := bytes.Compare(b1, b2)
+		require.Equal(t, floatNums.Ret, ret)
+
+		b1 = EncodeFloatDesc(nil, floatNums.Arg1)
+		b2 = EncodeFloatDesc(nil, floatNums.Arg2)
+
+		ret = bytes.Compare(b1, b2)
+		require.Equal(t, -floatNums.Ret, ret)
 	}
 }

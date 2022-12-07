@@ -13,3 +13,33 @@
 // limitations under the License.
 
 package codec
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/vescale/zgraph/parser/types"
+)
+
+func TestPropertyEncoder_Encode(t *testing.T) {
+	cases := []struct {
+		propertyIDs []uint16
+		values      []types.Datum
+	}{
+		{
+			propertyIDs: []uint16{1, 2, 3},
+			values: []types.Datum{
+				types.NewStringDatum("hello"),
+				types.NewDatum(1),
+				types.NewDatum(1.1),
+			},
+		},
+	}
+
+	for _, c := range cases {
+		encoder := &PropertyEncoder{}
+		// FIXME: validate the values.
+		_, err := encoder.Encode(nil, c.propertyIDs, c.values)
+		assert.Nil(t, err)
+	}
+}

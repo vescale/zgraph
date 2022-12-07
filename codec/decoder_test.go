@@ -13,3 +13,47 @@
 // limitations under the License.
 
 package codec
+
+import (
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/vescale/zgraph/parser/model"
+	"github.com/vescale/zgraph/parser/types"
+)
+
+func TestPropertyDecoder_Decode(t *testing.T) {
+	cases := []struct {
+		propertyIDs []uint16
+		values      []types.Datum
+	}{
+		{
+			propertyIDs: []uint16{1, 2, 3},
+			values: []types.Datum{
+				types.NewStringDatum("hello"),
+				types.NewDatum(1),
+				types.NewDatum(1.1),
+			},
+		},
+	}
+
+	for _, c := range cases {
+		encoder := &PropertyEncoder{}
+		bytes, err := encoder.Encode(nil, c.propertyIDs, c.values)
+		assert.Nil(t, err)
+
+		var properties []*model.PropertyInfo
+		for _, id := range c.propertyIDs {
+			properties = append(properties, &model.PropertyInfo{
+				ID:   id,
+				Name: model.NewCIStr(fmt.Sprintf("property%d", id)),
+			})
+		}
+
+		decoder := &PropertyDecoder{}
+		row, err := decoder.Decode(properties, bytes)
+		assert.Nil(t, err)
+		assert.Equal(t, c.values, row)
+	}
+}

@@ -37,7 +37,7 @@ const (
 	KindString        byte = 5
 	KindBytes         byte = 6
 	KindBinaryLiteral byte = 7 // Used for BIT / HEX literals.
-	KindMysqlDecimal  byte = 8
+	KindDecimal       byte = 8
 	KindDate          byte = 9
 	KindTime          byte = 10
 	KindTimestamp     byte = 11
@@ -159,14 +159,14 @@ func (d *Datum) SetBinaryLiteral(b BinaryLiteral) {
 	d.b = b
 }
 
-// GetMysqlDecimal gets Decimal value
-func (d *Datum) GetMysqlDecimal() *MyDecimal {
+// GetDecimal gets Decimal value
+func (d *Datum) GetDecimal() *MyDecimal {
 	return d.x.(*MyDecimal)
 }
 
 // SetMysqlDecimal sets Decimal value
 func (d *Datum) SetMysqlDecimal(b *MyDecimal) {
-	d.k = KindMysqlDecimal
+	d.k = KindDecimal
 	d.x = b
 }
 
@@ -221,8 +221,8 @@ func (d *Datum) GetValue() interface{} {
 		return d.GetString()
 	case KindBytes:
 		return d.GetBytes()
-	case KindMysqlDecimal:
-		return d.GetMysqlDecimal()
+	case KindDecimal:
+		return d.GetDecimal()
 	case KindBinaryLiteral:
 		return d.GetBinaryLiteral()
 	default:
