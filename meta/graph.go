@@ -125,3 +125,23 @@ func (m *Meta) GetGraph(graphID int64) (*model.GraphInfo, error) {
 	err = json.Unmarshal(value, graphInfo)
 	return graphInfo, errors.Trace(err)
 }
+
+// AdvanceID advances the local ID allocator by n, and return the old global ID.
+// NOTE: It's better to call graph.MDLock() to reduce transaction conflicts.
+func (m *Meta) AdvanceID(graphID int64, n int) (int64, error) {
+	// Check if graph exists.
+	graphKey := m.graphKey(graphID)
+	if err := m.checkGraphExists(graphKey); err != nil {
+		return 0, errors.Trace(err)
+	}
+
+	newID, err := m.txn.HInc(graphKey, mNextIDKey, int64(n))
+	if err != nil {
+		return 0, err
+	}
+	if newID > MaxGlobalID {
+		return 0, errors.Errorf("global id:%d exceeds the limit:%d", newID, MaxGlobalID)
+	}
+	origID := newID - int64(n)
+	return origID, nil
+}

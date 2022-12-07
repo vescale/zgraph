@@ -32,6 +32,7 @@ type Context struct {
 		sync.RWMutex
 
 		currentGraph string
+		txn          *LazyTxn
 
 		affectedRows uint64
 		foundRows    uint64

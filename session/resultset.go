@@ -77,7 +77,7 @@ func (e emptyResultSet) Close() error {
 type queryResultSet struct {
 	valid  bool
 	alloc  *chunk.Allocator
-	chunk  *chunk.Chunk
+	row    executor.Row
 	fields []*Field
 	exec   executor.Executor
 }
@@ -93,8 +93,8 @@ func newQueryResultSet(exec executor.Executor) ResultSet {
 		valid:  true,
 		exec:   exec,
 		fields: retrieveFields(exec.Schema()),
-		// TODO: implement chunk
-		// chunk:  exec.NewChunk(alloc),
+		// TODO: implement row
+		// row:  exec.NewChunk(alloc),
 	}
 }
 
@@ -110,7 +110,7 @@ func (q *queryResultSet) Valid() bool {
 
 // Next implements the ResultSet interface.
 func (q *queryResultSet) Next(ctx context.Context) error {
-	return q.exec.Next(ctx, q.chunk)
+	return q.exec.Next(ctx, q.row)
 }
 
 // Scan implements the ResultSet interface.

@@ -19,11 +19,9 @@ import (
 
 	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/catalog"
-	"github.com/vescale/zgraph/internal/chunk"
 	"github.com/vescale/zgraph/meta"
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/parser/model"
-	"github.com/vescale/zgraph/stmtctx"
 	"github.com/vescale/zgraph/storage/kv"
 )
 
@@ -31,13 +29,12 @@ import (
 type DDLExec struct {
 	baseExecutor
 
-	sc        *stmtctx.Context
 	done      bool
 	statement ast.DDLNode
 }
 
 // Next implements the Executor interface.
-func (e *DDLExec) Next(_ context.Context, _ *chunk.Chunk) error {
+func (e *DDLExec) Next(_ context.Context, ) (Row, error) {
 	if e.done {
 		return nil
 	}
@@ -49,7 +46,7 @@ func (e *DDLExec) Next(_ context.Context, _ *chunk.Chunk) error {
 	defer e.sc.Catalog().MDUnlock()
 
 	var patch *catalog.Patch
-	err := kv.RunNewTxn(e.sc.Store(), func(txn kv.Transaction) error {
+	err := kv.Txn(e.sc.Store(), func(txn kv.Transaction) error {
 		m := meta.New(txn)
 		var err error
 		switch stmt := e.statement.(type) {

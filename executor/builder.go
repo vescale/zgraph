@@ -40,6 +40,8 @@ func (b *Builder) Build(plan planner.Plan) Executor {
 		return b.buildDDL(p)
 	case *planner.Simple:
 		return b.buildSimple(p)
+	case *planner.Insert:
+		return b.buildInsert(p)
 	default:
 		b.err = errors.Errorf("unknown plan: %T", plan)
 	}
@@ -54,7 +56,6 @@ func (b *Builder) Error() error {
 func (b *Builder) buildDDL(plan *planner.DDL) Executor {
 	exec := &DDLExec{
 		baseExecutor: newBaseExecutor(b.sc, plan.Schema(), plan.ID()),
-		sc:           b.sc,
 		statement:    plan.Statement,
 	}
 	return exec
@@ -63,8 +64,16 @@ func (b *Builder) buildDDL(plan *planner.DDL) Executor {
 func (b *Builder) buildSimple(plan *planner.Simple) Executor {
 	exec := &SimpleExec{
 		baseExecutor: newBaseExecutor(b.sc, plan.Schema(), plan.ID()),
-		sc:           b.sc,
 		statement:    plan.Statement,
+	}
+	return exec
+}
+
+func (b *Builder) buildInsert(plan *planner.Insert) Executor {
+	exec := &InsertExec{
+		baseExecutor: newBaseExecutor(b.sc, plan.Schema(), plan.ID()),
+		graph:        plan.Graph,
+		insertions:   plan.Insertions,
 	}
 	return exec
 }

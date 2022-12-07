@@ -18,39 +18,32 @@ import (
 	"context"
 
 	"github.com/vescale/zgraph/expression"
-	"github.com/vescale/zgraph/internal/chunk"
+	"github.com/vescale/zgraph/parser/types"
 	"github.com/vescale/zgraph/stmtctx"
 )
 
-// Executor is the physical implementation of a algebra operator.
-//
-// In TiDB, all algebra operators are implemented as iterators, i.e., they
-// support a simple Open-Next-Close protocol. See this paper for more details:
-//
-// "Volcano-An Extensible and Parallel Query Evaluation System"
-//
-// Different from Volcano's execution model, a "Next" function call in zGraph will
-// return a batch of rows, other than a single row in Volcano.
-// NOTE: Executors must call "chk.Reset()" before appending their results to it.
+type Row []types.Datum
+
+// Executor is the physical implementation of an algebra operator.
 type Executor interface {
 	base() *baseExecutor
-	Open(context.Context) error
-	Next(ctx context.Context, req *chunk.Chunk) error
-	Close() error
 	Schema() *expression.Schema
+	Open(context.Context) error
+	Next(context.Context) (Row, error)
+	Close() error
 }
 
 type baseExecutor struct {
-	ctx      *stmtctx.Context
+	sc       *stmtctx.Context
 	id       int
 	schema   *expression.Schema // output schema
 	children []Executor
 }
 
-func newBaseExecutor(ctx *stmtctx.Context, schema *expression.Schema, id int, children ...Executor) baseExecutor {
+func newBaseExecutor(sc *stmtctx.Context, schema *expression.Schema, id int, children ...Executor) baseExecutor {
 	e := baseExecutor{
 		children: children,
-		ctx:      ctx,
+		sc:       sc,
 		id:       id,
 		schema:   schema,
 	}
@@ -74,8 +67,8 @@ func (e *baseExecutor) Open(ctx context.Context) error {
 }
 
 // Next fills multiple rows into a chunk.
-func (e *baseExecutor) Next(ctx context.Context, req *chunk.Chunk) error {
-	return nil
+func (e *baseExecutor) Next(context.Context) (Row, error) {
+	return nil, nil
 }
 
 // Close closes all executors and release all resources.

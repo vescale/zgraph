@@ -31,7 +31,7 @@ func TestLabel(t *testing.T) {
 
 	var graphID = int64(100)
 
-	err = kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.TxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		info := &model.GraphInfo{
 			ID:   graphID,
@@ -51,7 +51,7 @@ func TestLabel(t *testing.T) {
 
 	// Create labels
 	for i, name := range labelNames {
-		err := kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+		err := kv.TxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 			meta := New(txn)
 			info := &model.LabelInfo{
 				ID:   int64(i) + 1,
@@ -63,7 +63,7 @@ func TestLabel(t *testing.T) {
 	}
 
 	// List labels
-	err = kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.TxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		labels, err := meta.ListLabels(graphID)
 		assert.Nil(err)
@@ -82,7 +82,7 @@ func TestLabel(t *testing.T) {
 	assert.Nil(err)
 
 	// Update label
-	err = kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.TxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		err := meta.UpdateLabel(graphID, &model.LabelInfo{
 			ID:   4,
@@ -94,7 +94,7 @@ func TestLabel(t *testing.T) {
 	assert.Nil(err)
 
 	// Get label
-	err = kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.TxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		label, err := meta.GetLabel(graphID, 4)
 		assert.Nil(err)
@@ -105,7 +105,7 @@ func TestLabel(t *testing.T) {
 	assert.Nil(err)
 
 	// Drop label
-	err = kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.TxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		err := meta.DropLabel(graphID, 3)
 		assert.Nil(err)
@@ -114,7 +114,7 @@ func TestLabel(t *testing.T) {
 	assert.Nil(err)
 
 	// List labels again
-	err = kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.TxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		labels, err := meta.ListLabels(graphID)
 		assert.Nil(err)

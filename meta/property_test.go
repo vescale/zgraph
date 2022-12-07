@@ -31,7 +31,7 @@ func TestProperty(t *testing.T) {
 
 	var graphID = int64(100)
 
-	err = kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.TxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		info := &model.GraphInfo{
 			ID:   graphID,
@@ -51,7 +51,7 @@ func TestProperty(t *testing.T) {
 
 	// Create propertys
 	for i, name := range propertyNames {
-		err := kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+		err := kv.TxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 			meta := New(txn)
 			info := &model.PropertyInfo{
 				ID:   uint16(i) + 1,
@@ -63,7 +63,7 @@ func TestProperty(t *testing.T) {
 	}
 
 	// List properties
-	err = kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.TxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		propertys, err := meta.ListProperties(graphID)
 		assert.Nil(err)
@@ -82,7 +82,7 @@ func TestProperty(t *testing.T) {
 	assert.Nil(err)
 
 	// Update property
-	err = kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.TxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		err := meta.UpdateProperty(graphID, &model.PropertyInfo{
 			ID:   4,
@@ -94,7 +94,7 @@ func TestProperty(t *testing.T) {
 	assert.Nil(err)
 
 	// Get property
-	err = kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.TxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		property, err := meta.GetProperty(graphID, 4)
 		assert.Nil(err)
@@ -105,7 +105,7 @@ func TestProperty(t *testing.T) {
 	assert.Nil(err)
 
 	// Drop property
-	err = kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.TxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		err := meta.DropProperty(graphID, 3)
 		assert.Nil(err)
@@ -114,7 +114,7 @@ func TestProperty(t *testing.T) {
 	assert.Nil(err)
 
 	// List propertys again
-	err = kv.RunNewTxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
+	err = kv.TxnContext(context.TODO(), store, func(_ context.Context, txn kv.Transaction) error {
 		meta := New(txn)
 		propertys, err := meta.ListProperties(graphID)
 		assert.Nil(err)

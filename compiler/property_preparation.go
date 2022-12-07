@@ -76,7 +76,7 @@ func (p *PropertyPreparation) CreateMissing() error {
 	defer p.sc.Catalog().MDUnlock()
 
 	var patch *catalog.PatchProperties
-	err := kv.RunNewTxn(p.sc.Store(), func(txn kv.Transaction) error {
+	err := kv.Txn(p.sc.Store(), func(txn kv.Transaction) error {
 		graphInfo := p.graph.Meta()
 		nextPropID := graphInfo.NextPropID
 		meta := meta.New(txn)

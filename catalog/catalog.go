@@ -24,9 +24,11 @@ import (
 
 // Catalog maintains the catalog of graphs and label information.
 type Catalog struct {
-	mdl sync.Mutex   // mdl prevent executing DDL concurrently.
-	mu  sync.RWMutex // mu protect the catalog fields.
+	// mdl prevent executing DDL concurrently.
+	mdl sync.Mutex
 
+	// mu protect the catalog fields.
+	mu     sync.RWMutex
 	byName map[string]*Graph
 	byID   map[int64]*Graph
 }

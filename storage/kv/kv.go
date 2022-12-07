@@ -22,11 +22,17 @@ import (
 	"github.com/pingcap/errors"
 )
 
+// Pair represents a key/value pair.
+type Pair struct {
+	Key Key
+	Val []byte
+}
+
 const retry = 5
 
-// RunNewTxnContext creates a new transaction and call the user-define transaction callback.
+// TxnContext creates a new transaction and call the user-define transaction callback.
 // The transaction will be committed automatically.
-func RunNewTxnContext(ctx context.Context, store Storage, fn func(ctx context.Context, txn Transaction) error) error {
+func TxnContext(ctx context.Context, store Storage, fn func(ctx context.Context, txn Transaction) error) error {
 	txn, err := store.Begin()
 	if err != nil {
 		return err
@@ -52,9 +58,9 @@ func RunNewTxnContext(ctx context.Context, store Storage, fn func(ctx context.Co
 	return nil
 }
 
-// RunNewTxn creates a new transaction and call the user-define transaction callback.
-func RunNewTxn(store Storage, fn func(txn Transaction) error) error {
-	return RunNewTxnContext(context.Background(), store, func(ctx context.Context, txn Transaction) error {
+// Txn creates a new transaction and call the user-define transaction callback.
+func Txn(store Storage, fn func(txn Transaction) error) error {
+	return TxnContext(context.Background(), store, func(ctx context.Context, txn Transaction) error {
 		return fn(txn)
 	})
 }

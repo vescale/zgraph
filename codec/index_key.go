@@ -14,11 +14,18 @@
 
 package codec
 
+var (
+	prefix    = []byte("g")
+	vertexSep = []byte("v")
+	edgeSep   = []byte("e")
+	indexSep  = []byte("i")
+)
+
 // INDEX CODEC DOCUMENTATIONS:
 
-// NOTE: Label is a special kind of index ($LabelID equals $IndexID).
-// The following SQL specifies an edge label `known` and the LabelID will be
-// the identifier of edge `known`.
+// NOTE: Label is a special kind of indexSep ($LabelID equals $IndexID).
+// The following SQL specifies an edgeSep label `known` and the LabelID will be
+// the identifier of edgeSep `known`.
 //      INSERT EDGE e BETWEEN x AND y LABELS ( knows )
 //      FROM MATCH (x:Person)
 //         , MATCH (y:Person)
@@ -33,14 +40,36 @@ package codec
 // - Value Format:
 //   [($PropertyID, $PropertyValue), ...]
 //
-// $Type Explanation: We need to distinguish the index key type because a label
-// can be both attach to vertex and edge. There will be two types index key.
+// $Type Explanation:
+// We need to distinguish the indexSep key type because a label can be both attach
+// to vertexSep and edgeSep. There will be two types indexSep key.
 // 1. Edge
 // 2. Vertex
 //
 // $Unique Explanation:
-// 1. For vertex label index: it will be the vertex identifier.
-// 2. For edge label index: it will be $SrcVertexID_$DstVertexID
+// 1. For vertexSep label indexSep: it will be the vertexSep identifier.
+// 2. For edgeSep label indexSep: it will be $SrcVertexID_$DstVertexID
+
+// LabelIndexKey returns the encoded key of specified graph/label.
+func LabelIndexKey(graphID, labelID, vertexID, dstVertexID int64) []byte {
+	var result []byte
+	if dstVertexID == 0 {
+		result = make([]byte, 0, len(prefix)+8 /*graphID*/ +8 /*labelID*/ +8 /*vertexID*/ + +len(vertexSep))
+	} else {
+		result = make([]byte, 0, len(prefix)+8 /*graphID*/ +8 /*labelID*/ +8 /*vertexID*/ + +len(edgeSep) + 8 /*dstVertexID*/)
+	}
+	result = append(result, prefix...)
+	result = EncodeInt(result, graphID)
+	result = EncodeInt(result, labelID)
+	result = EncodeInt(result, vertexID)
+	if dstVertexID == 0 {
+		result = EncodeBytes(result, vertexSep)
+	} else {
+		result = EncodeBytes(result, edgeSep)
+		result = EncodeInt(result, dstVertexID)
+	}
+	return nil
+}
 
 // UniqueIndexKey encodes the unique index key described as above.
 func UniqueIndexKey(graphID, indexID int64, typ byte) []byte {

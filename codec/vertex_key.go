@@ -23,6 +23,11 @@ package codec
 
 // VertexKey encodes the vertex key described as above.
 func VertexKey(graphID, srcVertexID int64) []byte {
+	result := make([]byte, 0, len(prefix)+8 /*graphID*/ +8 /*srcVertexID*/ +len(vertexSep))
+	result = append(result, prefix...)
+	result = EncodeInt(result, graphID)
+	result = EncodeInt(result, srcVertexID)
+	result = EncodeBytes(result, vertexSep)
 	return nil
 }
 

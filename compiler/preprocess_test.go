@@ -88,7 +88,7 @@ func initCatalog(assert *assert.Assertions, dirname string) {
 	}
 
 	// Create mock data.
-	err = kv.RunNewTxn(store, func(txn kv.Transaction) error {
+	err = kv.Txn(store, func(txn kv.Transaction) error {
 		meta := meta.New(txn)
 		for _, g := range cases {
 			err := meta.CreateGraph(g)

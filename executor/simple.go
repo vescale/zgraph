@@ -18,10 +18,8 @@ import (
 	"context"
 
 	"github.com/pingcap/errors"
-	"github.com/vescale/zgraph/internal/chunk"
 	"github.com/vescale/zgraph/meta"
 	"github.com/vescale/zgraph/parser/ast"
-	"github.com/vescale/zgraph/stmtctx"
 )
 
 // SimpleExec is used to execute some simple tasks.
@@ -29,21 +27,20 @@ type SimpleExec struct {
 	baseExecutor
 
 	done      bool
-	sc        *stmtctx.Context
 	statement ast.StmtNode
 }
 
-func (e *SimpleExec) Next(_ context.Context, _ *chunk.Chunk) error {
+func (e *SimpleExec) Next(_ context.Context) (Row, error) {
 	if e.done {
-		return nil
+		return nil, nil
 	}
 	e.done = true
 
 	switch stmt := e.statement.(type) {
 	case *ast.UseStmt:
-		return e.execUse(stmt)
+		return nil, e.execUse(stmt)
 	default:
-		return errors.Errorf("unknown statement: %T", e.statement)
+		return nil, errors.Errorf("unknown statement: %T", e.statement)
 	}
 }
 

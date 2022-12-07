@@ -23,21 +23,31 @@ import (
 
 // Graph represents a runtime graph object.
 type Graph struct {
-	mu sync.RWMutex
+	// mdl preventing multiple threads change the graph metadata concurrently.
+	mdl sync.Mutex
 
+	// mu protect the global fields of the graph.
+	mu sync.RWMutex
 	// NOTE: DON'T CHANGE THE CONTENT OF THIS POINTER.
 	// The information object will be used by multiple package, and we need to clone a
 	// new object if we want to modify it and keep the original one immutable.
-	meta   *model.GraphInfo
+	meta *model.GraphInfo
+
 	labels struct {
+		sync.RWMutex
+
 		byName map[string]*Label
 		byID   map[int64]*Label
 	}
 	properties struct {
+		sync.RWMutex
+
 		byName map[string]*model.PropertyInfo
 		byID   map[uint16]*model.PropertyInfo
 	}
 	indexes struct {
+		sync.RWMutex
+
 		byName map[string]*Index
 		byID   map[int64]*Index
 	}
@@ -80,40 +90,40 @@ func (g *Graph) Meta() *model.GraphInfo {
 
 // Label returns the label of specified name.
 func (g *Graph) Label(name string) *Label {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
+	g.labels.RLock()
+	defer g.labels.RUnlock()
 
 	return g.labels.byName[strings.ToLower(name)]
 }
 
 // LabelByID returns the label of specified ID.
 func (g *Graph) LabelByID(id int64) *Label {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
+	g.labels.RLock()
+	defer g.labels.RUnlock()
 
 	return g.labels.byID[id]
 }
 
 // Property returns the property of specified name.
 func (g *Graph) Property(name string) *model.PropertyInfo {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
+	g.properties.RLock()
+	defer g.properties.RUnlock()
 
 	return g.properties.byName[strings.ToLower(name)]
 }
 
 // PropertyByID returns the property of specified ID.
 func (g *Graph) PropertyByID(id uint16) *model.PropertyInfo {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
+	g.properties.RLock()
+	defer g.properties.RUnlock()
 
 	return g.properties.byID[id]
 }
 
 // Labels returns the labels.
 func (g *Graph) Labels() []*Label {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
+	g.labels.RLock()
+	defer g.labels.RUnlock()
 
 	if len(g.labels.byID) < 1 {
 		return nil
@@ -129,14 +139,13 @@ func (g *Graph) Labels() []*Label {
 func (g *Graph) Properties() []*model.PropertyInfo {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
-
 	return g.meta.Properties
 }
 
 // CreateLabel create a new label and append to the graph labels list.
 func (g *Graph) CreateLabel(labelInfo *model.LabelInfo) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
+	g.labels.Lock()
+	defer g.labels.Unlock()
 
 	label := NewLabel(labelInfo)
 	g.labels.byName[labelInfo.Name.L] = label
@@ -145,8 +154,8 @@ func (g *Graph) CreateLabel(labelInfo *model.LabelInfo) {
 
 // DropLabel removes specified label from graph.
 func (g *Graph) DropLabel(labelInfo *model.LabelInfo) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
+	g.labels.Lock()
+	defer g.labels.Unlock()
 
 	delete(g.labels.byName, labelInfo.Name.L)
 	delete(g.labels.byID, labelInfo.ID)
@@ -154,8 +163,8 @@ func (g *Graph) DropLabel(labelInfo *model.LabelInfo) {
 
 // CreateProperty create a new property and append to the graph properties list.
 func (g *Graph) CreateProperty(propertyInfo *model.PropertyInfo) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
+	g.properties.Lock()
+	defer g.properties.Unlock()
 
 	g.properties.byName[propertyInfo.Name.L] = propertyInfo
 	g.properties.byID[propertyInfo.ID] = propertyInfo
@@ -163,8 +172,8 @@ func (g *Graph) CreateProperty(propertyInfo *model.PropertyInfo) {
 
 // DropProperty removes specified property from graph.
 func (g *Graph) DropProperty(propertyInfo *model.PropertyInfo) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
+	g.properties.Lock()
+	defer g.properties.Unlock()
 
 	delete(g.properties.byName, propertyInfo.Name.L)
 	delete(g.properties.byID, propertyInfo.ID)
@@ -172,24 +181,24 @@ func (g *Graph) DropProperty(propertyInfo *model.PropertyInfo) {
 
 // Index returns the label of specified name.
 func (g *Graph) Index(name string) *Index {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
+	g.indexes.RLock()
+	defer g.indexes.RUnlock()
 
 	return g.indexes.byName[strings.ToLower(name)]
 }
 
 // IndexByID returns the label of specified ID.
 func (g *Graph) IndexByID(id int64) *Index {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
+	g.indexes.RLock()
+	defer g.indexes.RUnlock()
 
 	return g.indexes.byID[id]
 }
 
 // Indexes returns the indexes.
 func (g *Graph) Indexes() []*Index {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
+	g.indexes.RLock()
+	defer g.indexes.RUnlock()
 
 	if len(g.indexes.byID) < 1 {
 		return nil
@@ -201,8 +210,19 @@ func (g *Graph) Indexes() []*Index {
 	return indexes
 }
 
+// SetNextPropID sets the next property id.
 func (g *Graph) SetNextPropID(propID uint16) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.meta.NextPropID = propID
+}
+
+// MDLock locks the metadata of the current graph.
+func (g *Graph) MDLock() {
+	g.mdl.Lock()
+}
+
+// MDUnlock unlocks the metadata of the current graph.
+func (g *Graph) MDUnlock() {
+	g.mdl.Unlock()
 }

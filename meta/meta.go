@@ -28,6 +28,7 @@ var globalIDMutex sync.Mutex
 var (
 	mMetaKeyPrefix   = []byte("m")
 	mNextGlobalIDKey = []byte("next_global_id")
+	mNextIDKey       = []byte("next_id")
 	mGraphs          = []byte("graphs")
 	mGraphPrefix     = "graph"
 	mLabelPrefix     = "label"
