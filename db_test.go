@@ -74,3 +74,30 @@ func TestDB_DDL(t *testing.T) {
 	assert.Nil(err)
 	assert.Nil(catalog.Graph("graph101"))
 }
+
+func TestDB_DML(t *testing.T) {
+	assert := assert.New(t)
+	db, err := Open(t.TempDir(), nil)
+	assert.Nil(err)
+	assert.NotNil(db)
+	defer db.Close()
+
+	session := db.NewSession()
+	assert.NotNil(session)
+
+	// Preparation
+	preparations := []string{
+		"CREATE GRAPH graph101",
+		"USE graph101",
+		"CREATE LABEL label01",
+	}
+
+	ctx := context.Background()
+	for _, query := range preparations {
+		err = runQuery(ctx, session, query)
+		assert.Nil(err)
+	}
+
+	err = runQuery(ctx, session, "INSERT INTO graph101 VERTEX x LABELS (label01) PROPERTIES (x.name = 'a')")
+	assert.Nil(err)
+}

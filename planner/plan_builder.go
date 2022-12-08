@@ -124,10 +124,14 @@ func (b *Builder) buildInsert(stmt *ast.InsertStmt) error {
 			if propInfo == nil {
 				return errors.Errorf("property %s not exists", prop.PropertyAccess.PropertyName.L)
 			}
+			expr, err := RewriteExpr(prop.ValueExpression)
+			if err != nil {
+				return err
+			}
 			assignment := &expression.Assignment{
 				VarReference: &expression.VariableRef{Name: prop.PropertyAccess.VariableName},
 				PropertyRef:  &expression.PropertyRef{Property: propInfo},
-				Expr:         prop.ValueExpression,
+				Expr:         expr,
 			}
 			assignments = append(assignments, assignment)
 		}

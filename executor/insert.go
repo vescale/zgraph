@@ -135,10 +135,10 @@ func (e *InsertExec) encodeInsertions() error {
 func (e *InsertExec) encodeLabels(graphID, vertexID, dstVertexID int64, labels []*catalog.Label) {
 	for _, label := range labels {
 		key := codec.LabelKey(graphID, label.Meta().ID, vertexID, dstVertexID)
-		e.kvs = append(e.kvs, kv.Pair{Key: key})
+		e.kvs = append(e.kvs, kv.Pair{Key: key, Val: codec.LabelValue()})
 		if dstVertexID != 0 {
 			key := codec.LabelKey(graphID, label.Meta().ID, dstVertexID, vertexID)
-			e.kvs = append(e.kvs, kv.Pair{Key: key})
+			e.kvs = append(e.kvs, kv.Pair{Key: key, Val: codec.LabelValue()})
 		}
 	}
 }

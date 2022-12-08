@@ -71,6 +71,11 @@ func LabelKey(graphID, labelID, vertexID, dstVertexID int64) []byte {
 	return nil
 }
 
+// LabelValue returns a zero which is represents the flag byte of normal value.
+func LabelValue() []byte {
+	return []byte{0}
+}
+
 // UniqueIndexKey encodes the unique index key described as above.
 func UniqueIndexKey(graphID, indexID int64, typ byte) []byte {
 	return nil
