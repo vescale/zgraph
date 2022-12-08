@@ -14,10 +14,36 @@
 
 package planner
 
+import (
+	"github.com/vescale/zgraph/catalog"
+	"github.com/vescale/zgraph/parser/ast"
+	"github.com/vescale/zgraph/parser/model"
+)
+
+type VertexRef struct {
+	Name   model.CIStr
+	Labels []*catalog.Label
+}
+
+type PathPattern struct {
+	Tp       ast.PathPatternType
+	TopK     int64
+	Vertices []*VertexRef
+	// TODO: connections
+}
+
+type Subgraph struct {
+	Graph *catalog.Graph
+	Paths []*PathPattern
+}
+
 type LogicalMatch struct {
 	logicalSchemaProducer
+
+	Subgraphs []*Subgraph
 }
 
 type PhysicalMatch struct {
 	physicalSchemaProducer
+	Subgraphs []*Subgraph
 }

@@ -20,12 +20,12 @@ type LogicalLimit struct {
 	logicalSchemaProducer
 
 	Offset expression.Expression
-	Limit  expression.Expression
+	Count  expression.Expression
 }
 
 type PhysicalLimit struct {
 	physicalSchemaProducer
 
 	Offset expression.Expression
-	Limit  expression.Expression
+	Count  expression.Expression
 }

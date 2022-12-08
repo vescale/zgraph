@@ -54,6 +54,8 @@ func (b *Builder) Build(node ast.StmtNode) (Plan, error) {
 		err = b.buildSimple(stmt)
 	case *ast.InsertStmt:
 		err = b.buildInsert(stmt)
+	case *ast.SelectStmt:
+		err = b.buildSelect(stmt)
 	}
 	if err != nil {
 		return nil, err
@@ -166,4 +168,141 @@ func (b *Builder) buildInsert(stmt *ast.InsertStmt) error {
 		Insertions: insertions,
 	})
 	return nil
+}
+
+func (b *Builder) buildSelect(stmt *ast.SelectStmt) error {
+	// Build source
+	plan, err := b.buildMatch(stmt.From.Matches)
+	if err != nil {
+		return err
+	}
+
+	// Build selection
+	if stmt.Where != nil {
+		expr, err := RewriteExpr(stmt.Where)
+		if err != nil {
+			return err
+		}
+		where := &LogicalSelection{
+			Condition: expr,
+		}
+		where.SetChildren(plan)
+		plan = where
+	}
+
+	// TODO: support GROUP BY clause.
+	// Explicit GROUP BY: SELECT * FROM MATCH (n) GROUP BY n.name;
+	// Implicit GROUP BY: SELECT COUNT(*) FROM MATCH (n);
+	if stmt.GroupBy != nil {
+
+	}
+
+	if stmt.Having != nil {
+		expr, err := RewriteExpr(stmt.Having.Expr)
+		if err != nil {
+			return err
+		}
+		having := &LogicalSelection{
+			Condition: expr,
+		}
+		having.SetChildren(plan)
+		plan = having
+	}
+
+	if stmt.OrderBy != nil {
+		byItems := make([]*ByItem, 0, len(stmt.OrderBy.Items))
+		for _, item := range stmt.OrderBy.Items {
+			expr, err := RewriteExpr(item.Expr.Expr)
+			if err != nil {
+				return err
+			}
+			byItems = append(byItems, &ByItem{
+				Expr:      expr,
+				AsName:    item.Expr.AsName,
+				Desc:      item.Desc,
+				NullOrder: item.NullOrder,
+			})
+		}
+		orderby := &LogicalSort{
+			ByItems: byItems,
+		}
+		orderby.SetChildren(plan)
+		plan = orderby
+	}
+
+	if stmt.Limit != nil {
+		offset, err := RewriteExpr(stmt.Limit.Offset)
+		if err != nil {
+			return err
+		}
+		count, err := RewriteExpr(stmt.Limit.Count)
+		if err != nil {
+			return err
+		}
+		limit := &LogicalLimit{
+			Offset: offset,
+			Count:  count,
+		}
+		limit.SetChildren(plan)
+		plan = limit
+	}
+
+	b.setPlan(plan)
+	return nil
+}
+
+func (b *Builder) buildMatch(matches []*ast.MatchClause) (LogicalPlan, error) {
+	if len(matches) == 0 {
+		return &LogicalDual{}, nil
+	}
+
+	// NOTE: Only support `SELECT x.name FROM MATCH (x)` for now.
+	var subgraphs []*Subgraph
+	for _, m := range matches {
+		graphName := m.Graph.L
+		if graphName == "" {
+			graphName = b.sc.CurrentGraph()
+		}
+		graph := b.sc.Catalog().Graph(graphName)
+		if graph == nil {
+			return nil, errors.Annotatef(meta.ErrGraphNotExists, "graph %s", graphName)
+		}
+		var paths []*PathPattern
+		for _, p := range m.Paths {
+			var vertices []*VertexRef
+			for _, v := range p.Vertices {
+				var labels []*catalog.Label
+				for _, l := range v.Variable.Labels {
+					label := graph.Label(l.L)
+					if label == nil {
+						return nil, errors.Annotatef(meta.ErrLabelNotExists, "label %s", l.L)
+					}
+					labels = append(labels, label)
+				}
+				vertexRef := &VertexRef{
+					Name:   v.Variable.Name,
+					Labels: labels,
+				}
+				vertices = append(vertices, vertexRef)
+			}
+			path := &PathPattern{
+				Tp:       p.Tp,
+				TopK:     p.TopK,
+				Vertices: vertices,
+				// TODO: connections
+			}
+			paths = append(paths, path)
+		}
+		subgraph := &Subgraph{
+			Graph: graph,
+			Paths: paths,
+		}
+		subgraphs = append(subgraphs, subgraph)
+	}
+
+	plan := &LogicalMatch{
+		Subgraphs: subgraphs,
+	}
+
+	return plan, nil
 }

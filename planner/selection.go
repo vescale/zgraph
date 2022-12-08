@@ -14,10 +14,16 @@
 
 package planner
 
+import "github.com/vescale/zgraph/expression"
+
 type LogicalSelection struct {
 	logicalSchemaProducer
+
+	Condition expression.Expression
 }
 
 type PhysicalSelection struct {
 	physicalSchemaProducer
+
+	Condition expression.Expression
 }

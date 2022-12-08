@@ -14,9 +14,17 @@
 
 package expression
 
-import "github.com/vescale/zgraph/parser/model"
+import (
+	"fmt"
+
+	"github.com/vescale/zgraph/parser/model"
+)
 
 type Expression interface {
+	fmt.Stringer
+
+	// Clone deeply clones an expression.
+	Clone() Expression
 }
 
 // Assignment represents an assignment in INSERT/UPDATE statements.

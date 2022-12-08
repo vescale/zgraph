@@ -21,7 +21,12 @@ type Constant struct {
 	Value types.Datum
 }
 
-func (c *Constant) Clone() *Constant {
+func (c *Constant) Clone() Expression {
 	cc := *c
 	return &cc
+}
+
+// String implements the fmt.Stringer interface.
+func (c *Constant) String() string {
+	return "datum doesn't implement fmt.Stringer)"
 }

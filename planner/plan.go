@@ -188,3 +188,8 @@ func (s *logicalSchemaProducer) Schema() *expression.Schema {
 func (s *logicalSchemaProducer) SetSchema(schema *expression.Schema) {
 	s.schema = schema
 }
+
+// LogicalDual represents the plan which returns empty result set.
+type LogicalDual struct {
+	logicalSchemaProducer
+}

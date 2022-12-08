@@ -14,16 +14,42 @@
 
 package planner
 
-import "github.com/vescale/zgraph/expression"
+import (
+	"fmt"
+
+	"github.com/vescale/zgraph/expression"
+	"github.com/vescale/zgraph/parser/model"
+)
+
+// ByItem wraps a "by" item.
+type ByItem struct {
+	Expr      expression.Expression
+	AsName    model.CIStr
+	Desc      bool
+	NullOrder bool
+}
+
+// String implements fmt.Stringer interface.
+func (by *ByItem) String() string {
+	if by.Desc {
+		return fmt.Sprintf("%s true", by.Expr)
+	}
+	return by.Expr.String()
+}
+
+// Clone makes a copy of ByItem.
+func (by *ByItem) Clone() *ByItem {
+	return &ByItem{Expr: by.Expr.Clone(), Desc: by.Desc}
+}
 
 type LogicalSort struct {
 	logicalSchemaProducer
 
-	ByItems []expression.Expression
+	ByItems []*ByItem
 }
 
 type PhysicalSort struct {
 	physicalSchemaProducer
 
-	ByItems []expression.Expression
+	ByItems []*ByItem
 }
