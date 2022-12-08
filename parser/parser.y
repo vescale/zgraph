@@ -1522,7 +1522,7 @@ GraphPattern:
 PathPatternList:
 	PathPattern
 	{
-		$$ = $1.(*ast.PathPattern)
+		$$ = []*ast.PathPattern{$1.(*ast.PathPattern)}
 	}
 |	PathPatternList ',' PathPattern
 	{

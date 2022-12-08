@@ -247,7 +247,11 @@ func (b *Builder) buildSelect(stmt *ast.SelectStmt) error {
 		plan = limit
 	}
 
-	b.setPlan(plan)
+	// TODO: support SELECT elements.
+	project := &LogicalProjection{}
+	project.SetChildren(plan)
+
+	b.setPlan(project)
 	return nil
 }
 

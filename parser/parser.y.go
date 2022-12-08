@@ -2979,7 +2979,7 @@ yynewstate:
 		}
 	case 220:
 		{
-			parser.yyVAL.item = yyS[yypt-0].item.(*ast.PathPattern)
+			parser.yyVAL.item = []*ast.PathPattern{yyS[yypt-0].item.(*ast.PathPattern)}
 		}
 	case 221:
 		{
