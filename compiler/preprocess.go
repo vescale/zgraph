@@ -132,7 +132,13 @@ func (p *Preprocess) checkCreateIndexStmt(stmt *ast.CreateIndexStmt) {
 		return
 	}
 
-	// TODO: check property names
+	for _, prop := range stmt.Properties {
+		property := graph.Property(prop.L)
+		if property == nil {
+			p.err = errors.Annotatef(meta.ErrPropertyNotExists, "property %s", prop.L)
+			return
+		}
+	}
 }
 
 func (p *Preprocess) checkDropGraphStmt(stmt *ast.DropGraphStmt) {

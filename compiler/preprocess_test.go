@@ -160,6 +160,7 @@ func TestPreprocess(t *testing.T) {
 		{
 			graph: "graph2",
 			query: "create index if not exists idx_name (a, b)",
+			err:   "property a: property not exists",
 		},
 		{
 			graph: "graph2",
