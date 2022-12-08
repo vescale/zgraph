@@ -50,8 +50,8 @@ var (
 // 1. For vertexSep label indexSep: it will be the vertexSep identifier.
 // 2. For edgeSep label indexSep: it will be $SrcVertexID_$DstVertexID
 
-// LabelIndexKey returns the encoded key of specified graph/label.
-func LabelIndexKey(graphID, labelID, vertexID, dstVertexID int64) []byte {
+// LabelKey returns the encoded key of specified graph/label.
+func LabelKey(graphID, labelID, vertexID, dstVertexID int64) []byte {
 	var result []byte
 	if dstVertexID == 0 {
 		result = make([]byte, 0, len(prefix)+8 /*graphID*/ +8 /*labelID*/ +8 /*vertexID*/ + +len(vertexSep))

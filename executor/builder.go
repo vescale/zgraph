@@ -16,6 +16,7 @@ package executor
 
 import (
 	"github.com/pingcap/errors"
+	"github.com/vescale/zgraph/codec"
 	"github.com/vescale/zgraph/planner"
 	"github.com/vescale/zgraph/stmtctx"
 )
@@ -74,6 +75,8 @@ func (b *Builder) buildInsert(plan *planner.Insert) Executor {
 		baseExecutor: newBaseExecutor(b.sc, plan.Schema(), plan.ID()),
 		graph:        plan.Graph,
 		insertions:   plan.Insertions,
+		encoder:      &codec.PropertyEncoder{},
+		decoder:      &codec.PropertyDecoder{},
 	}
 	return exec
 }

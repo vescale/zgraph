@@ -34,9 +34,9 @@ type DDLExec struct {
 }
 
 // Next implements the Executor interface.
-func (e *DDLExec) Next(_ context.Context, ) (Row, error) {
+func (e *DDLExec) Next(_ context.Context) (Row, error) {
 	if e.done {
-		return nil
+		return nil, nil
 	}
 	e.done = true
 
@@ -65,14 +65,14 @@ func (e *DDLExec) Next(_ context.Context, ) (Row, error) {
 		return err
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Apply the patch to catalog after the DDL changes have persistent in storage.
 	if patch != nil {
 		e.sc.Catalog().Apply(patch)
 	}
-	return nil
+	return nil, nil
 }
 
 func (e *DDLExec) createGraph(m *meta.Meta, stmt *ast.CreateGraphStmt) (*catalog.Patch, error) {

@@ -63,7 +63,7 @@ func TestSimpleExec(t *testing.T) {
 
 		err = exec.Open(ctx)
 		assert.Nil(err)
-		err = exec.Next(ctx, nil)
+		_, err = exec.Next(ctx)
 		assert.Nil(err)
 
 		if c.check != nil {

@@ -105,7 +105,7 @@ func (b *Builder) buildInsert(stmt *ast.InsertStmt) error {
 		return errors.Annotatef(meta.ErrGraphNotExists, "graph %s", intoGraph)
 	}
 
-	var insertions []*GraphInsertion
+	var insertions []*ElementInsertion
 	for _, insertion := range stmt.Insertions {
 		var labels []*catalog.Label
 		for _, lbl := range insertion.LabelsAndProperties.Labels {
@@ -125,28 +125,28 @@ func (b *Builder) buildInsert(stmt *ast.InsertStmt) error {
 				return errors.Errorf("property %s not exists", prop.PropertyAccess.PropertyName.L)
 			}
 			assignment := &expression.Assignment{
-				VarReference: &expression.Variable{Name: prop.PropertyAccess.VariableName},
-				Property:     &expression.Property{Property: propInfo},
+				VarReference: &expression.VariableRef{Name: prop.PropertyAccess.VariableName},
+				PropertyRef:  &expression.PropertyRef{Property: propInfo},
 				Expr:         prop.ValueExpression,
 			}
 			assignments = append(assignments, assignment)
 		}
-		var variable *expression.Variable
+		var variable *expression.VariableRef
 		if !insertion.VariableName.IsEmpty() {
-			variable = &expression.Variable{
+			variable = &expression.VariableRef{
 				Name: insertion.VariableName,
 			}
 		}
-		var fromRef, toRef *expression.Variable
+		var fromRef, toRef *expression.VariableRef
 		if insertion.InsertionType == ast.InsertionTypeEdge {
-			fromRef = &expression.Variable{
+			fromRef = &expression.VariableRef{
 				Name: insertion.From,
 			}
-			toRef = &expression.Variable{
+			toRef = &expression.VariableRef{
 				Name: insertion.To,
 			}
 		}
-		gi := &GraphInsertion{
+		gi := &ElementInsertion{
 			Type:             insertion.InsertionType,
 			Labels:           labels,
 			Assignments:      assignments,

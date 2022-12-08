@@ -25,18 +25,18 @@ type Insert struct {
 	baseSchemaProducer
 
 	Graph      *catalog.Graph
-	Insertions []*GraphInsertion
+	Insertions []*ElementInsertion
 }
 
-// GraphInsertion represents a graph insertion element.
-type GraphInsertion struct {
+// ElementInsertion represents a graph insertion element.
+type ElementInsertion struct {
 	Type             ast.InsertionType
-	Labels           []*catalog.Label
-	Assignments      []*expression.Assignment
-	ElementReference *expression.Variable
+	ElementReference *expression.VariableRef
 	// INSERT EDGE e BETWEEN x AND y FROM MATCH (x) , MATCH (y) WHERE id(x) = 1 AND id(y) = 2
 	// FromReference represents the source vertex of an edge.
-	FromReference *expression.Variable
+	FromReference *expression.VariableRef
 	// ToReference represents the destination vertex of an edge.
-	ToReference *expression.Variable
+	ToReference *expression.VariableRef
+	Labels      []*catalog.Label
+	Assignments []*expression.Assignment
 }

@@ -17,8 +17,11 @@ package executor
 import (
 	"context"
 
+	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/codec"
+	"github.com/vescale/zgraph/expression"
+	"github.com/vescale/zgraph/internal/logutil"
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/planner"
 	"github.com/vescale/zgraph/stmtctx"
@@ -32,8 +35,11 @@ type InsertExec struct {
 	done       bool
 	graph      *catalog.Graph
 	idRange    *stmtctx.IDRange
-	insertions []*planner.GraphInsertion
+	insertions []*planner.ElementInsertion
 	kvs        []kv.Pair
+	buffer     []byte
+	encoder    *codec.PropertyEncoder
+	decoder    *codec.PropertyDecoder
 }
 
 // Open implements the Executor interface.
@@ -80,8 +86,25 @@ func (e *InsertExec) Next(_ context.Context) (Row, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(e.kvs) == 0 {
+		return nil, nil
+	}
 
-	return nil, nil
+	// FIXME: use transaction in stmtctx.Context
+	err = kv.Txn(e.sc.Store(), func(txn kv.Transaction) error {
+		for _, pair := range e.kvs {
+			err := txn.Set(pair.Key, pair.Val)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		logutil.Errorf("Insert vertices/edges failed: %+v", e.insertions)
+	}
+
+	return nil, err
 }
 
 func (e *InsertExec) encodeInsertions() error {
@@ -96,7 +119,10 @@ func (e *InsertExec) encodeInsertions() error {
 			if len(insertion.Labels) > 0 {
 				e.encodeLabels(graphID, vertexID, 0, insertion.Labels)
 			}
-			e.encodeVertex(graphID, vertexID, insertion)
+			err = e.encodeVertex(graphID, vertexID, insertion)
+			if err != nil {
+				return err
+			}
 
 		case ast.InsertionTypeEdge:
 			// TODO: implement the edge codec.
@@ -108,19 +134,33 @@ func (e *InsertExec) encodeInsertions() error {
 
 func (e *InsertExec) encodeLabels(graphID, vertexID, dstVertexID int64, labels []*catalog.Label) {
 	for _, label := range labels {
-		key := codec.LabelIndexKey(graphID, label.Meta().ID, vertexID, dstVertexID)
+		key := codec.LabelKey(graphID, label.Meta().ID, vertexID, dstVertexID)
 		e.kvs = append(e.kvs, kv.Pair{Key: key})
 		if dstVertexID != 0 {
-			key := codec.LabelIndexKey(graphID, label.Meta().ID, dstVertexID, vertexID)
+			key := codec.LabelKey(graphID, label.Meta().ID, dstVertexID, vertexID)
 			e.kvs = append(e.kvs, kv.Pair{Key: key})
 		}
 	}
 }
 
-func (e *InsertExec) encodeVertex(graphID, vertexID int64, insertion *planner.GraphInsertion) {
-	// TODO: implement the vertex value codec.
-	//key := codec.VertexKey(graphID, vertexID)
-	//for _, assignment := range insertion.Assignments {
-	//
-	//}
+func (e *InsertExec) encodeVertex(graphID, vertexID int64, insertion *planner.ElementInsertion) error {
+	key := codec.VertexKey(graphID, vertexID)
+	var propertyIDs []uint16
+	var row Row
+	for _, assignment := range insertion.Assignments {
+		constant, ok := assignment.Expr.(*expression.Constant)
+		if !ok {
+			return errors.Errorf("unsupported expression: %T", assignment.Expr)
+		}
+		propertyIDs = append(propertyIDs, assignment.PropertyRef.Property.ID)
+		row = append(row, constant.Value)
+	}
+	ret, err := e.encoder.Encode(e.buffer, propertyIDs, row)
+	if err != nil {
+		return err
+	}
+	val := make([]byte, len(ret))
+	copy(val, ret)
+	e.kvs = append(e.kvs, kv.Pair{Key: key, Val: val})
+	return nil
 }

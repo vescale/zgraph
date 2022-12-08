@@ -62,7 +62,6 @@ func TestBuilder_BuildSimple(t *testing.T) {
 
 	cases := []struct {
 		query string
-		err   string
 	}{
 		// Catalog information refer: initCatalog
 		{

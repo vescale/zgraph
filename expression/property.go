@@ -16,21 +16,19 @@ package expression
 
 import (
 	"github.com/vescale/zgraph/parser/model"
-	"github.com/vescale/zgraph/parser/types"
 )
 
-// Property represents the accessor of vertex/edge's property.
-type Property struct {
-	RetType  types.Datum
+// PropertyRef represents the accessor of vertex/edge's property.
+type PropertyRef struct {
 	Property *model.PropertyInfo
 }
 
-func (f *Property) Clone() *Property {
+func (f *PropertyRef) Clone() *PropertyRef {
 	fc := *f
 	return &fc
 }
 
 // String implements the fmt.Stringer interface
-func (f *Property) String() string {
+func (f *PropertyRef) String() string {
 	return ""
 }

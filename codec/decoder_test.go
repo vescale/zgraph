@@ -36,6 +36,14 @@ func TestPropertyDecoder_Decode(t *testing.T) {
 				types.NewDatum(1.1),
 			},
 		},
+		{
+			propertyIDs: []uint16{2, 3, 1},
+			values: []types.Datum{
+				types.NewStringDatum("hello"),
+				types.NewDatum(1),
+				types.NewDatum(1.1),
+			},
+		},
 	}
 
 	for _, c := range cases {

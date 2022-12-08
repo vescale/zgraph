@@ -110,7 +110,12 @@ func (q *queryResultSet) Valid() bool {
 
 // Next implements the ResultSet interface.
 func (q *queryResultSet) Next(ctx context.Context) error {
-	return q.exec.Next(ctx, q.row)
+	r, err := q.exec.Next(ctx)
+	if err != nil {
+		return err
+	}
+	q.row = r
+	return nil
 }
 
 // Scan implements the ResultSet interface.
