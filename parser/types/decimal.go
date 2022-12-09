@@ -55,8 +55,8 @@ func digitsToWords(digits int) int {
 	return (digits + digitsPerWord - 1) / digitsPerWord
 }
 
-// MyDecimal represents a decimal value.
-type MyDecimal struct {
+// Decimal represents a decimal value.
+type Decimal struct {
 	digitsInt int8 // the number of *decimal* digits before the point.
 
 	digitsFrac int8 // the number of decimal digits after the point.
@@ -71,17 +71,17 @@ type MyDecimal struct {
 }
 
 // String returns the decimal string representation rounded to resultFrac.
-func (d *MyDecimal) String() string {
+func (d *Decimal) String() string {
 	tmp := *d
 	return string(tmp.ToString())
 }
 
-func (d *MyDecimal) stringSize() int {
+func (d *Decimal) stringSize() int {
 	// sign, zero integer and dot.
 	return int(d.digitsInt + d.digitsFrac + 3)
 }
 
-func (d *MyDecimal) removeLeadingZeros() (wordIdx int, digitsInt int) {
+func (d *Decimal) removeLeadingZeros() (wordIdx int, digitsInt int) {
 	digitsInt = int(d.digitsInt)
 	i := ((digitsInt - 1) % digitsPerWord) + 1
 	for digitsInt > 0 && d.wordBuf[wordIdx] == 0 {
@@ -103,7 +103,7 @@ func (d *MyDecimal) removeLeadingZeros() (wordIdx int, digitsInt int) {
 //
 //	    str       - result string
 //	    errCode   - eDecOK/eDecTruncate/eDecOverflow
-func (d *MyDecimal) ToString() (str []byte) {
+func (d *Decimal) ToString() (str []byte) {
 	str = make([]byte, d.stringSize())
 	digitsFrac := int(d.digitsFrac)
 	wordStartIdx, digitsInt := d.removeLeadingZeros()
@@ -181,7 +181,7 @@ func (d *MyDecimal) ToString() (str []byte) {
 }
 
 // FromString parses decimal from string.
-func (d *MyDecimal) FromString(str []byte) error {
+func (d *Decimal) FromString(str []byte) error {
 	for i := 0; i < len(str); i++ {
 		if !isSpace(str[i]) {
 			str = str[i:]
@@ -281,4 +281,12 @@ func (d *MyDecimal) FromString(str []byte) error {
 	}
 	d.resultFrac = d.digitsFrac
 	return err
+}
+
+func NewDecimal(s string) (*Decimal, error) {
+	d := new(Decimal)
+	if err := d.FromString([]byte(s)); err != nil {
+		return nil, err
+	}
+	return d, nil
 }

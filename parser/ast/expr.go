@@ -71,39 +71,38 @@ func (n *ValueExpr) Restore(ctx *format.RestoreCtx) error {
 	switch n.Kind() {
 	case types.KindNull:
 		ctx.WriteKeyWord("NULL")
+	case types.KindBool:
+		if n.GetBool() {
+			ctx.WriteKeyWord("TRUE")
+		} else {
+			ctx.WriteKeyWord("FALSE")
+		}
 	case types.KindInt64:
 		ctx.WritePlain(strconv.FormatInt(n.GetInt64(), 10))
 	case types.KindUint64:
 		ctx.WritePlain(strconv.FormatUint(n.GetUint64(), 10))
-	case types.KindFloat32:
-		ctx.WritePlain(strconv.FormatFloat(n.GetFloat64(), 'e', -1, 32))
 	case types.KindFloat64:
 		ctx.WritePlain(strconv.FormatFloat(n.GetFloat64(), 'e', -1, 64))
 	case types.KindString:
 		ctx.WriteString(n.GetString())
 	case types.KindBytes:
-		ctx.WriteString(n.GetString())
+		ctx.WritePlain(fmt.Sprintf("X'%X'", n.GetBytes()))
 	case types.KindDecimal:
 		ctx.WritePlain(n.GetDecimal().String())
-	case types.KindBinaryLiteral:
-		ctx.WritePlain(n.GetBinaryLiteral().ToBitLiteralString(true))
 	case types.KindDate:
 		ctx.WriteKeyWord("DATE ")
-		ctx.WriteString(n.GetDateLiteral().String())
+		ctx.WriteString(n.GetDate().String())
 	case types.KindTime:
 		ctx.WriteKeyWord("TIME ")
-		ctx.WriteString(n.GetTimeLiteral().String())
+		ctx.WriteString(n.GetTime().String())
 	case types.KindTimestamp:
 		ctx.WriteKeyWord("TIMESTAMP ")
-		ctx.WriteString(n.GetTimestampLiteral().String())
+		ctx.WriteString(n.GetTimestamp().String())
 	case types.KindInterval:
 		ctx.WriteKeyWord("INTERVAL ")
-		ctx.WriteString(n.GetIntervalLiteral().Value)
+		ctx.WriteString(n.GetInterval().StringValue())
 		ctx.WritePlain(" ")
-		ctx.WriteKeyWord(n.GetIntervalLiteral().Unit.String())
-	case types.KindInterface:
-		// TODO implement Restore function
-		return fmt.Errorf("not implemented")
+		ctx.WriteKeyWord(n.GetInterval().Field().String())
 	default:
 		return fmt.Errorf("can't format to string")
 	}
@@ -123,20 +122,14 @@ func (n *ValueExpr) Format(w io.Writer) {
 		s = "NULL"
 	case types.KindInt64:
 		s = strconv.FormatInt(n.GetInt64(), 10)
-	case types.KindUint64:
-		s = strconv.FormatUint(n.GetUint64(), 10)
-	case types.KindFloat32:
-		s = strconv.FormatFloat(n.GetFloat64(), 'e', -1, 32)
 	case types.KindFloat64:
 		s = strconv.FormatFloat(n.GetFloat64(), 'e', -1, 64)
 	case types.KindString, types.KindBytes:
 		s = strconv.Quote(n.GetString())
 	case types.KindDecimal:
 		s = n.GetDecimal().String()
-	case types.KindBinaryLiteral:
-		s = n.GetBinaryLiteral().ToBitLiteralString(true)
 	default:
-		panic("Can't format to string")
+		panic("not implemented")
 	}
 	_, _ = fmt.Fprint(w, s)
 }

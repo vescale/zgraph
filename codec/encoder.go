@@ -44,7 +44,7 @@ func (e *PropertyEncoder) Encode(buf []byte, propertyIDs []uint16, values []type
 
 func (e *PropertyEncoder) encodeDatum(value *types.Datum) error {
 	// Put the kind information first.
-	e.data = append(e.data, value.Kind())
+	e.data = append(e.data, byte(value.Kind()))
 	switch value.Kind() {
 	case types.KindInt64:
 		e.data = encodeInt(e.data, value.GetInt64())
@@ -52,7 +52,7 @@ func (e *PropertyEncoder) encodeDatum(value *types.Datum) error {
 		e.data = encodeUint(e.data, value.GetUint64())
 	case types.KindString, types.KindBytes:
 		e.data = append(e.data, value.GetBytes()...)
-	case types.KindFloat32, types.KindFloat64:
+	case types.KindFloat64:
 		e.data = EncodeFloat(e.data, value.GetFloat64())
 	default:
 		// TODO: support more types.

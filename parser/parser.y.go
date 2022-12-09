@@ -2398,7 +2398,7 @@ yynewstate:
 		}
 	case 89:
 		{
-			d, err := types.NewDateLiteral(yyS[yypt-0].ident)
+			d, err := types.ParseDate(yyS[yypt-0].ident)
 			if err != nil {
 				yylex.AppendError(err)
 				return 1
@@ -2407,7 +2407,7 @@ yynewstate:
 		}
 	case 90:
 		{
-			t, err := types.NewTimeLiteral(yyS[yypt-0].ident)
+			t, err := types.ParseTime(yyS[yypt-0].ident)
 			if err != nil {
 				yylex.AppendError(err)
 				return 1
@@ -2416,7 +2416,7 @@ yynewstate:
 		}
 	case 91:
 		{
-			t, err := types.NewTimestampLiteral(yyS[yypt-0].ident)
+			t, err := types.ParseTimestamp(yyS[yypt-0].ident)
 			if err != nil {
 				yylex.AppendError(err)
 				return 1
@@ -2425,9 +2425,10 @@ yynewstate:
 		}
 	case 92:
 		{
-			i := &types.IntervalLiteral{
-				Value: yyS[yypt-1].ident,
-				Unit:  yyS[yypt-0].item.(types.DateTimeField),
+			i, err := types.NewInterval(yyS[yypt-1].ident, yyS[yypt-0].item.(types.DateTimeField))
+			if err != nil {
+				yylex.AppendError(err)
+				return 1
 			}
 			parser.yyVAL.expr = ast.NewValueExpr(i)
 		}

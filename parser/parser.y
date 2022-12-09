@@ -779,7 +779,7 @@ BooleanLiteral:
 DateLiteral:
 	"DATE" stringLit
 	{
-		d, err := types.NewDateLiteral($2)
+		d, err := types.ParseDate($2)
 		if err != nil {
 			yylex.AppendError(err)
 			return 1
@@ -790,7 +790,7 @@ DateLiteral:
 TimeLiteral:
 	"TIME" stringLit
 	{
-		t, err := types.NewTimeLiteral($2)
+		t, err := types.ParseTime($2)
 		if err != nil {
 			yylex.AppendError(err)
 			return 1
@@ -801,7 +801,7 @@ TimeLiteral:
 TimestampLiteral:
 	"TIMESTAMP" stringLit
 	{
-		t, err := types.NewTimestampLiteral($2)
+		t, err := types.ParseTimestamp($2)
 		if err != nil {
 			yylex.AppendError(err)
 			return 1
@@ -812,9 +812,10 @@ TimestampLiteral:
 IntervalLiteral:
 	"INTERVAL" stringLit DateTimeField
 	{
-		i := &types.IntervalLiteral{
-			Value: $2,
-			Unit:  $3.(types.DateTimeField),
+		i, err := types.NewInterval($2, $3.(types.DateTimeField))
+		if err != nil {
+			yylex.AppendError(err)
+			return 1
 		}
 		$$ = ast.NewValueExpr(i)
 	}

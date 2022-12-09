@@ -58,7 +58,7 @@ func (d *PropertyDecoder) Decode(properties []*model.PropertyInfo, rowData []byt
 
 func (d *PropertyDecoder) decodeColDatum(propData []byte) (types.Datum, error) {
 	var value types.Datum
-	kind := propData[0]
+	kind := types.Kind(propData[0])
 	switch kind {
 	case types.KindInt64:
 		value.SetInt64(decodeInt(propData[1:]))
@@ -68,12 +68,6 @@ func (d *PropertyDecoder) decodeColDatum(propData []byte) (types.Datum, error) {
 		value.SetString(string(propData[1:]))
 	case types.KindBytes:
 		value.SetBytes(propData[1:])
-	case types.KindFloat32:
-		_, fVal, err := DecodeFloat(propData[1:])
-		if err != nil {
-			return value, err
-		}
-		value.SetFloat32(float32(fVal))
 	case types.KindFloat64:
 		_, fVal, err := DecodeFloat(propData[1:])
 		if err != nil {
