@@ -37,7 +37,7 @@ import (
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/parser/model"
 	"github.com/vescale/zgraph/parser/opcode"
-	"github.com/vescale/zgraph/parser/types"
+	"github.com/vescale/zgraph/types"
 )
 
 %}
@@ -1177,54 +1177,54 @@ CastSpecification:
 	{
 		$$ = &ast.CastFuncExpr{
 			Expr:     $3,
-			DataType: $5.(types.DataType),
+			FieldType: $5.(types.FieldType),
 		}
 	}
 
 DataType:
 	"STRING"
 	{
-		$$ = types.DataTypeString
+		$$ = types.FieldTypeString
 	}
 |	"BOOLEAN"
 	{
-		$$ = types.DataTypeBoolean
+		$$ = types.FieldTypeBoolean
 	}
 |	"INTEGER"
 	{
-		$$ = types.DataTypeInteger
+		$$ = types.FieldTypeInteger
 	}
 |	"FLOAT"
 	{
-		$$ = types.DataTypeFloat
+		$$ = types.FieldTypeFloat
 	}
 |	"DOUBLE"
 	{
-		$$ = types.DataTypeDouble
+		$$ = types.FieldTypeDouble
 	}
 |	"DECIMAL"
 	{
-		$$ = types.DataTypeDecimal
+		$$ = types.FieldTypeDecimal
 	}
 |	"DATE"
 	{
-		$$ = types.DataTypeDate
+		$$ = types.FieldTypeDate
 	}
 |	"TIME"
 	{
-		$$ = types.DataTypeTime
+		$$ = types.FieldTypeTime
 	}
 |	"TIME" "WITH" "TIME" "ZONE"
 	{
-		$$ = types.DataTypeTimeWithZone
+		$$ = types.FieldTypeTimeWithTimeZone
 	}
 |	"TIMESTAMP"
 	{
-		$$ = types.DataTypeTimestamp
+		$$ = types.FieldTypeTimestamp
 	}
 |	"TIMESTAMP" "WITH" "TIME" "ZONE"
 	{
-		$$ = types.DataTypeTimestampWithZone
+		$$ = types.FieldTypeTimestampWithTimeZone
 	}
 
 CaseExpression:

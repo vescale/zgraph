@@ -77,7 +77,7 @@ func (e emptyResultSet) Close() error {
 type queryResultSet struct {
 	valid  bool
 	alloc  *chunk.Allocator
-	row    executor.Row
+	row    expression.Row
 	fields []*Field
 	exec   executor.Executor
 }

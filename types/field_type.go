@@ -15,47 +15,47 @@ package types
 
 import "fmt"
 
-type DataType byte
+type FieldType uint8
 
 const (
-	DataTypeString DataType = iota
-	DataTypeBoolean
-	DataTypeInteger
-	DataTypeFloat
-	DataTypeDouble
-	DataTypeDecimal
-	DataTypeDate
-	DataTypeTime
-	DataTypeTimeWithZone
-	DataTypeTimestamp
-	DataTypeTimestampWithZone
+	FieldTypeString FieldType = iota
+	FieldTypeBoolean
+	FieldTypeInteger
+	FieldTypeFloat
+	FieldTypeDouble
+	FieldTypeDecimal
+	FieldTypeDate
+	FieldTypeTime
+	FieldTypeTimeWithTimeZone
+	FieldTypeTimestamp
+	FieldTypeTimestampWithTimeZone
 )
 
-func (d DataType) String() string {
-	switch d {
-	case DataTypeString:
+func (f FieldType) String() string {
+	switch f {
+	case FieldTypeString:
 		return "STRING"
-	case DataTypeBoolean:
+	case FieldTypeBoolean:
 		return "BOOLEAN"
-	case DataTypeInteger:
+	case FieldTypeInteger:
 		return "INTEGER"
-	case DataTypeFloat:
+	case FieldTypeFloat:
 		return "FLOAT"
-	case DataTypeDouble:
+	case FieldTypeDouble:
 		return "DOUBLE"
-	case DataTypeDecimal:
+	case FieldTypeDecimal:
 		return "DECIMAL"
-	case DataTypeDate:
+	case FieldTypeDate:
 		return "DATE"
-	case DataTypeTime:
+	case FieldTypeTime:
 		return "TIME"
-	case DataTypeTimeWithZone:
+	case FieldTypeTimeWithTimeZone:
 		return "TIME WITH TIME ZONE"
-	case DataTypeTimestamp:
+	case FieldTypeTimestamp:
 		return "TIMESTAMP"
-	case DataTypeTimestampWithZone:
+	case FieldTypeTimestampWithTimeZone:
 		return "TIMESTAMP WITH TIME ZONE"
 	default:
-		return fmt.Sprintf("UNKNOWN<%d>", d)
+		return fmt.Sprintf("UNKNOWN<%d>", f)
 	}
 }

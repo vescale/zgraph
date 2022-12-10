@@ -24,7 +24,7 @@ import (
 	"github.com/vescale/zgraph/parser/format"
 	"github.com/vescale/zgraph/parser/model"
 	"github.com/vescale/zgraph/parser/opcode"
-	"github.com/vescale/zgraph/parser/types"
+	"github.com/vescale/zgraph/types"
 )
 
 var (
@@ -633,8 +633,8 @@ type CastFuncExpr struct {
 	funcNode
 	// Expr is the expression to be converted.
 	Expr ExprNode
-	// DataType is the conversion type.
-	DataType types.DataType
+	// FieldType is the conversion type.
+	FieldType types.FieldType
 }
 
 // Restore implements Node interface.
@@ -645,7 +645,7 @@ func (n *CastFuncExpr) Restore(ctx *format.RestoreCtx) error {
 		return errors.Annotatef(err, "An error occurred while restore CastFuncExpr.Expr")
 	}
 	ctx.WriteKeyWord(" AS ")
-	ctx.WriteKeyWord(n.DataType.String())
+	ctx.WriteKeyWord(n.FieldType.String())
 	ctx.WritePlain(")")
 	return nil
 }
@@ -655,7 +655,7 @@ func (n *CastFuncExpr) Format(w io.Writer) {
 	fmt.Fprint(w, "CAST(")
 	n.Expr.Format(w)
 	fmt.Fprint(w, " AS ")
-	fmt.Fprint(w, n.DataType.String())
+	fmt.Fprint(w, n.FieldType.String())
 	fmt.Fprint(w, ")")
 }
 

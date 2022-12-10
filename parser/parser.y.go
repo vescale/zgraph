@@ -40,7 +40,7 @@ import (
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/parser/model"
 	"github.com/vescale/zgraph/parser/opcode"
-	"github.com/vescale/zgraph/parser/types"
+	"github.com/vescale/zgraph/types"
 )
 
 type yySymType struct {
@@ -2709,53 +2709,53 @@ yynewstate:
 	case 164:
 		{
 			parser.yyVAL.expr = &ast.CastFuncExpr{
-				Expr:     yyS[yypt-3].expr,
-				DataType: yyS[yypt-1].item.(types.DataType),
+				Expr:      yyS[yypt-3].expr,
+				FieldType: yyS[yypt-1].item.(types.FieldType),
 			}
 		}
 	case 165:
 		{
-			parser.yyVAL.item = types.DataTypeString
+			parser.yyVAL.item = types.FieldTypeString
 		}
 	case 166:
 		{
-			parser.yyVAL.item = types.DataTypeBoolean
+			parser.yyVAL.item = types.FieldTypeBoolean
 		}
 	case 167:
 		{
-			parser.yyVAL.item = types.DataTypeInteger
+			parser.yyVAL.item = types.FieldTypeInteger
 		}
 	case 168:
 		{
-			parser.yyVAL.item = types.DataTypeFloat
+			parser.yyVAL.item = types.FieldTypeFloat
 		}
 	case 169:
 		{
-			parser.yyVAL.item = types.DataTypeDouble
+			parser.yyVAL.item = types.FieldTypeDouble
 		}
 	case 170:
 		{
-			parser.yyVAL.item = types.DataTypeDecimal
+			parser.yyVAL.item = types.FieldTypeDecimal
 		}
 	case 171:
 		{
-			parser.yyVAL.item = types.DataTypeDate
+			parser.yyVAL.item = types.FieldTypeDate
 		}
 	case 172:
 		{
-			parser.yyVAL.item = types.DataTypeTime
+			parser.yyVAL.item = types.FieldTypeTime
 		}
 	case 173:
 		{
-			parser.yyVAL.item = types.DataTypeTimeWithZone
+			parser.yyVAL.item = types.FieldTypeTimeWithTimeZone
 		}
 	case 174:
 		{
-			parser.yyVAL.item = types.DataTypeTimestamp
+			parser.yyVAL.item = types.FieldTypeTimestamp
 		}
 	case 175:
 		{
-			parser.yyVAL.item = types.DataTypeTimestampWithZone
+			parser.yyVAL.item = types.FieldTypeTimestampWithTimeZone
 		}
 	case 178:
 		{

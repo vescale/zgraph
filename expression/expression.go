@@ -18,13 +18,21 @@ import (
 	"fmt"
 
 	"github.com/vescale/zgraph/parser/model"
+	"github.com/vescale/zgraph/types"
 )
+
+type Row []types.Datum
 
 type Expression interface {
 	fmt.Stringer
 
+	// GetType gets the type that the expression returns.
+	GetType() types.FieldType
+
 	// Clone deeply clones an expression.
 	Clone() Expression
+
+	Eval(row Row) (types.Datum, error)
 }
 
 // Assignment represents an assignment in INSERT/UPDATE statements.

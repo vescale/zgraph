@@ -22,7 +22,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/vescale/zgraph/parser/types"
+	"github.com/vescale/zgraph/types"
 )
 
 var _ = yyLexer(&Lexer{})

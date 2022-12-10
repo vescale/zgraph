@@ -19,6 +19,7 @@ import (
 
 	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/catalog"
+	"github.com/vescale/zgraph/expression"
 	"github.com/vescale/zgraph/meta"
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/parser/model"
@@ -34,7 +35,7 @@ type DDLExec struct {
 }
 
 // Next implements the Executor interface.
-func (e *DDLExec) Next(_ context.Context) (Row, error) {
+func (e *DDLExec) Next(_ context.Context) (expression.Row, error) {
 	if e.done {
 		return nil, nil
 	}

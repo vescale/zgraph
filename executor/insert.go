@@ -72,7 +72,7 @@ func (e *InsertExec) Open(_ context.Context) error {
 }
 
 // Next implements the Executor interface.
-func (e *InsertExec) Next(_ context.Context) (Row, error) {
+func (e *InsertExec) Next(_ context.Context) (expression.Row, error) {
 	if e.done {
 		return nil, nil
 	}
@@ -146,7 +146,7 @@ func (e *InsertExec) encodeLabels(graphID, vertexID, dstVertexID int64, labels [
 func (e *InsertExec) encodeVertex(graphID, vertexID int64, insertion *planner.ElementInsertion) error {
 	key := codec.VertexKey(graphID, vertexID)
 	var propertyIDs []uint16
-	var row Row
+	var row expression.Row
 	for _, assignment := range insertion.Assignments {
 		constant, ok := assignment.Expr.(*expression.Constant)
 		if !ok {

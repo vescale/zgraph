@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/vescale/zgraph/parser/types"
+	"github.com/vescale/zgraph/types"
 )
 
 func TestPropertyEncoder_Encode(t *testing.T) {

@@ -19,7 +19,7 @@ import (
 	"sort"
 
 	"github.com/pingcap/errors"
-	"github.com/vescale/zgraph/parser/types"
+	"github.com/vescale/zgraph/types"
 )
 
 // PropertyEncoder is used to encode datums into value bytes.

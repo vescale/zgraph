@@ -18,18 +18,15 @@ import (
 	"context"
 
 	"github.com/vescale/zgraph/expression"
-	"github.com/vescale/zgraph/parser/types"
 	"github.com/vescale/zgraph/stmtctx"
 )
-
-type Row []types.Datum
 
 // Executor is the physical implementation of an algebra operator.
 type Executor interface {
 	base() *baseExecutor
 	Schema() *expression.Schema
 	Open(context.Context) error
-	Next(context.Context) (Row, error)
+	Next(context.Context) (expression.Row, error)
 	Close() error
 }
 
@@ -67,7 +64,7 @@ func (e *baseExecutor) Open(ctx context.Context) error {
 }
 
 // Next fills multiple rows into a chunk.
-func (e *baseExecutor) Next(context.Context) (Row, error) {
+func (e *baseExecutor) Next(context.Context) (expression.Row, error) {
 	return nil, nil
 }
 

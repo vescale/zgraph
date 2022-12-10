@@ -14,11 +14,16 @@
 
 package expression
 
-import "github.com/vescale/zgraph/parser/types"
+import "github.com/vescale/zgraph/types"
 
 // Constant represents a literal constant.
 type Constant struct {
-	Value types.Datum
+	Value   types.Datum
+	RetType types.FieldType
+}
+
+func (c *Constant) GetType() types.FieldType {
+	return c.RetType
 }
 
 func (c *Constant) Clone() Expression {
@@ -29,4 +34,8 @@ func (c *Constant) Clone() Expression {
 // String implements the fmt.Stringer interface.
 func (c *Constant) String() string {
 	return "datum doesn't implement fmt.Stringer)"
+}
+
+func (c *Constant) Eval(row Row) (types.Datum, error) {
+	return c.Value, nil
 }
