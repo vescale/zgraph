@@ -20,8 +20,14 @@ parser: tools/bin/goyacc
 	@echo "bin/goyacc -o parser/parser.y.go"
 	@tools/bin/goyacc -o parser/parser.y.go parser/parser.y
 
+fmt:
+	tools/bin/goimports -w $(FILES)
+
+test:
+	$(GO) test -v $(PACKAGES)
+
 tools/bin/goyacc:
 	$(GO) build -o tools/bin/goyacc ./parser/goyacc/
 
-test:
-	$(GO) test -v ./...
+tools/bin/goimports:
+	cd tools && $(GO) build -o ./bin/goimports golang.org/x/tools/cmd/goimports
