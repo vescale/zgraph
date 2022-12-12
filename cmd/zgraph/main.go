@@ -15,7 +15,10 @@
 package main
 
 import (
+	"bufio"
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/vescale/zgraph"
@@ -56,5 +59,20 @@ func interact(session *session.Session) {
 	fmt.Println("Welcome to zGraph interactive command line.")
 	for {
 		// TODO: scan text and execute it.
+		reader := bufio.NewReader(os.Stdin)
+		text, err := reader.ReadString('\n')
+		// if something goes wrong, just read newline.
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		execute, err := session.Execute(context.Background(), text)
+		// is something goes wrong, just show error, and read newline.
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		// TODO: show result better
+		fmt.Println(execute)
 	}
 }
