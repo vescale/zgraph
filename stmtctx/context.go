@@ -82,11 +82,13 @@ func (sc *Context) Catalog() *catalog.Catalog {
 }
 
 // CurrentGraph returns the current chosen graph name.
-func (sc *Context) CurrentGraph() string {
+// change: 2022-12-12 11:20:04 CurrentGraph returns the current chosen catalog graph.
+func (sc *Context) CurrentGraph() *catalog.Graph {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
 
-	return sc.mu.currentGraph
+	// return sc.mu.currentGraph
+	return sc.Catalog().Graph(sc.mu.currentGraph)
 }
 
 // SetCurrentGraph changes the current graph name.
