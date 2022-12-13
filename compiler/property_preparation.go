@@ -38,7 +38,7 @@ type PropertyPreparation struct {
 func NewPropertyPreparation(sc *stmtctx.Context) *PropertyPreparation {
 	return &PropertyPreparation{
 		sc:    sc,
-		graph: sc.Catalog().Graph(sc.CurrentGraph()),
+		graph: sc.CurrentGraph(),
 	}
 }
 

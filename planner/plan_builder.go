@@ -99,10 +99,12 @@ func (b *Builder) buildInsert(stmt *ast.InsertStmt) error {
 	if !stmt.IntoGraphName.IsEmpty() {
 		intoGraph = stmt.IntoGraphName.L
 	}
+	var graph *catalog.Graph
 	if intoGraph == "" {
-		intoGraph = b.sc.CurrentGraph()
+		graph = b.sc.CurrentGraph()
+	} else {
+		graph = b.sc.Catalog().Graph(intoGraph)
 	}
-	graph := b.sc.Catalog().Graph(intoGraph)
 	if graph == nil {
 		return errors.Annotatef(meta.ErrGraphNotExists, "graph %s", intoGraph)
 	}
@@ -264,10 +266,12 @@ func (b *Builder) buildMatch(matches []*ast.MatchClause) (LogicalPlan, error) {
 	var subgraphs []*Subgraph
 	for _, m := range matches {
 		graphName := m.Graph.L
+		var graph *catalog.Graph
 		if graphName == "" {
-			graphName = b.sc.CurrentGraph()
+			graph = b.sc.CurrentGraph()
+		} else {
+			graph = b.sc.Catalog().Graph(graphName)
 		}
-		graph := b.sc.Catalog().Graph(graphName)
 		if graph == nil {
 			return nil, errors.Annotatef(meta.ErrGraphNotExists, "graph %s", graphName)
 		}
