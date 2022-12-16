@@ -1,0 +1,54 @@
+name: Check
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  fmt:
+    name: "Run fmt"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        GO_VERSION: [ "1.19" ]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.GO_VERSION }}
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-mod-${{ matrix.GO_VERSION }}-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            go-mod-${{ matrix.GO_VERSION }}
+      - run: make fmt
+  unit-tests:
+    name: "Unit Tests"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        GO_VERSION: [ "1.19" ]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.GO_VERSION }}
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-mod-${{ matrix.GO_VERSION }}-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            go-mod-${{ matrix.GO_VERSION }}
+      - run: make test

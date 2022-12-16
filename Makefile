@@ -20,7 +20,7 @@ parser: tools/bin/goyacc
 	@echo "bin/goyacc -o parser/parser.y.go"
 	@tools/bin/goyacc -o parser/parser.y.go parser/parser.y
 
-fmt:
+fmt: tools/bin/goimports
 	tools/bin/goimports -w $(FILES)
 
 test:
