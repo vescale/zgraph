@@ -145,8 +145,7 @@ func (e *DDLExec) dropGraph(m *meta.Meta, stmt *ast.DropGraphStmt) (*catalog.Pat
 }
 
 func (e *DDLExec) createLabel(m *meta.Meta, stmt *ast.CreateLabelStmt) (*catalog.Patch, error) {
-	graphName := e.sc.CurrentGraph()
-	graph := e.sc.Catalog().Graph(graphName)
+	graph := e.sc.CurrentGraph()
 	if graph == nil {
 		return nil, meta.ErrGraphNotExists
 	}
@@ -184,8 +183,7 @@ func (e *DDLExec) createLabel(m *meta.Meta, stmt *ast.CreateLabelStmt) (*catalog
 }
 
 func (e *DDLExec) dropLabel(m *meta.Meta, stmt *ast.DropLabelStmt) (*catalog.Patch, error) {
-	graphName := e.sc.CurrentGraph()
-	graph := e.sc.Catalog().Graph(graphName)
+	graph := e.sc.CurrentGraph()
 	if graph == nil {
 		return nil, meta.ErrGraphNotExists
 	}

@@ -16,6 +16,7 @@ package compiler
 
 import (
 	"github.com/pingcap/errors"
+	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/meta"
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/stmtctx"
@@ -91,12 +92,14 @@ func (p *Preprocess) checkCreateLabelStmt(stmt *ast.CreateLabelStmt) {
 	}
 
 	if !stmt.IfNotExists {
-		graphName := p.sc.CurrentGraph()
+		// An ErrGraphNotChosen are expected if users didn't choose graph via USE <graphName>
+		graphName := p.sc.CurrentGraphName()
 		if graphName == "" {
 			p.err = ErrGraphNotChosen
 			return
 		}
-
+		// change it from CurrentGraph to Catalog.Graph,  this will reduce the overhead of a lock,
+		// and since we got the name above, there is no need to use CurrentGraph
 		graph := p.sc.Catalog().Graph(graphName)
 		if graph == nil {
 			p.err = meta.ErrGraphNotExists
@@ -116,7 +119,7 @@ func (p *Preprocess) checkCreateIndexStmt(stmt *ast.CreateIndexStmt) {
 		return
 	}
 
-	graphName := p.sc.CurrentGraph()
+	graphName := p.sc.CurrentGraphName()
 	if graphName == "" {
 		p.err = ErrGraphNotChosen
 		return
@@ -152,13 +155,7 @@ func (p *Preprocess) checkDropGraphStmt(stmt *ast.DropGraphStmt) {
 }
 
 func (p *Preprocess) checkDropLabelStmt(stmt *ast.DropLabelStmt) {
-	graphName := p.sc.CurrentGraph()
-	if graphName == "" {
-		p.err = ErrGraphNotChosen
-		return
-	}
-
-	graph := p.sc.Catalog().Graph(graphName)
+	graph := p.sc.CurrentGraph()
 	if graph == nil && !stmt.IfExists {
 		p.err = meta.ErrGraphNotExists
 		return
@@ -171,13 +168,7 @@ func (p *Preprocess) checkDropLabelStmt(stmt *ast.DropLabelStmt) {
 }
 
 func (p *Preprocess) checkDropIndexStmt(stmt *ast.DropIndexStmt) {
-	graphName := p.sc.CurrentGraph()
-	if graphName == "" {
-		p.err = ErrGraphNotChosen
-		return
-	}
-
-	graph := p.sc.Catalog().Graph(graphName)
+	graph := p.sc.CurrentGraph()
 	if graph == nil && !stmt.IfExists {
 		p.err = meta.ErrGraphNotExists
 		return
@@ -223,10 +214,12 @@ func (p *Preprocess) checkInsertStmt(stmt *ast.InsertStmt) {
 		}
 		intoGraph = stmt.IntoGraphName.L
 	}
+	var graph *catalog.Graph
 	if intoGraph == "" {
-		intoGraph = p.sc.CurrentGraph()
+		graph = p.sc.CurrentGraph()
+	} else {
+		graph = p.sc.Catalog().Graph(intoGraph)
 	}
-	graph := p.sc.Catalog().Graph(intoGraph)
 	if graph == nil {
 		p.err = errors.Annotatef(meta.ErrGraphNotExists, "graph: %s", intoGraph)
 		return

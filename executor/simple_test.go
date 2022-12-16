@@ -45,7 +45,7 @@ func TestSimpleExec(t *testing.T) {
 		{
 			query: "use g1",
 			check: func(s *session.Session) {
-				assert.Equal("g1", s.StmtContext().CurrentGraph())
+				assert.Equal("g1", s.StmtContext().CurrentGraphName())
 			},
 		},
 	}
