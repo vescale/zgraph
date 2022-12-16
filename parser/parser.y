@@ -1177,54 +1177,54 @@ CastSpecification:
 	{
 		$$ = &ast.CastFuncExpr{
 			Expr:     $3,
-			FieldType: $5.(types.FieldType),
+			DataType: $5.(ast.DataType),
 		}
 	}
 
 DataType:
 	"STRING"
 	{
-		$$ = types.FieldTypeString
+		$$ = ast.DataTypeString
 	}
 |	"BOOLEAN"
 	{
-		$$ = types.FieldTypeBoolean
+		$$ = ast.DataTypeBoolean
 	}
 |	"INTEGER"
 	{
-		$$ = types.FieldTypeInteger
+		$$ = ast.DataTypeInteger
 	}
 |	"FLOAT"
 	{
-		$$ = types.FieldTypeFloat
+		$$ = ast.DataTypeFloat
 	}
 |	"DOUBLE"
 	{
-		$$ = types.FieldTypeDouble
+		$$ = ast.DataTypeDouble
 	}
 |	"DECIMAL"
 	{
-		$$ = types.FieldTypeDecimal
+		$$ = ast.DataTypeDecimal
 	}
 |	"DATE"
 	{
-		$$ = types.FieldTypeDate
+		$$ = ast.DataTypeDate
 	}
 |	"TIME"
 	{
-		$$ = types.FieldTypeTime
+		$$ = ast.DataTypeTime
 	}
 |	"TIME" "WITH" "TIME" "ZONE"
 	{
-		$$ = types.FieldTypeTimeWithTimeZone
+		$$ = ast.DataTypeTimeWithTimeZone
 	}
 |	"TIMESTAMP"
 	{
-		$$ = types.FieldTypeTimestamp
+		$$ = ast.DataTypeTimestamp
 	}
 |	"TIMESTAMP" "WITH" "TIME" "ZONE"
 	{
-		$$ = types.FieldTypeTimestampWithTimeZone
+		$$ = ast.DataTypeTimestampWithTimeZone
 	}
 
 CaseExpression:

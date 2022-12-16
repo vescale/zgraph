@@ -263,7 +263,7 @@ type ExpAsVar struct {
 
 func (e *ExpAsVar) Restore(ctx *format.RestoreCtx) error {
 	if err := e.Expr.Restore(ctx); err != nil {
-		return errors.Annotate(err, "An error occurred while restore ByItem.Expr")
+		return errors.Annotate(err, "An error occurred while restore ByItem.Exprs")
 	}
 	if e.AsName.O != "" {
 		ctx.WriteKeyWord(" AS ")
@@ -298,7 +298,7 @@ type ByItem struct {
 // Restore implements Node interface.
 func (n *ByItem) Restore(ctx *format.RestoreCtx) error {
 	if err := n.Expr.Restore(ctx); err != nil {
-		return errors.Annotate(err, "An error occurred while restore ByItem.Expr")
+		return errors.Annotate(err, "An error occurred while restore ByItem.Exprs")
 	}
 	if n.Desc {
 		ctx.WriteKeyWord(" DESC")
@@ -369,7 +369,7 @@ type HavingClause struct {
 func (n *HavingClause) Restore(ctx *format.RestoreCtx) error {
 	ctx.WriteKeyWord("HAVING ")
 	if err := n.Expr.Restore(ctx); err != nil {
-		return errors.Annotate(err, "An error occurred while restore HavingClause.Expr")
+		return errors.Annotate(err, "An error occurred while restore HavingClause.Exprs")
 	}
 	return nil
 }

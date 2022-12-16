@@ -2709,53 +2709,53 @@ yynewstate:
 	case 164:
 		{
 			parser.yyVAL.expr = &ast.CastFuncExpr{
-				Expr:      yyS[yypt-3].expr,
-				FieldType: yyS[yypt-1].item.(types.FieldType),
+				Expr:     yyS[yypt-3].expr,
+				DataType: yyS[yypt-1].item.(ast.DataType),
 			}
 		}
 	case 165:
 		{
-			parser.yyVAL.item = types.FieldTypeString
+			parser.yyVAL.item = ast.DataTypeString
 		}
 	case 166:
 		{
-			parser.yyVAL.item = types.FieldTypeBoolean
+			parser.yyVAL.item = ast.DataTypeBoolean
 		}
 	case 167:
 		{
-			parser.yyVAL.item = types.FieldTypeInteger
+			parser.yyVAL.item = ast.DataTypeInteger
 		}
 	case 168:
 		{
-			parser.yyVAL.item = types.FieldTypeFloat
+			parser.yyVAL.item = ast.DataTypeFloat
 		}
 	case 169:
 		{
-			parser.yyVAL.item = types.FieldTypeDouble
+			parser.yyVAL.item = ast.DataTypeDouble
 		}
 	case 170:
 		{
-			parser.yyVAL.item = types.FieldTypeDecimal
+			parser.yyVAL.item = ast.DataTypeDecimal
 		}
 	case 171:
 		{
-			parser.yyVAL.item = types.FieldTypeDate
+			parser.yyVAL.item = ast.DataTypeDate
 		}
 	case 172:
 		{
-			parser.yyVAL.item = types.FieldTypeTime
+			parser.yyVAL.item = ast.DataTypeTime
 		}
 	case 173:
 		{
-			parser.yyVAL.item = types.FieldTypeTimeWithTimeZone
+			parser.yyVAL.item = ast.DataTypeTimeWithTimeZone
 		}
 	case 174:
 		{
-			parser.yyVAL.item = types.FieldTypeTimestamp
+			parser.yyVAL.item = ast.DataTypeTimestamp
 		}
 	case 175:
 		{
-			parser.yyVAL.item = types.FieldTypeTimestampWithTimeZone
+			parser.yyVAL.item = ast.DataTypeTimestampWithTimeZone
 		}
 	case 178:
 		{

@@ -16,6 +16,9 @@ package session
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/vescale/zgraph/types"
 
 	"github.com/vescale/zgraph/executor"
 	"github.com/vescale/zgraph/expression"
@@ -83,7 +86,9 @@ type queryResultSet struct {
 }
 
 func retrieveFields(schema *expression.Schema) []*Field {
-	return nil
+	// TODO: fill filed information
+	fields := make([]*Field, len(schema.Fields))
+	return fields
 }
 
 func newQueryResultSet(exec executor.Executor) ResultSet {
@@ -119,13 +124,35 @@ func (q *queryResultSet) Next(ctx context.Context) error {
 }
 
 // Scan implements the ResultSet interface.
-func (q *queryResultSet) Scan(fields ...interface{}) error {
-	//TODO implement me
-	panic("implement me")
+func (q *queryResultSet) Scan(fields ...any) error {
+	if len(fields) != len(q.fields) {
+		return ErrFieldCountNotMatch
+	}
+	for i, field := range fields {
+		if err := assignField(field, q.row[i]); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Close implements the ResultSet interface.
 func (q *queryResultSet) Close() error {
 	q.valid = false
 	return q.exec.Close()
+}
+
+func assignField(field any, datum types.Datum) error {
+	switch f := field.(type) {
+	case *string:
+		*f = datum.GetString()
+	case *int:
+		*f = int(datum.GetInt64())
+	case *int64:
+		*f = datum.GetInt64()
+	default:
+		// TODO: support more types
+		return fmt.Errorf("unsupported field type: %T", field)
+	}
+	return nil
 }

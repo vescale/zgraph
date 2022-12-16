@@ -98,6 +98,10 @@ func (d *Datum) Kind() Kind {
 	return d.k
 }
 
+func (d *Datum) IsNull() bool {
+	return d.k == KindNull
+}
+
 // SetNull sets datum to nil.
 func (d *Datum) SetNull() {
 	d.k = KindNull

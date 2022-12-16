@@ -249,11 +249,20 @@ func (b *Builder) buildSelect(stmt *ast.SelectStmt) error {
 		plan = limit
 	}
 
-	// TODO: support SELECT elements.
-	project := &LogicalProjection{}
-	project.SetChildren(plan)
+	// TODO: support DISTINCT and wildcard.
+	proj := &LogicalProjection{}
+	for _, elem := range stmt.Select.Elements {
+		// TODO: resolve reference.
+		expr, err := RewriteExpr(elem.ExpAsVar.Expr)
+		if err != nil {
+			return err
+		}
+		proj.Exprs = append(proj.Exprs, expr)
+	}
+	proj.SetSchema(expression.NewSchema(&expression.PropertyRef{}))
+	proj.SetChildren(plan)
 
-	b.setPlan(project)
+	b.setPlan(proj)
 	return nil
 }
 

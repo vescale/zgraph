@@ -97,7 +97,7 @@ func (s *Session) Execute(ctx context.Context, query string) (ResultSet, error) 
 		return emptyResultSet{}, nil
 	}
 	if len(stmts) > 1 {
-		return nil, ErrMultipleStatementsNotSuported
+		return nil, ErrMultipleStatementsNotSupported
 	}
 
 	return s.executeStmt(ctx, stmts[0])

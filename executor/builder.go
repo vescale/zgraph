@@ -43,6 +43,10 @@ func (b *Builder) Build(plan planner.Plan) Executor {
 		return b.buildSimple(p)
 	case *planner.Insert:
 		return b.buildInsert(p)
+	case *planner.PhysicalMatch:
+		return b.buildMatch(p)
+	case *planner.PhysicalProjection:
+		return b.buildProjection(p)
 	default:
 		b.err = errors.Errorf("unknown plan: %T", plan)
 	}
@@ -77,6 +81,21 @@ func (b *Builder) buildInsert(plan *planner.Insert) Executor {
 		insertions:   plan.Insertions,
 		encoder:      &codec.PropertyEncoder{},
 		decoder:      &codec.PropertyDecoder{},
+	}
+	return exec
+}
+
+func (b *Builder) buildMatch(plan *planner.PhysicalMatch) Executor {
+	exec := &MatchExec{
+		baseExecutor: newBaseExecutor(b.sc, plan.Schema(), plan.ID()),
+	}
+	return exec
+}
+
+func (b *Builder) buildProjection(plan *planner.PhysicalProjection) Executor {
+	exec := &ProjectionExec{
+		baseExecutor: newBaseExecutor(b.sc, plan.Schema(), plan.ID()),
+		exprs:        plan.Exprs,
 	}
 	return exec
 }

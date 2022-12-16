@@ -51,6 +51,16 @@ func (er *exprRewriter) Leave(n ast.Node) (node ast.Node, ok bool) {
 	switch expr := n.(type) {
 	case *ast.ValueExpr:
 		er.ctxStackAppend(&expression.Constant{Value: expr.Datum})
+	case *ast.BinaryOperationExpr:
+		lExpr := er.ctxStack[er.ctxStackLen()-2]
+		rExpr := er.ctxStack[er.ctxStackLen()-1]
+		er.ctxStackPop(2)
+		opFunc, err := expression.NewFunction(expr.Op.String(), lExpr, rExpr)
+		if err != nil {
+			er.err = err
+			return n, true
+		}
+		er.ctxStackAppend(opFunc)
 	}
 
 	return n, true

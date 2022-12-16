@@ -90,8 +90,8 @@ func (sc *Context) CurrentGraph() *catalog.Graph {
 	return sc.Catalog().Graph(sc.mu.currentGraph)
 }
 
-// SetCurrentGraph changes the current graph name.
-func (sc *Context) SetCurrentGraph(graphName string) {
+// SetCurrentGraphName changes the current graph name.
+func (sc *Context) SetCurrentGraphName(graphName string) {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 

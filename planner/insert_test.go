@@ -128,7 +128,7 @@ func TestBuilder_BuildInsert(t *testing.T) {
 		assert.Nil(err, c.query)
 
 		sc := stmtctx.New(db.Store(), db.Catalog())
-		sc.SetCurrentGraph("graph101")
+		sc.SetCurrentGraphName("graph101")
 
 		builder := planner.NewBuilder(sc)
 		plan, err := builder.Build(stmt)

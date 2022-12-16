@@ -18,12 +18,7 @@ import "github.com/vescale/zgraph/types"
 
 // Constant represents a literal constant.
 type Constant struct {
-	Value   types.Datum
-	RetType types.FieldType
-}
-
-func (c *Constant) GetType() types.FieldType {
-	return c.RetType
+	Value types.Datum
 }
 
 func (c *Constant) Clone() Expression {
@@ -38,4 +33,40 @@ func (c *Constant) String() string {
 
 func (c *Constant) Eval(row Row) (types.Datum, error) {
 	return c.Value, nil
+}
+
+func (c *Constant) EvalInt(row Row) (Nullable[int64], error) {
+	var result Nullable[int64]
+	if c.Value.IsNull() {
+		return result, nil
+	}
+	result.Set(c.Value.GetInt64())
+	return result, nil
+}
+
+func (c *Constant) EvalReal(row Row) (Nullable[float64], error) {
+	var result Nullable[float64]
+	if c.Value.IsNull() {
+		return result, nil
+	}
+	result.Set(c.Value.GetFloat64())
+	return result, nil
+}
+
+func (c *Constant) EvalString(row Row) (Nullable[string], error) {
+	var result Nullable[string]
+	if c.Value.IsNull() {
+		return result, nil
+	}
+	result.Set(c.Value.GetString())
+	return result, nil
+}
+
+func (c *Constant) EvalDecimal(row Row) (Nullable[*types.Decimal], error) {
+	var result Nullable[*types.Decimal]
+	if c.Value.IsNull() {
+		return result, nil
+	}
+	result.Set(c.Value.GetDecimal())
+	return result, nil
 }

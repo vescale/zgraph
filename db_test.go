@@ -54,7 +54,7 @@ func TestDB_DDL(t *testing.T) {
 	graph := catalog.Graph("graph101")
 	assert.NotNil(graph)
 
-	session.StmtContext().SetCurrentGraph("graph101")
+	session.StmtContext().SetCurrentGraphName("graph101")
 	err = runQuery(ctx, session, "CREATE LABEL label01")
 	assert.Nil(err)
 	assert.NotNil(graph.Label("label01"))
@@ -75,10 +75,10 @@ func TestDB_DDL(t *testing.T) {
 	assert.Nil(catalog.Graph("graph101"))
 }
 
-func TestDB_DML(t *testing.T) {
+func TestDB_Insert(t *testing.T) {
 	assert := assert.New(t)
 	db, err := Open(t.TempDir(), nil)
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.NotNil(db)
 	defer db.Close()
 
@@ -100,4 +100,27 @@ func TestDB_DML(t *testing.T) {
 
 	err = runQuery(ctx, session, "INSERT INTO graph101 VERTEX x LABELS (label01) PROPERTIES (x.name = 'a')")
 	assert.Nil(err)
+}
+
+func TestDB_Select(t *testing.T) {
+	assert := assert.New(t)
+	db, err := Open(t.TempDir(), nil)
+	assert.NoError(err)
+	assert.NotNil(db)
+	defer db.Close()
+
+	session := db.NewSession()
+	assert.NotNil(session)
+
+	ctx := context.Background()
+	assert.NoError(runQuery(ctx, session, "CREATE GRAPH graph101"))
+	assert.NoError(runQuery(ctx, session, "USE graph101"))
+
+	rs, err := session.Execute(ctx, "SELECT 3 + 2 * 5 + 12 * 13 FROM MATCH (n)")
+	assert.NoError(err)
+	assert.NoError(rs.Next(ctx))
+
+	var result int64
+	assert.NoError(rs.Scan(&result))
+	assert.Equal(int64(169), result)
 }

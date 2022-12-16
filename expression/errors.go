@@ -12,29 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package planner
+package expression
 
-// Optimize optimizes the plan to the optimal physical plan.
-func Optimize(plan LogicalPlan) Plan {
-	switch p := plan.(type) {
-	case *LogicalMatch:
-		return optimizeMatch(p)
-	case *LogicalProjection:
-		return optimizeProjection(p)
-	}
-	return nil
-}
+import "errors"
 
-func optimizeMatch(plan *LogicalMatch) Plan {
-	result := &PhysicalMatch{}
-	result.SetSchema(plan.Schema())
-	result.Subgraphs = plan.Subgraphs
-	return result
-}
-
-func optimizeProjection(plan *LogicalProjection) Plan {
-	result := &PhysicalProjection{}
-	result.SetSchema(plan.Schema())
-	result.Exprs = plan.Exprs
-	return result
-}
+var (
+	ErrFunctionNotExists       = errors.New("function not exists")
+	ErrIncorrectParameterCount = errors.New("incorrect parameter count")
+)

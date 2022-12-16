@@ -79,7 +79,7 @@ func TestDDLExec_Next(t *testing.T) {
 		s := db.NewSession()
 		sc := s.StmtContext()
 		if c.graph != "" {
-			sc.SetCurrentGraph(c.graph)
+			sc.SetCurrentGraphName(c.graph)
 		}
 		exec, err := compiler.Compile(sc, stmt)
 		assert.Nil(err)

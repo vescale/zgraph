@@ -12,29 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package planner
+package executor
 
-// Optimize optimizes the plan to the optimal physical plan.
-func Optimize(plan LogicalPlan) Plan {
-	switch p := plan.(type) {
-	case *LogicalMatch:
-		return optimizeMatch(p)
-	case *LogicalProjection:
-		return optimizeProjection(p)
+import (
+	"context"
+
+	"github.com/vescale/zgraph/expression"
+)
+
+// ProjectionExec represents a projection executor.
+type ProjectionExec struct {
+	baseExecutor
+
+	exprs []expression.Expression
+}
+
+func (p *ProjectionExec) Next(_ context.Context) (expression.Row, error) {
+	row := make(expression.Row, len(p.exprs))
+	for i, expr := range p.exprs {
+		val, err := expr.Eval(expression.Row{})
+		if err != nil {
+			return nil, err
+		}
+		row[i] = val
 	}
-	return nil
-}
-
-func optimizeMatch(plan *LogicalMatch) Plan {
-	result := &PhysicalMatch{}
-	result.SetSchema(plan.Schema())
-	result.Subgraphs = plan.Subgraphs
-	return result
-}
-
-func optimizeProjection(plan *LogicalProjection) Plan {
-	result := &PhysicalProjection{}
-	result.SetSchema(plan.Schema())
-	result.Exprs = plan.Exprs
-	return result
+	return row, nil
 }

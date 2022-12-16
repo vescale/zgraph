@@ -77,7 +77,7 @@ func TestCompile(t *testing.T) {
 	}
 
 	sc := db.NewSession().StmtContext()
-	sc.SetCurrentGraph("g1")
+	sc.SetCurrentGraphName("g1")
 
 	for _, c := range cases {
 		parser := parser.New()

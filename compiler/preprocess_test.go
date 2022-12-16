@@ -220,7 +220,7 @@ func TestPreprocess(t *testing.T) {
 		stmt, err := parser.ParseOneStmt(c.query)
 		assert.Nil(err)
 		sc := stmtctx.New(db.Store(), db.Catalog())
-		sc.SetCurrentGraph(c.graph)
+		sc.SetCurrentGraphName(c.graph)
 
 		prep := compiler.NewPreprocess(sc)
 		stmt.Accept(prep)

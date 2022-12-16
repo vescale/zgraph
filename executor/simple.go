@@ -51,7 +51,7 @@ func (e *SimpleExec) execUse(stmt *ast.UseStmt) error {
 		return meta.ErrGraphNotExists
 	}
 
-	e.sc.SetCurrentGraph(stmt.GraphName.L)
+	e.sc.SetCurrentGraphName(stmt.GraphName.L)
 
 	return nil
 }

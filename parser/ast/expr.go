@@ -337,7 +337,7 @@ type ParenthesesExpr struct {
 func (n *ParenthesesExpr) Restore(ctx *format.RestoreCtx) error {
 	ctx.WritePlain("(")
 	if err := n.Expr.Restore(ctx); err != nil {
-		return errors.Annotate(err, "An error occurred when restore ParenthesesExpr.Expr")
+		return errors.Annotate(err, "An error occurred when restore ParenthesesExpr.Exprs")
 	}
 	ctx.WritePlain(")")
 	return nil
@@ -629,12 +629,57 @@ func (n *IsNullExpr) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+type DataType uint8
+
+const (
+	DataTypeString DataType = iota
+	DataTypeBoolean
+	DataTypeInteger
+	DataTypeFloat
+	DataTypeDouble
+	DataTypeDecimal
+	DataTypeDate
+	DataTypeTime
+	DataTypeTimeWithTimeZone
+	DataTypeTimestamp
+	DataTypeTimestampWithTimeZone
+)
+
+func (f DataType) String() string {
+	switch f {
+	case DataTypeString:
+		return "STRING"
+	case DataTypeBoolean:
+		return "BOOLEAN"
+	case DataTypeInteger:
+		return "INTEGER"
+	case DataTypeFloat:
+		return "FLOAT"
+	case DataTypeDouble:
+		return "DOUBLE"
+	case DataTypeDecimal:
+		return "DECIMAL"
+	case DataTypeDate:
+		return "DATE"
+	case DataTypeTime:
+		return "TIME"
+	case DataTypeTimeWithTimeZone:
+		return "TIME WITH TIME ZONE"
+	case DataTypeTimestamp:
+		return "TIMESTAMP"
+	case DataTypeTimestampWithTimeZone:
+		return "TIMESTAMP WITH TIME ZONE"
+	default:
+		return fmt.Sprintf("UNKNOWN<%d>", f)
+	}
+}
+
 type CastFuncExpr struct {
 	funcNode
 	// Expr is the expression to be converted.
 	Expr ExprNode
-	// FieldType is the conversion type.
-	FieldType types.FieldType
+	// DataType is the conversion type.
+	DataType DataType
 }
 
 // Restore implements Node interface.
@@ -642,10 +687,10 @@ func (n *CastFuncExpr) Restore(ctx *format.RestoreCtx) error {
 	ctx.WriteKeyWord("CAST")
 	ctx.WritePlain("(")
 	if err := n.Expr.Restore(ctx); err != nil {
-		return errors.Annotatef(err, "An error occurred while restore CastFuncExpr.Expr")
+		return errors.Annotatef(err, "An error occurred while restore CastFuncExpr.Exprs")
 	}
 	ctx.WriteKeyWord(" AS ")
-	ctx.WriteKeyWord(n.FieldType.String())
+	ctx.WriteKeyWord(n.DataType.String())
 	ctx.WritePlain(")")
 	return nil
 }
@@ -655,7 +700,7 @@ func (n *CastFuncExpr) Format(w io.Writer) {
 	fmt.Fprint(w, "CAST(")
 	n.Expr.Format(w)
 	fmt.Fprint(w, " AS ")
-	fmt.Fprint(w, n.FieldType.String())
+	fmt.Fprint(w, n.DataType.String())
 	fmt.Fprint(w, ")")
 }
 
@@ -778,7 +823,7 @@ type WhenClause struct {
 func (n *WhenClause) Restore(ctx *format.RestoreCtx) error {
 	ctx.WriteKeyWord("WHEN ")
 	if err := n.Expr.Restore(ctx); err != nil {
-		return errors.Annotate(err, "An error occurred while restore WhenClauses.Expr")
+		return errors.Annotate(err, "An error occurred while restore WhenClauses.Exprs")
 	}
 	ctx.WriteKeyWord(" THEN ")
 	if err := n.Result.Restore(ctx); err != nil {
@@ -823,7 +868,7 @@ type PatternInExpr struct {
 // Restore implements Node interface.
 func (n *PatternInExpr) Restore(ctx *format.RestoreCtx) error {
 	if err := n.Expr.Restore(ctx); err != nil {
-		return errors.Annotate(err, "An error occurred while restore PatternInExpr.Expr")
+		return errors.Annotate(err, "An error occurred while restore PatternInExpr.Exprs")
 	}
 	if n.Not {
 		ctx.WriteKeyWord(" NOT IN ")
