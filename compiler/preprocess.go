@@ -92,7 +92,15 @@ func (p *Preprocess) checkCreateLabelStmt(stmt *ast.CreateLabelStmt) {
 	}
 
 	if !stmt.IfNotExists {
-		graph := p.sc.CurrentGraph()
+		// An ErrGraphNotChosen are expected if users didn't choose graph via USE <graphName>
+		graphName := p.sc.CurrentGraphName()
+		if graphName == "" {
+			p.err = ErrGraphNotChosen
+			return
+		}
+		// change it from CurrentGraph to Catalog.Graph,  this will reduce the overhead of a lock,
+		// and since we got the name above, there is no need to use CurrentGraph
+		graph := p.sc.Catalog().Graph(graphName)
 		if graph == nil {
 			p.err = meta.ErrGraphNotExists
 			return
@@ -111,7 +119,13 @@ func (p *Preprocess) checkCreateIndexStmt(stmt *ast.CreateIndexStmt) {
 		return
 	}
 
-	graph := p.sc.CurrentGraph()
+	graphName := p.sc.CurrentGraphName()
+	if graphName == "" {
+		p.err = ErrGraphNotChosen
+		return
+	}
+
+	graph := p.sc.Catalog().Graph(graphName)
 	if graph == nil {
 		p.err = meta.ErrGraphNotExists
 		return
