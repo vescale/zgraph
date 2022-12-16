@@ -62,7 +62,7 @@ const (
 )
 
 // ExprNode is a node that can be evaluated.
-// Name of implementations should have 'Exprs' suffix.
+// Name of implementations should have 'Expr' suffix.
 type ExprNode interface {
 	// Node is embedded in ExprNode.
 	Node

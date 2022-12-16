@@ -337,7 +337,7 @@ type ParenthesesExpr struct {
 func (n *ParenthesesExpr) Restore(ctx *format.RestoreCtx) error {
 	ctx.WritePlain("(")
 	if err := n.Expr.Restore(ctx); err != nil {
-		return errors.Annotate(err, "An error occurred when restore ParenthesesExpr.Exprs")
+		return errors.Annotate(err, "An error occurred when restore ParenthesesExpr.Expr")
 	}
 	ctx.WritePlain(")")
 	return nil
@@ -687,7 +687,7 @@ func (n *CastFuncExpr) Restore(ctx *format.RestoreCtx) error {
 	ctx.WriteKeyWord("CAST")
 	ctx.WritePlain("(")
 	if err := n.Expr.Restore(ctx); err != nil {
-		return errors.Annotatef(err, "An error occurred while restore CastFuncExpr.Exprs")
+		return errors.Annotatef(err, "An error occurred while restore CastFuncExpr.Expr")
 	}
 	ctx.WriteKeyWord(" AS ")
 	ctx.WriteKeyWord(n.DataType.String())
@@ -823,7 +823,7 @@ type WhenClause struct {
 func (n *WhenClause) Restore(ctx *format.RestoreCtx) error {
 	ctx.WriteKeyWord("WHEN ")
 	if err := n.Expr.Restore(ctx); err != nil {
-		return errors.Annotate(err, "An error occurred while restore WhenClauses.Exprs")
+		return errors.Annotate(err, "An error occurred while restore WhenClauses.Expr")
 	}
 	ctx.WriteKeyWord(" THEN ")
 	if err := n.Result.Restore(ctx); err != nil {
@@ -868,7 +868,7 @@ type PatternInExpr struct {
 // Restore implements Node interface.
 func (n *PatternInExpr) Restore(ctx *format.RestoreCtx) error {
 	if err := n.Expr.Restore(ctx); err != nil {
-		return errors.Annotate(err, "An error occurred while restore PatternInExpr.Exprs")
+		return errors.Annotate(err, "An error occurred while restore PatternInExpr.Expr")
 	}
 	if n.Not {
 		ctx.WriteKeyWord(" NOT IN ")
