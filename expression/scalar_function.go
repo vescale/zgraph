@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/vescale/zgraph/stmtctx"
+
 	"github.com/vescale/zgraph/types"
 )
 
@@ -45,34 +47,8 @@ func (sf *ScalarFunction) Clone() Expression {
 	panic("implement me")
 }
 
-func (sf *ScalarFunction) Eval(row Row) (types.Datum, error) {
-	var d types.Datum
-
-	// TODO: infer the type of the function and call the corresponding eval function.
-	val, err := sf.EvalInt(row)
-	if err != nil || val.IsNull() {
-		d.SetNull()
-		return d, err
-	}
-	d.SetInt64(val.Get())
-
-	return d, nil
-}
-
-func (sf *ScalarFunction) EvalInt(row Row) (Nullable[int64], error) {
-	return sf.function.evalInt(row)
-}
-
-func (sf *ScalarFunction) EvalReal(row Row) (Nullable[float64], error) {
-	return sf.function.evalReal(row)
-}
-
-func (sf *ScalarFunction) EvalString(row Row) (Nullable[string], error) {
-	return sf.function.evalString(row)
-}
-
-func (sf *ScalarFunction) EvalDecimal(row Row) (Nullable[*types.Decimal], error) {
-	return sf.function.evalDecimal(row)
+func (sf *ScalarFunction) Eval(ctx *stmtctx.Context, row Row) (types.Datum, error) {
+	return sf.function.eval(ctx, row)
 }
 
 func NewFunction(funcName string, args ...Expression) (Expression, error) {

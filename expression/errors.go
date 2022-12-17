@@ -19,4 +19,7 @@ import "errors"
 var (
 	ErrFunctionNotExists       = errors.New("function not exists")
 	ErrIncorrectParameterCount = errors.New("incorrect parameter count")
+	ErrInvalidOp               = errors.New("invalid operation")
+	ErrOverflow                = errors.New("overflow")
+	ErrDivByZero               = errors.New("division by zero")
 )

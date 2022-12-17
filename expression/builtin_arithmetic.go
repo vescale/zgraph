@@ -14,6 +14,11 @@
 
 package expression
 
+import (
+	"github.com/vescale/zgraph/stmtctx"
+	"github.com/vescale/zgraph/types"
+)
+
 var (
 	_ functionClass = &arithmeticPlusFunctionClass{}
 	_ functionClass = &arithmeticMinusFunctionClass{}
@@ -22,21 +27,10 @@ var (
 )
 
 var (
-	_ builtinFunc = &builtinArithmeticPlusIntSig{}
-	_ builtinFunc = &builtinArithmeticPlusRealSig{}
-	_ builtinFunc = &builtinArithmeticPlusDecimalSig{}
-
-	_ builtinFunc = &builtinArithmeticMinusIntSig{}
-	_ builtinFunc = &builtinArithmeticMinusRealSig{}
-	_ builtinFunc = &builtinArithmeticMinusDecimalSig{}
-
-	_ builtinFunc = &builtinArithmeticMultiplyIntSig{}
-	_ builtinFunc = &builtinArithmeticMultiplyRealSig{}
-	_ builtinFunc = &builtinArithmeticMultiplyDecimalSig{}
-
-	_ builtinFunc = &builtinArithmeticDivideIntSig{}
-	_ builtinFunc = &builtinArithmeticDivideRealSig{}
-	_ builtinFunc = &builtinArithmeticDivideDecimalSig{}
+	_ builtinFunc = &builtinArithmeticPlusSig{}
+	_ builtinFunc = &builtinArithmeticMinusSig{}
+	_ builtinFunc = &builtinArithmeticMultiplySig{}
+	_ builtinFunc = &builtinArithmeticDivideSig{}
 )
 
 type arithmeticPlusFunctionClass struct {
@@ -47,49 +41,57 @@ func (c *arithmeticPlusFunctionClass) getFunction(args []Expression) (builtinFun
 	if err := c.verifyArgs(args); err != nil {
 		return nil, err
 	}
-	// TODO: type infer
-	sig := &builtinArithmeticPlusIntSig{newBaseBuiltinFunc(args)}
+	sig := &builtinArithmeticPlusSig{newBaseBuiltinFunc(args)}
 	return sig, nil
 }
 
-type builtinArithmeticPlusIntSig struct {
+type builtinArithmeticPlusSig struct {
 	baseBuiltinFunc
 }
 
-func (s *builtinArithmeticPlusIntSig) evalInt(row Row) (Nullable[int64], error) {
-	var result Nullable[int64]
-	a, err := s.args[0].EvalInt(row)
-	if a.IsNull() || err != nil {
-		return result, err
+func (s *builtinArithmeticPlusSig) eval(ctx *stmtctx.Context, row Row) (types.Datum, error) {
+	a, err := s.args[0].Eval(ctx, row)
+	if err != nil || a.IsNull() {
+		return types.Datum{}, err
 	}
-	b, err := s.args[1].EvalInt(row)
-	if b.IsNull() || err != nil {
-		return result, err
+	b, err := s.args[1].Eval(ctx, row)
+	if err != nil || b.IsNull() {
+		return types.Datum{}, err
 	}
-	result.Set(a.Get() + b.Get())
-	return result, nil
+	return computePlus(a, b)
 }
 
-type builtinArithmeticPlusRealSig struct {
-	baseBuiltinFunc
+func computePlus(a, b types.Datum) (types.Datum, error) {
+	f, ok := datumPlusFuncs[types.NewKindPair(a.Kind(), b.Kind())]
+	if !ok {
+		return types.Datum{}, ErrInvalidOp
+	}
+	return f(a, b)
 }
 
-func (s *builtinArithmeticPlusRealSig) evalReal(row Row) (Nullable[float64], error) {
-	var result Nullable[float64]
-	a, err := s.args[0].EvalReal(row)
-	if a.IsNull() || err != nil {
-		return result, err
-	}
-	b, err := s.args[1].EvalReal(row)
-	if b.IsNull() || err != nil {
-		return result, err
-	}
-	result.Set(a.Get() + b.Get())
-	return result, nil
-}
+type datumPlusFunc func(a, b types.Datum) (types.Datum, error)
 
-type builtinArithmeticPlusDecimalSig struct {
-	baseBuiltinFunc
+var datumPlusFuncs = map[types.KindPair]datumPlusFunc{
+	{types.KindInt64, types.KindInt64}: func(a, b types.Datum) (types.Datum, error) {
+		var d types.Datum
+		d.SetInt64(a.GetInt64() + b.GetInt64())
+		return d, nil
+	},
+	{types.KindInt64, types.KindUint64}: func(a, b types.Datum) (types.Datum, error) {
+		var d types.Datum
+		d.SetInt64(a.GetInt64() + int64(b.GetUint64()))
+		return d, nil
+	},
+	{types.KindUint64, types.KindInt64}: func(a, b types.Datum) (types.Datum, error) {
+		var d types.Datum
+		d.SetInt64(int64(a.GetUint64()) + b.GetInt64())
+		return d, nil
+	},
+	{types.KindUint64, types.KindUint64}: func(a, b types.Datum) (types.Datum, error) {
+		var d types.Datum
+		d.SetUint64(a.GetUint64() + b.GetUint64())
+		return d, nil
+	},
 }
 
 type arithmeticMinusFunctionClass struct {
@@ -100,35 +102,57 @@ func (c *arithmeticMinusFunctionClass) getFunction(args []Expression) (builtinFu
 	if err := c.verifyArgs(args); err != nil {
 		return nil, err
 	}
-	// TODO: type infer
-	sig := &builtinArithmeticMinusIntSig{newBaseBuiltinFunc(args)}
+	sig := &builtinArithmeticMinusSig{newBaseBuiltinFunc(args)}
 	return sig, nil
 }
 
-type builtinArithmeticMinusIntSig struct {
+type builtinArithmeticMinusSig struct {
 	baseBuiltinFunc
 }
 
-func (s *builtinArithmeticMinusIntSig) evalInt(row Row) (Nullable[int64], error) {
-	var result Nullable[int64]
-	a, err := s.args[0].EvalInt(row)
-	if a.IsNull() || err != nil {
-		return result, err
+func (s *builtinArithmeticMinusSig) eval(ctx *stmtctx.Context, row Row) (types.Datum, error) {
+	a, err := s.args[0].Eval(ctx, row)
+	if err != nil {
+		return types.Datum{}, err
 	}
-	b, err := s.args[1].EvalInt(row)
-	if b.IsNull() || err != nil {
-		return result, err
+	b, err := s.args[1].Eval(ctx, row)
+	if err != nil {
+		return types.Datum{}, err
 	}
-	result.Set(a.Get() - b.Get())
-	return result, nil
+	return computeMinus(a, b)
 }
 
-type builtinArithmeticMinusRealSig struct {
-	baseBuiltinFunc
+func computeMinus(a, b types.Datum) (types.Datum, error) {
+	f, ok := datumMinusFuncs[types.NewKindPair(a.Kind(), b.Kind())]
+	if !ok {
+		return types.Datum{}, ErrInvalidOp
+	}
+	return f(a, b)
 }
 
-type builtinArithmeticMinusDecimalSig struct {
-	baseBuiltinFunc
+type datumMinusFunc func(a, b types.Datum) (types.Datum, error)
+
+var datumMinusFuncs = map[types.KindPair]datumMinusFunc{
+	{types.KindInt64, types.KindInt64}: func(a, b types.Datum) (types.Datum, error) {
+		var d types.Datum
+		d.SetInt64(a.GetInt64() - b.GetInt64())
+		return d, nil
+	},
+	{types.KindInt64, types.KindUint64}: func(a, b types.Datum) (types.Datum, error) {
+		var d types.Datum
+		d.SetInt64(a.GetInt64() - int64(b.GetUint64()))
+		return d, nil
+	},
+	{types.KindUint64, types.KindInt64}: func(a, b types.Datum) (types.Datum, error) {
+		var d types.Datum
+		d.SetInt64(int64(a.GetUint64()) - b.GetInt64())
+		return d, nil
+	},
+	{types.KindUint64, types.KindUint64}: func(a, b types.Datum) (types.Datum, error) {
+		var d types.Datum
+		d.SetUint64(a.GetUint64() - b.GetUint64())
+		return d, nil
+	},
 }
 
 type arithmeticMultiplyFunctionClass struct {
@@ -139,35 +163,57 @@ func (c *arithmeticMultiplyFunctionClass) getFunction(args []Expression) (builti
 	if err := c.verifyArgs(args); err != nil {
 		return nil, err
 	}
-	// TODO: type infer
-	sig := &builtinArithmeticMultiplyIntSig{newBaseBuiltinFunc(args)}
+	sig := &builtinArithmeticMultiplySig{newBaseBuiltinFunc(args)}
 	return sig, nil
 }
 
-type builtinArithmeticMultiplyIntSig struct {
+type builtinArithmeticMultiplySig struct {
 	baseBuiltinFunc
 }
 
-func (s *builtinArithmeticMultiplyIntSig) evalInt(row Row) (Nullable[int64], error) {
-	var result Nullable[int64]
-	a, err := s.args[0].EvalInt(row)
-	if a.IsNull() || err != nil {
-		return result, err
+func (s *builtinArithmeticMultiplySig) eval(ctx *stmtctx.Context, row Row) (types.Datum, error) {
+	a, err := s.args[0].Eval(ctx, row)
+	if err != nil {
+		return types.Datum{}, err
 	}
-	b, err := s.args[1].EvalInt(row)
-	if b.IsNull() || err != nil {
-		return result, err
+	b, err := s.args[1].Eval(ctx, row)
+	if err != nil {
+		return types.Datum{}, err
 	}
-	result.Set(a.Get() * b.Get())
-	return result, nil
+	return computeMultiply(a, b)
 }
 
-type builtinArithmeticMultiplyRealSig struct {
-	baseBuiltinFunc
+func computeMultiply(a, b types.Datum) (types.Datum, error) {
+	f, ok := datumMultiplyFuncs[types.NewKindPair(a.Kind(), b.Kind())]
+	if !ok {
+		return types.Datum{}, ErrInvalidOp
+	}
+	return f(a, b)
 }
 
-type builtinArithmeticMultiplyDecimalSig struct {
-	baseBuiltinFunc
+type datumMultiplyFunc func(a, b types.Datum) (types.Datum, error)
+
+var datumMultiplyFuncs = map[types.KindPair]datumMultiplyFunc{
+	{types.KindInt64, types.KindInt64}: func(a, b types.Datum) (types.Datum, error) {
+		var d types.Datum
+		d.SetInt64(a.GetInt64() * b.GetInt64())
+		return d, nil
+	},
+	{types.KindInt64, types.KindUint64}: func(a, b types.Datum) (types.Datum, error) {
+		var d types.Datum
+		d.SetInt64(a.GetInt64() * int64(b.GetUint64()))
+		return d, nil
+	},
+	{types.KindUint64, types.KindInt64}: func(a, b types.Datum) (types.Datum, error) {
+		var d types.Datum
+		d.SetInt64(int64(a.GetUint64()) * b.GetInt64())
+		return d, nil
+	},
+	{types.KindUint64, types.KindUint64}: func(a, b types.Datum) (types.Datum, error) {
+		var d types.Datum
+		d.SetUint64(a.GetUint64() * b.GetUint64())
+		return d, nil
+	},
 }
 
 type arithmeticDivideFunctionClass struct {
@@ -178,33 +224,55 @@ func (c *arithmeticDivideFunctionClass) getFunction(args []Expression) (builtinF
 	if err := c.verifyArgs(args); err != nil {
 		return nil, err
 	}
-	// TODO: type infer
-	sig := &builtinArithmeticDivideIntSig{newBaseBuiltinFunc(args)}
+	sig := &builtinArithmeticDivideSig{newBaseBuiltinFunc(args)}
 	return sig, nil
 }
 
-type builtinArithmeticDivideIntSig struct {
+type builtinArithmeticDivideSig struct {
 	baseBuiltinFunc
 }
 
-func (s *builtinArithmeticDivideIntSig) evalInt(row Row) (Nullable[int64], error) {
-	var result Nullable[int64]
-	a, err := s.args[0].EvalInt(row)
-	if a.IsNull() || err != nil {
-		return result, err
+func (s *builtinArithmeticDivideSig) eval(ctx *stmtctx.Context, row Row) (types.Datum, error) {
+	a, err := s.args[0].Eval(ctx, row)
+	if err != nil {
+		return types.Datum{}, err
 	}
-	b, err := s.args[1].EvalInt(row)
-	if b.IsNull() || err != nil {
-		return result, err
+	b, err := s.args[1].Eval(ctx, row)
+	if err != nil {
+		return types.Datum{}, err
 	}
-	result.Set(a.Get() / b.Get())
-	return result, nil
+	return computeDivide(a, b)
 }
 
-type builtinArithmeticDivideRealSig struct {
-	baseBuiltinFunc
+func computeDivide(a, b types.Datum) (types.Datum, error) {
+	f, ok := datumDivideFuncs[types.NewKindPair(a.Kind(), b.Kind())]
+	if !ok {
+		return types.Datum{}, ErrInvalidOp
+	}
+	return f(a, b)
 }
 
-type builtinArithmeticDivideDecimalSig struct {
-	baseBuiltinFunc
+type datumDivideFunc func(a, b types.Datum) (types.Datum, error)
+
+var datumDivideFuncs = map[types.KindPair]datumDivideFunc{
+	{types.KindInt64, types.KindInt64}: func(a, b types.Datum) (types.Datum, error) {
+		var d types.Datum
+		d.SetInt64(a.GetInt64() / b.GetInt64())
+		return d, nil
+	},
+	{types.KindInt64, types.KindUint64}: func(a, b types.Datum) (types.Datum, error) {
+		var d types.Datum
+		d.SetInt64(a.GetInt64() / int64(b.GetUint64()))
+		return d, nil
+	},
+	{types.KindUint64, types.KindInt64}: func(a, b types.Datum) (types.Datum, error) {
+		var d types.Datum
+		d.SetInt64(int64(a.GetUint64()) / b.GetInt64())
+		return d, nil
+	},
+	{types.KindUint64, types.KindUint64}: func(a, b types.Datum) (types.Datum, error) {
+		var d types.Datum
+		d.SetUint64(a.GetUint64() / b.GetUint64())
+		return d, nil
+	},
 }

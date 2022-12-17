@@ -36,6 +36,15 @@ const (
 	KindInterval  Kind = 11
 )
 
+type KindPair struct {
+	First  Kind
+	Second Kind
+}
+
+func NewKindPair(first, second Kind) KindPair {
+	return KindPair{First: first, Second: second}
+}
+
 type Datum struct {
 	k Kind     // datum kind
 	i int64    // i can hold integer types, time, date, timestamp, interval

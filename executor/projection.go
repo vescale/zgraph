@@ -27,10 +27,10 @@ type ProjectionExec struct {
 	exprs []expression.Expression
 }
 
-func (p *ProjectionExec) Next(_ context.Context) (expression.Row, error) {
+func (p *ProjectionExec) Next(ctx context.Context) (expression.Row, error) {
 	row := make(expression.Row, len(p.exprs))
 	for i, expr := range p.exprs {
-		val, err := expr.Eval(expression.Row{})
+		val, err := expr.Eval(nil, expression.Row{})
 		if err != nil {
 			return nil, err
 		}

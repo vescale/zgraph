@@ -17,17 +17,15 @@ package expression
 import (
 	"errors"
 
-	"github.com/vescale/zgraph/parser/opcode"
+	"github.com/vescale/zgraph/stmtctx"
 
+	"github.com/vescale/zgraph/parser/opcode"
 	"github.com/vescale/zgraph/types"
 )
 
 type builtinFunc interface {
 	getArgs() []Expression
-	evalInt(row Row) (Nullable[int64], error)
-	evalReal(row Row) (Nullable[float64], error)
-	evalString(row Row) (Nullable[string], error)
-	evalDecimal(row Row) (Nullable[*types.Decimal], error)
+	eval(ctx *stmtctx.Context, row Row) (types.Datum, error)
 }
 
 type functionClass interface {
@@ -59,20 +57,8 @@ func (b *baseBuiltinFunc) getArgs() []Expression {
 	return b.args
 }
 
-func (b *baseBuiltinFunc) evalInt(row Row) (Nullable[int64], error) {
-	return Nullable[int64]{}, errors.New("baseBuiltinFunc.evalInt() not implemented")
-}
-
-func (b *baseBuiltinFunc) evalReal(row Row) (Nullable[float64], error) {
-	return Nullable[float64]{}, errors.New("baseBuiltinFunc.evalReal() not implemented")
-}
-
-func (b *baseBuiltinFunc) evalString(row Row) (Nullable[string], error) {
-	return Nullable[string]{}, errors.New("baseBuiltinFunc.evalString() not implemented")
-}
-
-func (b *baseBuiltinFunc) evalDecimal(row Row) (Nullable[*types.Decimal], error) {
-	return Nullable[*types.Decimal]{}, errors.New("baseBuiltinFunc.evalDecimal() not implemented")
+func (b *baseBuiltinFunc) eval(ctx *stmtctx.Context, row Row) (types.Datum, error) {
+	return types.Datum{}, errors.New("baseBuiltinFunc.eval() is not implemented")
 }
 
 // baseFunctionClass will be contained in every struct that implement functionClass interface.
