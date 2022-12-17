@@ -271,55 +271,17 @@ func (b *Builder) buildMatch(matches []*ast.MatchClause) (LogicalPlan, error) {
 		return &LogicalDual{}, nil
 	}
 
-	// NOTE: Only support `SELECT x.name FROM MATCH (x)` for now.
-	var subgraphs []*Subgraph
-	for _, m := range matches {
-		graphName := m.Graph.L
-		var graph *catalog.Graph
-		if graphName == "" {
-			graph = b.sc.CurrentGraph()
-		} else {
-			graph = b.sc.Catalog().Graph(graphName)
-		}
-		if graph == nil {
-			return nil, errors.Annotatef(meta.ErrGraphNotExists, "graph %s", graphName)
-		}
-		var paths []*PathPattern
-		for _, p := range m.Paths {
-			var vertices []*VertexRef
-			for _, v := range p.Vertices {
-				var labels []*catalog.Label
-				for _, l := range v.Variable.Labels {
-					label := graph.Label(l.L)
-					if label == nil {
-						return nil, errors.Annotatef(meta.ErrLabelNotExists, "label %s", l.L)
-					}
-					labels = append(labels, label)
-				}
-				vertexRef := &VertexRef{
-					Name:   v.Variable.Name,
-					Labels: labels,
-				}
-				vertices = append(vertices, vertexRef)
-			}
-			path := &PathPattern{
-				Tp:       p.Tp,
-				TopK:     p.TopK,
-				Vertices: vertices,
-				// TODO: connections
-			}
-			paths = append(paths, path)
-		}
-		subgraph := &Subgraph{
-			Graph: graph,
-			Paths: paths,
-		}
-		subgraphs = append(subgraphs, subgraph)
+	sgb := NewSubgraphBuilder(b.sc.CurrentGraph())
+	for _, match := range matches {
+		sgb.AddPathPatterns(match.Paths...)
+	}
+	sg, err := sgb.Build()
+	if err != nil {
+		return nil, err
 	}
 
 	plan := &LogicalMatch{
-		Subgraphs: subgraphs,
+		Subgraph: sg,
 	}
-
 	return plan, nil
 }

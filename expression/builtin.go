@@ -17,9 +17,8 @@ package expression
 import (
 	"errors"
 
-	"github.com/vescale/zgraph/stmtctx"
-
 	"github.com/vescale/zgraph/parser/opcode"
+	"github.com/vescale/zgraph/stmtctx"
 	"github.com/vescale/zgraph/types"
 )
 

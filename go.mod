@@ -13,7 +13,7 @@ require (
 	github.com/stretchr/testify v1.8.1
 	github.com/twmb/murmur3 v1.1.6
 	go.uber.org/atomic v1.7.0
-	golang.org/x/exp v0.0.0-20221114191408-850992195362
+	golang.org/x/exp v0.0.0-20221215174704-0915cd710c24
 	modernc.org/parser v1.0.3
 	modernc.org/y v1.0.4
 )

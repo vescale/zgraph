@@ -28,7 +28,7 @@ func Optimize(plan LogicalPlan) Plan {
 func optimizeMatch(plan *LogicalMatch) Plan {
 	result := &PhysicalMatch{}
 	result.SetSchema(plan.Schema())
-	result.Subgraphs = plan.Subgraphs
+	result.Subgraph = plan.Subgraph
 	return result
 }
 

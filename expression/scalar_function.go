@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/vescale/zgraph/stmtctx"
-
 	"github.com/vescale/zgraph/types"
 )
 

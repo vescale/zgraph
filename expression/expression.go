@@ -17,9 +17,8 @@ package expression
 import (
 	"fmt"
 
-	"github.com/vescale/zgraph/stmtctx"
-
 	"github.com/vescale/zgraph/parser/model"
+	"github.com/vescale/zgraph/stmtctx"
 	"github.com/vescale/zgraph/types"
 )
 

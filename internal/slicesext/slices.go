@@ -12,29 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package executor
+package slicesext
 
 import (
-	"context"
-
-	"github.com/vescale/zgraph/expression"
+	"golang.org/x/exp/slices"
 )
 
-// ProjectionExec represents a projection executor.
-type ProjectionExec struct {
-	baseExecutor
-
-	exprs []expression.Expression
+func ContainsFunc[S ~[]E, E any](s S, f func(E) bool) bool {
+	return slices.IndexFunc(s, f) >= 0
 }
 
-func (p *ProjectionExec) Next(ctx context.Context) (expression.Row, error) {
-	row := make(expression.Row, len(p.exprs))
-	for i, expr := range p.exprs {
-		val, err := expr.Eval(p.sc, expression.Row{})
-		if err != nil {
-			return nil, err
+func FilterFunc[S ~[]E, E any](s S, f func(E) bool) S {
+	n := 0
+	for i, v := range s {
+		if f(v) {
+			s[n] = s[i]
+			n++
 		}
-		row[i] = val
 	}
-	return row, nil
+	return s[:n]
+}
+
+func FindFunc[S ~[]E, E any](s S, f func(E) bool) (e E, ok bool) {
+	for _, v := range s {
+		if f(v) {
+			return v, true
+		}
+	}
+	return
 }
