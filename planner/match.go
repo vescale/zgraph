@@ -336,7 +336,7 @@ func (s *SubgraphBuilder) buildSimplePath(astConn ast.VertexPairConnection) (Ver
 		})
 		return edge, nil
 	case *ast.ReachabilityPathExpr:
-		conn, err := s.buildConnectionWithCpe(x.AnonymousName, x.Labels)
+		conn, err := s.buildConnWithCpe(x.AnonymousName, x.Labels)
 		if err != nil {
 			return nil, err
 		}
@@ -370,7 +370,7 @@ func (s *SubgraphBuilder) buildVariableLengthPath(
 	varName := x.Edge.Variable.Name
 	labels := x.Edge.Variable.Labels
 
-	conn, err := s.buildConnectionWithCpe(varName, labels)
+	conn, err := s.buildConnWithCpe(varName, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -446,9 +446,9 @@ func (s *SubgraphBuilder) buildVariableLengthPath(
 	return vlp, nil
 }
 
-// buildConnectionWithCpe builds a single connection with a CPE. If label and CPE have the same name, the CPE will be used.
+// buildConnWithCpe builds a single connection with a CPE. If label and CPE have the same name, the CPE will be used.
 // Currently, reference multiple CPEs or mix CPEs with normal labels is not supported.
-func (s *SubgraphBuilder) buildConnectionWithCpe(varName model.CIStr, labelOrCpeNames []model.CIStr) (VertexPairConnection, error) {
+func (s *SubgraphBuilder) buildConnWithCpe(varName model.CIStr, labelOrCpeNames []model.CIStr) (VertexPairConnection, error) {
 	edge := &Edge{}
 	edge.SetName(varName)
 	if len(labelOrCpeNames) == 0 {

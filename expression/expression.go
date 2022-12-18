@@ -40,9 +40,9 @@ type Expression interface {
 // INSERT VERTEX x LABELS ( Male ) PROPERTIES ( x.age = 22 )
 // UPDATE x SET ( x.age = 42 ) FROM MATCH (x:Person) WHERE x.name = 'John'
 type Assignment struct {
-	VarReference *VariableRef
-	PropertyRef  *PropertyRef
-	Expr         Expression
+	VariableRef *VariableRef
+	PropertyRef *PropertyRef
+	Expr        Expression
 }
 
 // VariableRef represents a variable referenced by other scope.

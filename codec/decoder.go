@@ -74,6 +74,8 @@ func (d *PropertyDecoder) decodeColDatum(propData []byte) (types.Datum, error) {
 			return value, err
 		}
 		value.SetFloat64(fVal)
+	case types.KindDate:
+		value.SetDate(decodeDate(propData[1:]))
 	default:
 		// TODO: support more types
 		return value, errors.Errorf("unknown type %d", kind)
@@ -105,4 +107,9 @@ func decodeUint(val []byte) uint64 {
 	default:
 		return binary.LittleEndian.Uint64(val)
 	}
+}
+
+func decodeDate(val []byte) types.Date {
+	ct := types.CoreTime(decodeInt(val))
+	return types.NewDate(ct)
 }

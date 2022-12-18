@@ -264,24 +264,4 @@ func (p *Preprocess) checkInsertStmt(stmt *ast.InsertStmt) {
 	}
 }
 
-// FIXME: remove all limitations.
-func (p *Preprocess) checkSelectStmt(stmt *ast.SelectStmt) {
-	matches := stmt.From.Matches
-
-	if len(matches) != 1 {
-		p.err = errors.New("oops! unsupported multiple match clauses currently")
-		return
-	}
-
-	match := matches[0]
-	if len(match.Paths) != 1 {
-		p.err = errors.New("oops! unsupported multiple path patterns currently")
-		return
-	}
-
-	path := match.Paths[0]
-	if len(path.Vertices) != 1 {
-		p.err = errors.New("oops! only support SELECT x.name FROM MATCH (x) for now")
-		return
-	}
-}
+func (p *Preprocess) checkSelectStmt(_ *ast.SelectStmt) {}

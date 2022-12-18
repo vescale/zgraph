@@ -18,34 +18,43 @@ import "strings"
 
 // Schema stands for the row schema information get from input.
 type Schema struct {
-	Fields []*PropertyRef
+	Columns []*Column
 }
 
 // NewSchema returns a schema made by its parameter.
-func NewSchema(fields ...*PropertyRef) *Schema {
-	return &Schema{Fields: fields}
+func NewSchema(columns ...*Column) *Schema {
+	return &Schema{Columns: columns}
 }
 
 // Len returns the number of columns in schema.
 func (s *Schema) Len() int {
-	return len(s.Fields)
+	return len(s.Columns)
 }
 
 // Clone copies the total schema.
 func (s *Schema) Clone() *Schema {
-	fields := make([]*PropertyRef, 0, s.Len())
-	for _, field := range s.Fields {
-		fields = append(fields, field.Clone())
+	columns := make([]*Column, 0, s.Len())
+	for _, col := range s.Columns {
+		columns = append(columns, col.Clone().(*Column))
 	}
-	schema := NewSchema(fields...)
+	schema := NewSchema(columns...)
 	return schema
 }
 
 // String implements fmt.Stringer interface.
 func (s *Schema) String() string {
-	colStrs := make([]string, 0, len(s.Fields))
-	for _, col := range s.Fields {
+	colStrs := make([]string, 0, len(s.Columns))
+	for _, col := range s.Columns {
 		colStrs = append(colStrs, col.String())
 	}
-	return "Fields: [" + strings.Join(colStrs, ",") + "]"
+	return "Columns: [" + strings.Join(colStrs, ",") + "]"
+}
+
+func (s *Schema) ColumnIndex(col *Column) int {
+	for i, c := range s.Columns {
+		if c.ID == col.ID {
+			return i
+		}
+	}
+	return -1
 }

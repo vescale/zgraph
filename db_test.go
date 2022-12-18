@@ -16,111 +16,124 @@ package zgraph
 
 import (
 	"context"
+	"sort"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vescale/zgraph/session"
 )
 
 func TestOpen(t *testing.T) {
-	assert := assert.New(t)
 	db, err := Open(t.TempDir(), nil)
-	assert.Nil(err)
-	assert.NotNil(db)
+	require.NoError(t, err)
+	require.NotNil(t, db)
 }
 
-func runQuery(ctx context.Context, session *session.Session, query string) error {
-	rs, err := session.Execute(ctx, query)
-	if err != nil {
-		return err
+type TestKit struct {
+	t    *testing.T
+	sess *session.Session
+}
+
+func NewTestKit(t *testing.T, sess *session.Session) *TestKit {
+	return &TestKit{
+		t:    t,
+		sess: sess,
 	}
-	return rs.Next(ctx)
+}
+
+func (tk *TestKit) MustExec(ctx context.Context, query string) {
+	rs, err := tk.sess.Execute(ctx, query)
+	require.NoError(tk.t, err)
+	require.NoError(tk.t, rs.Next(ctx))
 }
 
 func TestDB_DDL(t *testing.T) {
-	assert := assert.New(t)
 	db, err := Open(t.TempDir(), nil)
-	assert.Nil(err)
-	assert.NotNil(db)
+	require.NoError(t, err)
+	require.NotNil(t, db)
 	defer db.Close()
 
 	catalog := db.Catalog()
-	session := db.NewSession()
-	assert.NotNil(session)
+	sess := db.NewSession()
+	require.NotNil(t, sess)
+
+	tk := NewTestKit(t, sess)
 
 	ctx := context.Background()
-	err = runQuery(ctx, session, "CREATE GRAPH graph101")
-	assert.Nil(err)
+	tk.MustExec(ctx, "CREATE GRAPH graph101")
+	require.NoError(t, err)
 	graph := catalog.Graph("graph101")
-	assert.NotNil(graph)
+	require.NotNil(t, graph)
 
-	session.StmtContext().SetCurrentGraphName("graph101")
-	err = runQuery(ctx, session, "CREATE LABEL label01")
-	assert.Nil(err)
-	assert.NotNil(graph.Label("label01"))
+	sess.StmtContext().SetCurrentGraphName("graph101")
+	tk.MustExec(ctx, "CREATE LABEL label01")
+	require.NoError(t, err)
+	require.NotNil(t, graph.Label("label01"))
 
-	err = runQuery(ctx, session, "CREATE LABEL IF NOT EXISTS label01")
-	assert.Nil(err)
+	tk.MustExec(ctx, "CREATE LABEL IF NOT EXISTS label01")
+	require.NoError(t, err)
 
-	err = runQuery(ctx, session, "DROP LABEL label01")
-	assert.Nil(err)
-	assert.Nil(graph.Label("label01"))
+	tk.MustExec(ctx, "DROP LABEL label01")
+	require.NoError(t, err)
+	require.Nil(t, graph.Label("label01"))
 
-	err = runQuery(ctx, session, "DROP LABEL IF EXISTS label01")
-	assert.Nil(err)
-	assert.Nil(graph.Label("label01"))
+	tk.MustExec(ctx, "DROP LABEL IF EXISTS label01")
+	require.NoError(t, err)
+	require.Nil(t, graph.Label("label01"))
 
-	err = runQuery(ctx, session, "DROP GRAPH graph101")
-	assert.Nil(err)
-	assert.Nil(catalog.Graph("graph101"))
-}
-
-func TestDB_Insert(t *testing.T) {
-	assert := assert.New(t)
-	db, err := Open(t.TempDir(), nil)
-	assert.NoError(err)
-	assert.NotNil(db)
-	defer db.Close()
-
-	session := db.NewSession()
-	assert.NotNil(session)
-
-	// Preparation
-	preparations := []string{
-		"CREATE GRAPH graph101",
-		"USE graph101",
-		"CREATE LABEL label01",
-	}
-
-	ctx := context.Background()
-	for _, query := range preparations {
-		err = runQuery(ctx, session, query)
-		assert.Nil(err)
-	}
-
-	err = runQuery(ctx, session, "INSERT INTO graph101 VERTEX x LABELS (label01) PROPERTIES (x.name = 'a')")
-	assert.Nil(err)
+	tk.MustExec(ctx, "DROP GRAPH graph101")
+	require.NoError(t, err)
+	require.Nil(t, catalog.Graph("graph101"))
 }
 
 func TestDB_Select(t *testing.T) {
-	assert := assert.New(t)
+	t.Skip()
+
 	db, err := Open(t.TempDir(), nil)
-	assert.NoError(err)
-	assert.NotNil(db)
+	require.NoError(t, err)
+	require.NotNil(t, db)
 	defer db.Close()
 
-	session := db.NewSession()
-	assert.NotNil(session)
+	sess := db.NewSession()
+	require.NotNil(t, sess)
+	tk := NewTestKit(t, sess)
 
 	ctx := context.Background()
-	assert.NoError(runQuery(ctx, session, "CREATE GRAPH graph101"))
-	assert.NoError(runQuery(ctx, session, "USE graph101"))
+	tk.MustExec(ctx, "CREATE GRAPH student_network")
+	tk.MustExec(ctx, "USE student_network")
+	tk.MustExec(ctx, "CREATE LABEL Person")
+	tk.MustExec(ctx, "CREATE LABEL University")
+	tk.MustExec(ctx, "CREATE LABEL knows")
+	tk.MustExec(ctx, "CREATE LABEL studentOf")
 
-	rs, err := session.Execute(ctx, "SELECT 3 + 2 * 5 + 12 * 13 FROM MATCH (n)")
-	assert.NoError(err)
-	assert.NoError(rs.Next(ctx))
+	// A simple example in https://pgql-lang.org/spec/1.5/#edge-patterns.
+	tk.MustExec(ctx, `INSERT VERTEX x LABELS (Person) PROPERTIES (x.name = 'Kathrine', x.dob = DATE '1994-01-15')`)
+	tk.MustExec(ctx, `INSERT VERTEX x LABELS (Person) PROPERTIES (x.name = 'Riya', x.dob = DATE '1995-03-20')`)
+	tk.MustExec(ctx, `INSERT VERTEX x LABELS (Person) PROPERTIES (x.name = 'Lee', x.dob = DATE '1996-01-20')`)
+	tk.MustExec(ctx, `INSERT VERTEX x LABELS (University) PROPERTIES (x.name = 'UC Berkeley')`)
+	tk.MustExec(ctx, `INSERT EDGE e BETWEEN x AND y LABELS ( knows ) FROM MATCH (x), MATCH (y) WHERE x.name = 'Kathrine' AND y.name = 'Lee'`)
+	tk.MustExec(ctx, `INSERT EDGE e BETWEEN x AND y LABELS ( knows ) FROM MATCH (x), MATCH (y) WHERE x.name = 'Kathrine' AND y.name = 'Riya'`)
+	tk.MustExec(ctx, `INSERT EDGE e BETWEEN x AND y LABELS ( knows ) FROM MATCH (x), MATCH (y) WHERE x.name = 'Lee' AND y.name = 'Kathrine'`)
+	tk.MustExec(ctx, `INSERT EDGE e BETWEEN x AND y LABELS ( studentOf ) FROM MATCH (x), MATCH (y) WHERE x.name = 'Kathrine' AND y.name = 'UC Berkeley'`)
+	tk.MustExec(ctx, `INSERT EDGE e BETWEEN x AND y LABELS ( studentOf ) FROM MATCH (x), MATCH (y) WHERE x.name = 'Lee' AND y.name = 'UC Berkeley'`)
+	tk.MustExec(ctx, `INSERT EDGE e BETWEEN x AND y LABELS ( studentOf ) FROM MATCH (x), MATCH (y) WHERE x.name = 'Riya' AND y.name = 'UC Berkeley'`)
 
-	var result int64
-	assert.NoError(rs.Scan(&result))
-	assert.Equal(int64(169), result)
+	rs, err := sess.Execute(ctx, `SELECT a.name AS a, b.name AS b FROM MATCH (a:Person) -[e:knows]-> (b:Person)`)
+	require.NoError(t, err)
+	require.Len(t, rs.Fields(), 2)
+
+	var knows [][2]string
+	for {
+		require.NoError(t, rs.Next(ctx))
+		if !rs.Valid() {
+			break
+		}
+		var a, b string
+		require.NoError(t, rs.Scan(&a, &b))
+	}
+	sort.Slice(knows, func(i, j int) bool {
+		return knows[i][0] < knows[j][0] || knows[i][1] < knows[j][1]
+	})
+	require.Len(t, knows, 3)
+	require.Equal(t, [][2]string{{"Kathrine", "Lee"}, {"Kathrine", "Riya"}, {"Lee", "Kathrine"}}, knows)
 }

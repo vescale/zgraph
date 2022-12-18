@@ -133,9 +133,9 @@ func (b *Builder) buildInsert(stmt *ast.InsertStmt) error {
 				return err
 			}
 			assignment := &expression.Assignment{
-				VarReference: &expression.VariableRef{Name: prop.PropertyAccess.VariableName},
-				PropertyRef:  &expression.PropertyRef{Property: propInfo},
-				Expr:         expr,
+				VariableRef: &expression.VariableRef{Name: prop.PropertyAccess.VariableName},
+				PropertyRef: &expression.PropertyRef{Property: propInfo},
+				Expr:        expr,
 			}
 			assignments = append(assignments, assignment)
 		}
@@ -259,7 +259,7 @@ func (b *Builder) buildSelect(stmt *ast.SelectStmt) error {
 		}
 		proj.Exprs = append(proj.Exprs, expr)
 	}
-	proj.SetSchema(expression.NewSchema(&expression.PropertyRef{}))
+	proj.SetSchema(expression.NewSchema())
 	proj.SetChildren(plan)
 
 	b.setPlan(proj)

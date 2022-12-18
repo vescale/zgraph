@@ -14,9 +14,31 @@
 
 package expression
 
+import (
+	"fmt"
+
+	"github.com/vescale/zgraph/stmtctx"
+	"github.com/vescale/zgraph/types"
+)
+
 type Column struct {
 	// ID is the unique id of this column.
 	ID int64
 	// Index is used for execution, to tell the column's position in the given row.
 	Index int
+}
+
+func (c *Column) Clone() Expression {
+	return &Column{
+		ID:    c.ID,
+		Index: c.Index,
+	}
+}
+
+func (c *Column) String() string {
+	return fmt.Sprintf("Column#%d", c.ID)
+}
+
+func (c *Column) Eval(ctx *stmtctx.Context, row Row) (types.Datum, error) {
+	return row[c.Index], nil
 }

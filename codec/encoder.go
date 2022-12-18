@@ -50,10 +50,12 @@ func (e *PropertyEncoder) encodeDatum(value *types.Datum) error {
 		e.data = encodeInt(e.data, value.GetInt64())
 	case types.KindUint64:
 		e.data = encodeUint(e.data, value.GetUint64())
-	case types.KindString, types.KindBytes:
-		e.data = append(e.data, value.GetBytes()...)
 	case types.KindFloat64:
 		e.data = EncodeFloat(e.data, value.GetFloat64())
+	case types.KindString, types.KindBytes:
+		e.data = append(e.data, value.GetBytes()...)
+	case types.KindDate:
+		e.data = encodeDate(e.data, value.GetDate())
 	default:
 		// TODO: support more types.
 		return errors.Errorf("unsupported encode type %d", value.Kind())
@@ -94,6 +96,11 @@ func encodeUint(buf []byte, uVal uint64) []byte {
 	}
 	return buf
 }
+
+func encodeDate(buf []byte, date types.Date) []byte {
+	return encodeInt(buf, int64(date.CoreTime()))
+}
+
 func (e *PropertyEncoder) reform(propertyIDs []uint16, values []types.Datum) {
 	// reset
 	e.propertyIDs = e.propertyIDs[:0]
