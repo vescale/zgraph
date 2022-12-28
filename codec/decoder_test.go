@@ -25,10 +25,12 @@ import (
 
 func TestPropertyDecoder_Decode(t *testing.T) {
 	cases := []struct {
+		labelIDs    []uint16
 		propertyIDs []uint16
 		values      []types.Datum
 	}{
 		{
+			labelIDs:    []uint16{1, 2, 3},
 			propertyIDs: []uint16{1, 2, 3},
 			values: []types.Datum{
 				types.NewStringDatum("hello"),
@@ -37,19 +39,28 @@ func TestPropertyDecoder_Decode(t *testing.T) {
 			},
 		},
 		{
+			labelIDs:    []uint16{2, 3, 1},
 			propertyIDs: []uint16{2, 3, 1},
 			values: []types.Datum{
-				types.NewStringDatum("hello"),
 				types.NewDatum(1),
 				types.NewDatum(1.1),
+				types.NewStringDatum("hello"),
 			},
 		},
 	}
 
 	for _, c := range cases {
 		encoder := &PropertyEncoder{}
-		bytes, err := encoder.Encode(nil, c.propertyIDs, c.values)
+		bytes, err := encoder.Encode(nil, c.labelIDs, c.propertyIDs, c.values)
 		assert.Nil(t, err)
+
+		var labels []*model.LabelInfo
+		for _, id := range c.labelIDs {
+			labels = append(labels, &model.LabelInfo{
+				ID:   int64(id),
+				Name: model.NewCIStr(fmt.Sprintf("label%d", id)),
+			})
+		}
 
 		var properties []*model.PropertyInfo
 		for _, id := range c.propertyIDs {
@@ -59,9 +70,18 @@ func TestPropertyDecoder_Decode(t *testing.T) {
 			})
 		}
 
-		decoder := &PropertyDecoder{}
-		row, err := decoder.Decode(properties, bytes)
-		assert.Nil(t, err)
-		assert.Equal(t, c.values, row)
+		decoder := NewPropertyDecoder(labels, properties)
+		labelIDs, row, err := decoder.Decode(bytes)
+		assert.NoError(t, err)
+		assert.Equal(t, map[uint16]struct{}{
+			1: {},
+			2: {},
+			3: {},
+		}, labelIDs)
+		assert.Equal(t, map[uint16]types.Datum{
+			1: types.NewStringDatum("hello"),
+			2: types.NewDatum(1),
+			3: types.NewDatum(1.1),
+		}, row)
 	}
 }

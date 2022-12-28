@@ -23,10 +23,12 @@ import (
 
 func TestPropertyEncoder_Encode(t *testing.T) {
 	cases := []struct {
+		labelIDs    []uint16
 		propertyIDs []uint16
 		values      []types.Datum
 	}{
 		{
+			labelIDs:    []uint16{1, 2, 3},
 			propertyIDs: []uint16{1, 2, 3},
 			values: []types.Datum{
 				types.NewStringDatum("hello"),
@@ -39,7 +41,7 @@ func TestPropertyEncoder_Encode(t *testing.T) {
 	for _, c := range cases {
 		encoder := &PropertyEncoder{}
 		// FIXME: validate the values.
-		_, err := encoder.Encode(nil, c.propertyIDs, c.values)
-		assert.Nil(t, err)
+		_, err := encoder.Encode(nil, c.labelIDs, c.propertyIDs, c.values)
+		assert.NoError(t, err)
 	}
 }

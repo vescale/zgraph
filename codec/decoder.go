@@ -25,35 +25,45 @@ import (
 // PropertyDecoder is used to decode value bytes into datum
 type PropertyDecoder struct {
 	rowBytes
+
+	labels     []*model.LabelInfo
+	properties []*model.PropertyInfo
 }
 
-func (d *PropertyDecoder) Decode(properties []*model.PropertyInfo, rowData []byte) ([]types.Datum, error) {
-	if len(properties) == 0 {
-		return nil, nil
+func NewPropertyDecoder(labels []*model.LabelInfo, properties []*model.PropertyInfo) *PropertyDecoder {
+	return &PropertyDecoder{
+		labels:     labels,
+		properties: properties,
 	}
+}
+
+func (d *PropertyDecoder) Decode(rowData []byte) (map[uint16]struct{}, map[uint16]types.Datum, error) {
 	err := d.fromBytes(rowData)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	row := make([]types.Datum, len(properties))
-	for i, property := range properties {
-		idx := d.findProperty(property.ID)
-		if idx < 0 {
-			var d types.Datum
-			d.SetNull()
-			row[i] = d
-		} else {
-			propData := d.getData(idx)
-			d, err := d.decodeColDatum(propData)
-			if err != nil {
-				return nil, err
-			}
-			row[i] = d
+	labelIDs := make(map[uint16]struct{})
+	for _, label := range d.labels {
+		if d.hasLabel(uint16(label.ID)) {
+			labelIDs[uint16(label.ID)] = struct{}{}
 		}
 	}
 
-	return row, nil
+	row := make(map[uint16]types.Datum)
+	for _, property := range d.properties {
+		idx := d.findProperty(property.ID)
+		if idx >= 0 {
+			propData := d.getData(idx)
+			d, err := d.decodeColDatum(propData)
+			if err != nil {
+				return nil, nil, err
+			}
+			row[property.ID] = d
+		}
+	}
+
+	return labelIDs, row, nil
 }
 
 func (d *PropertyDecoder) decodeColDatum(propData []byte) (types.Datum, error) {

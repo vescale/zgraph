@@ -155,7 +155,7 @@ func (e *InsertExec) encodeVertex(graphID, vertexID int64, insertion *planner.El
 		propertyIDs = append(propertyIDs, assignment.PropertyRef.Property.ID)
 		row = append(row, constant.Value)
 	}
-	ret, err := e.encoder.Encode(e.buffer, propertyIDs, row)
+	ret, err := e.encoder.Encode(e.buffer, nil, propertyIDs, row)
 	if err != nil {
 		return err
 	}

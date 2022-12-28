@@ -30,14 +30,14 @@ type PropertyEncoder struct {
 }
 
 // Encode encodes properties into a value bytes.
-func (e *PropertyEncoder) Encode(buf []byte, propertyIDs []uint16, values []types.Datum) ([]byte, error) {
-	e.reform(propertyIDs, values)
+func (e *PropertyEncoder) Encode(buf []byte, labelIDs, propertyIDs []uint16, values []types.Datum) ([]byte, error) {
+	e.reform(labelIDs, propertyIDs, values)
 	for i, value := range e.values {
 		err := e.encodeDatum(value)
 		if err != nil {
 			return nil, err
 		}
-		e.offsets[i] = uint32(len(e.data))
+		e.offsets[i] = uint16(len(e.data))
 	}
 	return e.toBytes(buf[:0]), nil
 }
@@ -101,35 +101,42 @@ func encodeDate(buf []byte, date types.Date) []byte {
 	return encodeInt(buf, int64(date.CoreTime()))
 }
 
-func (e *PropertyEncoder) reform(propertyIDs []uint16, values []types.Datum) {
-	// reset
-	e.propertyIDs = e.propertyIDs[:0]
-	e.offsets = e.offsets[:0]
+func (e *PropertyEncoder) reform(labelIDs, propertyIDs []uint16, values []types.Datum) {
+	e.labelIDs = append(e.labelIDs[:0], labelIDs...)
+	e.propertyIDs = append(e.propertyIDs, propertyIDs...)
+	e.offsets = make([]uint16, len(e.propertyIDs))
 	e.data = e.data[:0]
 	e.values = e.values[:0]
-
-	for i, propertyID := range propertyIDs {
-		e.propertyIDs = append(e.propertyIDs, propertyID)
+	for i := range values {
 		e.values = append(e.values, &values[i])
 	}
-	e.offsets = make([]uint32, len(e.propertyIDs))
 
-	// Sort the property ID.
-	sort.Sort(e)
+	sort.Slice(e.labelIDs, func(i, j int) bool {
+		return e.labelIDs[i] < e.labelIDs[j]
+	})
+	sort.Sort(&propertySorter{
+		propertyIDs: e.propertyIDs,
+		values:      e.values,
+	})
+}
+
+type propertySorter struct {
+	propertyIDs []uint16
+	values      []*types.Datum
 }
 
 // Less implements the Sorter interface.
-func (e *PropertyEncoder) Less(i, j int) bool {
-	return e.propertyIDs[i] < e.propertyIDs[j]
+func (ps *propertySorter) Less(i, j int) bool {
+	return ps.propertyIDs[i] < ps.propertyIDs[j]
 }
 
 // Len implements the Sorter interface.
-func (e *PropertyEncoder) Len() int {
-	return len(e.propertyIDs)
+func (ps *propertySorter) Len() int {
+	return len(ps.propertyIDs)
 }
 
 // Swap implements the Sorter interface.
-func (e *PropertyEncoder) Swap(i, j int) {
-	e.propertyIDs[i], e.propertyIDs[j] = e.propertyIDs[j], e.propertyIDs[i]
-	e.values[i], e.values[j] = e.values[j], e.values[i]
+func (ps *propertySorter) Swap(i, j int) {
+	ps.propertyIDs[i], ps.propertyIDs[j] = ps.propertyIDs[j], ps.propertyIDs[i]
+	ps.values[i], ps.values[j] = ps.values[j], ps.values[i]
 }

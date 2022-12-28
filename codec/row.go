@@ -16,6 +16,7 @@ package codec
 
 import (
 	"reflect"
+	"sort"
 	"unsafe"
 
 	"github.com/pingcap/errors"
@@ -23,8 +24,8 @@ import (
 
 var errInvalidCodecVer = errors.New("invalid codec version")
 
-// RowFlag represents the flag of first byte of value encoded bytes.
-type RowFlag byte
+// rowFlag represents the flag of first byte of value encoded bytes.
+type rowFlag byte
 
 // Flag:
 // 0 0 0 0 0 0 0 0
@@ -32,18 +33,28 @@ type RowFlag byte
 // |         +---+----- Encode Version (max to 8 versions)
 // |+--------+--------- Reserved flag bits
 
+const (
+	version             = 0
+	versionMask rowFlag = 0x07
+)
+
+func (f rowFlag) version() byte {
+	return byte(f & versionMask)
+}
+
 // rowBytes is used to encode/decode the value bytes.
 // Value Encode:
-// Flag[1byte]+PropertyCount(varint)+PropertyIDs+PropertyOffsets+Data
+// Flag[1byte]+LabelCount(varint)+LabelIDs+PropertyCount(varint)+PropertyIDs+PropertyOffsets+Data
 type rowBytes struct {
+	labelIDs    []uint16
 	propertyIDs []uint16
-	offsets     []uint32
+	offsets     []uint16
 	data        []byte
 }
 
 // getData gets the row data at index `i`.
 func (r *rowBytes) getData(i int) []byte {
-	var start, end uint32
+	var start, end uint16
 	if i > 0 {
 		start = r.offsets[i-1]
 	}
@@ -51,65 +62,58 @@ func (r *rowBytes) getData(i int) []byte {
 	return r.data[start:end]
 }
 
+func (r *rowBytes) hasLabel(labelID uint16) bool {
+	i := sort.Search(len(r.labelIDs), func(i int) bool {
+		return r.labelIDs[i] >= labelID
+	})
+	return i < len(r.labelIDs) && r.labelIDs[i] == labelID
+}
+
 // findProperty finds the property index of the row. -1 returned if not found.
 func (r *rowBytes) findProperty(propertyID uint16) int {
-	i, j := 0, len(r.propertyIDs)
-	for i < j {
-		// avoid overflow when computing h
-		h := int(uint(i+j) >> 1)
-		// i ≤ h < j
-		v := r.propertyIDs[h]
-		if v < propertyID {
-			i = h + 1
-		} else if v == propertyID {
-			return h
-		} else {
-			j = h
-		}
+	i := sort.Search(len(r.propertyIDs), func(i int) bool {
+		return r.propertyIDs[i] >= propertyID
+	})
+	if i < len(r.propertyIDs) && r.propertyIDs[i] == propertyID {
+		return i
+	} else {
+		return -1
 	}
-	return -1
 }
 
 func (r *rowBytes) toBytes(buf []byte) []byte {
-	// Currently, our version number is zero.
-	buf = append(buf, 0)
-	buf = EncodeVarint(buf, int64(len(r.propertyIDs)))
+	buf = append(buf, version)
+	buf = EncodeUvarint(buf, uint64(len(r.labelIDs)))
+	buf = append(buf, u16SliceToBytes(r.labelIDs)...)
+	buf = EncodeUvarint(buf, uint64(len(r.propertyIDs)))
 	buf = append(buf, u16SliceToBytes(r.propertyIDs)...)
-	buf = append(buf, u32SliceToBytes(r.offsets)...)
+	buf = append(buf, u16SliceToBytes(r.offsets)...)
 	buf = append(buf, r.data...)
 	return buf
 }
 
 func (r *rowBytes) fromBytes(rowData []byte) error {
-	if rowData[0] != 0 {
+	if rowFlag(rowData[0]).version() != version {
 		return errInvalidCodecVer
 	}
-	// Decode property cound.
-	rowData, n, err := DecodeVarint(rowData[1:])
+
+	rowData, labelCount, err := DecodeUvarint(rowData[1:])
 	if err != nil {
 		return err
 	}
+	r.labelIDs = bytes2U16Slice(rowData[:labelCount*2])
+	rowData = rowData[labelCount*2:]
 
-	propertyLength := n * 2
-	offsetLength := n * 4
-
-	r.propertyIDs = bytes2U16Slice(rowData[:propertyLength])
-	r.offsets = bytesToU32Slice(rowData[propertyLength : propertyLength+offsetLength])
-	r.data = rowData[propertyLength+offsetLength:]
-
-	return nil
-}
-
-func bytesToU32Slice(b []byte) []uint32 {
-	if len(b) == 0 {
-		return nil
+	rowData, propertyCount, err := DecodeUvarint(rowData)
+	if err != nil {
+		return err
 	}
-	var u32s []uint32
-	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&u32s))
-	hdr.Len = len(b) / 4
-	hdr.Cap = hdr.Len
-	hdr.Data = uintptr(unsafe.Pointer(&b[0]))
-	return u32s
+	r.propertyIDs = bytes2U16Slice(rowData[:propertyCount*2])
+	rowData = rowData[propertyCount*2:]
+
+	r.offsets = bytes2U16Slice(rowData[:propertyCount*2])
+	r.data = rowData[propertyCount*2:]
+	return nil
 }
 
 func bytes2U16Slice(b []byte) []uint16 {
@@ -133,17 +137,5 @@ func u16SliceToBytes(u16s []uint16) []byte {
 	hdr.Len = len(u16s) * 2
 	hdr.Cap = hdr.Len
 	hdr.Data = uintptr(unsafe.Pointer(&u16s[0]))
-	return b
-}
-
-func u32SliceToBytes(u32s []uint32) []byte {
-	if len(u32s) == 0 {
-		return nil
-	}
-	var b []byte
-	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	hdr.Len = len(u32s) * 4
-	hdr.Cap = hdr.Len
-	hdr.Data = uintptr(unsafe.Pointer(&u32s[0]))
 	return b
 }
