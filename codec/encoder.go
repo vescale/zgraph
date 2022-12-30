@@ -103,7 +103,7 @@ func encodeDate(buf []byte, date types.Date) []byte {
 
 func (e *PropertyEncoder) reform(labelIDs, propertyIDs []uint16, values []types.Datum) {
 	e.labelIDs = append(e.labelIDs[:0], labelIDs...)
-	e.propertyIDs = append(e.propertyIDs, propertyIDs...)
+	e.propertyIDs = append(e.propertyIDs[:0], propertyIDs...)
 	e.offsets = make([]uint16, len(e.propertyIDs))
 	e.data = e.data[:0]
 	e.values = e.values[:0]

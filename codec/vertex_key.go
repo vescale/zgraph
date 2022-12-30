@@ -14,24 +14,27 @@
 
 package codec
 
-// VERTEX CODEC DOCUMENTATIONS:
-//
-// - Key Format:
-//   $Prefix_$GraphID_$SrcVertexID
-// - Value Format:
-//   [($PropertyID, $PropertyValue), ...]
+import "errors"
 
-// VertexKey encodes the vertex key described as above.
-func VertexKey(graphID, srcVertexID int64) []byte {
-	result := make([]byte, 0, len(prefix)+8 /*graphID*/ +8 /*srcVertexID*/ +len(vertexSep))
+// VertexKey encodes the vertex key.
+// The key format is: ${Prefix}${GraphID}${VertexID}.
+func VertexKey(graphID, vertexID int64) []byte {
+	result := make([]byte, 0, len(prefix)+8 /*graphID*/ +8 /*vertexID*/)
 	result = append(result, prefix...)
 	result = EncodeInt(result, graphID)
-	result = EncodeInt(result, srcVertexID)
-	result = EncodeBytes(result, vertexSep)
-	return nil
+	result = EncodeInt(result, vertexID)
+	return result
 }
 
 // ParseVertexKey parses the vertex key.
-func ParseVertexKey(key []byte) (graphID, srcVertexID int64, err error) {
+func ParseVertexKey(key []byte) (graphID, vertexID int64, err error) {
+	if len(key) < len(prefix)+8+8 {
+		return 0, 0, errors.New("insufficient key length")
+	}
+	_, graphID, err = DecodeInt(key[len(prefix):])
+	if err != nil {
+		return
+	}
+	_, vertexID, err = DecodeInt(key[len(prefix)+8:])
 	return
 }

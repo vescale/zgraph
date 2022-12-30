@@ -13,3 +13,37 @@
 // limitations under the License.
 
 package codec
+
+import (
+	"math"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestEdgeKey(t *testing.T) {
+	cases := []struct {
+		graphID     int64
+		srcVertexID int64
+		dstVertexID int64
+	}{
+		{
+			graphID:     100,
+			srcVertexID: 200,
+			dstVertexID: 300,
+		},
+		{
+			graphID:     math.MaxInt64,
+			srcVertexID: math.MaxInt64,
+			dstVertexID: math.MaxInt64,
+		},
+	}
+	for _, c := range cases {
+		key := EdgeKey(c.graphID, c.srcVertexID, c.dstVertexID)
+		graphID, srcVertexID, dstVertexID, err := ParseEdgeKey(key)
+		require.NoError(t, err)
+		require.Equal(t, c.graphID, graphID)
+		require.Equal(t, c.srcVertexID, srcVertexID)
+		require.Equal(t, c.dstVertexID, dstVertexID)
+	}
+}

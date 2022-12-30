@@ -14,20 +14,32 @@
 
 package codec
 
-// EDGE CODEC DOCUMENTATIONS:
-//
-//   - Key Format:
-//     $Prefix_$GraphID_$SrcVertexID_$DstVertexID
-//   - Value Format:
-//     [($PropertyID, $PropertyValue), ...]
-//
+import "errors"
 
-// EdgeKey encodes the edge key described as above.
+// EdgeKey encodes the edge key.
+// The key format is: ${Prefix}${GraphID}${SrcVertexID}${DstVertexID}.
 func EdgeKey(graphID, srcVertexID, dstVertexID int64) []byte {
-	return nil
+	result := make([]byte, 0, len(prefix)+8 /*graphID*/ +8 /*srcVertexID*/ +8 /*dstVertexID*/)
+	result = append(result, prefix...)
+	result = EncodeInt(result, graphID)
+	result = EncodeInt(result, srcVertexID)
+	result = EncodeInt(result, dstVertexID)
+	return result
 }
 
 // ParseEdgeKey parse the edge key.
-func ParseEdgeKey(key []byte) (graphID, srcVertexID, dstVertexID, err error) {
+func ParseEdgeKey(key []byte) (graphID, srcVertexID, dstVertexID int64, err error) {
+	if len(key) < len(prefix)+8+8+8 {
+		return 0, 0, 0, errors.New("insufficient key length")
+	}
+	_, graphID, err = DecodeInt(key[len(prefix):])
+	if err != nil {
+		return
+	}
+	_, srcVertexID, err = DecodeInt(key[len(prefix)+8:])
+	if err != nil {
+		return
+	}
+	_, dstVertexID, err = DecodeInt(key[len(prefix)+8+8:])
 	return
 }
