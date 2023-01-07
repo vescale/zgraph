@@ -16,6 +16,7 @@ package types
 import (
 	"fmt"
 	"math"
+	"strings"
 )
 
 // Kind represents the kind of datum.
@@ -34,6 +35,7 @@ const (
 	KindTime      Kind = 9
 	KindTimestamp Kind = 10
 	KindInterval  Kind = 11
+	KindGraphVar  Kind = 12
 )
 
 type KindPair struct {
@@ -46,10 +48,10 @@ func NewKindPair(first, second Kind) KindPair {
 }
 
 type Datum struct {
-	k Kind     // datum kind
-	i int64    // i can hold integer types, time, date, timestamp, interval
-	b []byte   // b can hold string, bytes
-	d *Decimal // d can hold decimal
+	k Kind   // datum kind
+	i int64  // i can hold integer types, time, date, timestamp, interval
+	b []byte // b can hold string, bytes
+	d any    // d can hold decimal, graphvar
 }
 
 func NewDatum(val any) Datum {
@@ -98,6 +100,8 @@ func (d *Datum) SetValue(val any) {
 		d.SetBytes(x)
 	case BitLiteral:
 		d.SetBytes(x)
+	case *GraphVar:
+		d.SetGraphVar(x)
 	default:
 		panic(fmt.Sprintf("unexpected literval type %T", val))
 	}
@@ -182,7 +186,7 @@ func (d *Datum) SetBytes(b []byte) {
 }
 
 func (d *Datum) GetDecimal() *Decimal {
-	return d.d
+	return d.d.(*Decimal)
 }
 
 func (d *Datum) SetDecimal(dec *Decimal) {
@@ -224,4 +228,23 @@ func (d *Datum) GetInterval() Interval {
 func (d *Datum) SetInterval(i Interval) {
 	d.k = KindInterval
 	d.i = int64(i)
+}
+
+type GraphVar struct {
+	ID         uint64
+	Labels     []string
+	Properties map[string]Datum
+}
+
+func (v *GraphVar) String() string {
+	return fmt.Sprintf("GraphVar{ID: %d, Labels: %s}", v.ID, strings.Join(v.Labels, ", "))
+}
+
+func (d *Datum) GetGraphVar() *GraphVar {
+	return d.d.(*GraphVar)
+}
+
+func (d *Datum) SetGraphVar(v *GraphVar) {
+	d.k = KindGraphVar
+	d.d = v
 }

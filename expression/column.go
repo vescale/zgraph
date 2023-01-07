@@ -39,6 +39,6 @@ func (c *Column) String() string {
 	return fmt.Sprintf("Column#%d", c.ID)
 }
 
-func (c *Column) Eval(ctx *stmtctx.Context, row Row) (types.Datum, error) {
+func (c *Column) Eval(_ *stmtctx.Context, row Row) (types.Datum, error) {
 	return row[c.Index], nil
 }

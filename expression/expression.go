@@ -53,3 +53,22 @@ type Assignment struct {
 type VariableRef struct {
 	Name model.CIStr
 }
+
+func (v *VariableRef) String() string {
+	return v.Name.O
+}
+
+// PropertyRef represents the accessor of vertex/edge's property.
+type PropertyRef struct {
+	Property *model.PropertyInfo
+}
+
+func (f *PropertyRef) Clone() *PropertyRef {
+	fc := *f
+	return &fc
+}
+
+// String implements the fmt.Stringer interface
+func (f *PropertyRef) String() string {
+	return f.Property.Name.O
+}

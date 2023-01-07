@@ -82,6 +82,9 @@ func (b *Builder) buildInsert(plan *planner.Insert) Executor {
 		encoder:      &codec.PropertyEncoder{},
 		decoder:      &codec.PropertyDecoder{},
 	}
+	if plan.MatchPlan != nil {
+		exec.matchExec = b.Build(plan.MatchPlan)
+	}
 	return exec
 }
 

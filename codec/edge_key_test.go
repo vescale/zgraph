@@ -39,11 +39,20 @@ func TestEdgeKey(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		key := EdgeKey(c.graphID, c.srcVertexID, c.dstVertexID)
-		graphID, srcVertexID, dstVertexID, err := ParseEdgeKey(key)
+		incomingEdgeKey := IncomingEdgeKey(c.graphID, c.srcVertexID, c.dstVertexID)
+		graphID, srcVertexID, dstVertexID, err := ParseIncomingEdgeKey(incomingEdgeKey)
 		require.NoError(t, err)
 		require.Equal(t, c.graphID, graphID)
 		require.Equal(t, c.srcVertexID, srcVertexID)
 		require.Equal(t, c.dstVertexID, dstVertexID)
+
+		outgoingEdgeKey := OutgoingEdgeKey(c.graphID, c.srcVertexID, c.dstVertexID)
+		graphID, srcVertexID, dstVertexID, err = ParseOutgoingEdgeKey(outgoingEdgeKey)
+		require.NoError(t, err)
+		require.Equal(t, c.graphID, graphID)
+		require.Equal(t, c.srcVertexID, srcVertexID)
+		require.Equal(t, c.dstVertexID, dstVertexID)
+
+		require.NotEqual(t, incomingEdgeKey, outgoingEdgeKey)
 	}
 }

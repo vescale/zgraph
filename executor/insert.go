@@ -17,15 +17,14 @@ package executor
 import (
 	"context"
 
-	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/codec"
 	"github.com/vescale/zgraph/expression"
 	"github.com/vescale/zgraph/internal/logutil"
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/planner"
-	"github.com/vescale/zgraph/stmtctx"
 	"github.com/vescale/zgraph/storage/kv"
+	"github.com/vescale/zgraph/types"
 )
 
 // InsertExec represents the executor of INSERT statement.
@@ -34,45 +33,41 @@ type InsertExec struct {
 
 	done       bool
 	graph      *catalog.Graph
-	idRange    *stmtctx.IDRange
 	insertions []*planner.ElementInsertion
 	kvs        []kv.Pair
 	buffer     []byte
 	encoder    *codec.PropertyEncoder
 	decoder    *codec.PropertyDecoder
+	matchExec  Executor
 }
 
 // Open implements the Executor interface.
-func (e *InsertExec) Open(_ context.Context) error {
-	var kvs int
-	var ids int
-	// Precalculate key/value count and preallocate ID count.
-	for _, insertion := range e.insertions {
-		// Every label has a unique key.
-		kvs += len(insertion.Labels)
-		switch insertion.Type {
-		case ast.InsertionTypeVertex:
-			// Every vertex need to allocate an identifier.
-			ids++
-			kvs++
-		case ast.InsertionTypeEdge:
-			// Every edge will write two key/value: src <-> dst
-			kvs += 2
+func (e *InsertExec) Open(ctx context.Context) error {
+	if e.matchExec != nil {
+		if err := e.matchExec.Open(ctx); err != nil {
+			return err
 		}
+	} else {
+		var kvs int
+		// Precalculate key/value count and preallocate ID count.
+		for _, insertion := range e.insertions {
+			// Every label has a unique key.
+			kvs += len(insertion.Labels)
+			switch insertion.Type {
+			case ast.InsertionTypeVertex:
+				kvs++
+			case ast.InsertionTypeEdge:
+				// Every edge will write two key/value: src <-> dst
+				kvs += 2
+			}
+		}
+		e.kvs = make([]kv.Pair, 0, kvs)
 	}
-	idRange, err := e.sc.AllocID(e.graph, ids)
-	if err != nil {
-		return err
-	}
-
-	e.idRange = idRange
-	e.kvs = make([]kv.Pair, 0, kvs)
-
 	return nil
 }
 
 // Next implements the Executor interface.
-func (e *InsertExec) Next(_ context.Context) (expression.Row, error) {
+func (e *InsertExec) Next(ctx context.Context) (expression.Row, error) {
 	if e.done {
 		return nil, nil
 	}
@@ -82,10 +77,16 @@ func (e *InsertExec) Next(_ context.Context) (expression.Row, error) {
 		return nil, nil
 	}
 
-	err := e.encodeInsertions()
+	var err error
+	if e.matchExec == nil {
+		err = e.encodeInsertions(nil)
+	} else {
+		err = e.encodeInsertionsFromMatch(ctx)
+	}
 	if err != nil {
 		return nil, err
 	}
+
 	if len(e.kvs) == 0 {
 		return nil, nil
 	}
@@ -107,60 +108,118 @@ func (e *InsertExec) Next(_ context.Context) (expression.Row, error) {
 	return nil, err
 }
 
-func (e *InsertExec) encodeInsertions() error {
+func (e *InsertExec) encodeInsertions(matchRow expression.Row) error {
 	graphID := e.graph.Meta().ID
+	idRange, err := e.sc.AllocID(e.graph, len(e.insertions))
+	if err != nil {
+		return err
+	}
+
 	for _, insertion := range e.insertions {
 		switch insertion.Type {
 		case ast.InsertionTypeVertex:
-			vertexID, err := e.idRange.Next()
+			vertexID, err := idRange.Next()
 			if err != nil {
 				return err
 			}
-			if len(insertion.Labels) > 0 {
-				e.encodeLabels(graphID, vertexID, 0, insertion.Labels)
-			}
-			err = e.encodeVertex(graphID, vertexID, insertion)
-			if err != nil {
+			if err := e.encodeVertex(graphID, vertexID, insertion, matchRow); err != nil {
 				return err
 			}
-
 		case ast.InsertionTypeEdge:
-			// TODO: implement the edge codec.
+			if err := e.encodeEdge(graphID, insertion, matchRow); err != nil {
+				return err
+			}
 		}
 	}
 
 	return nil
 }
 
-func (e *InsertExec) encodeLabels(graphID, vertexID, dstVertexID int64, labels []*catalog.Label) {
-	for _, label := range labels {
-		key := codec.LabelKey(graphID, label.Meta().ID, vertexID, dstVertexID)
-		e.kvs = append(e.kvs, kv.Pair{Key: key, Val: codec.LabelValue()})
-		if dstVertexID != 0 {
-			key := codec.LabelKey(graphID, label.Meta().ID, dstVertexID, vertexID)
-			e.kvs = append(e.kvs, kv.Pair{Key: key, Val: codec.LabelValue()})
+func (e *InsertExec) encodeInsertionsFromMatch(ctx context.Context) error {
+	for {
+		row, err := e.matchExec.Next(ctx)
+		if err != nil {
+			return err
+		}
+		if row == nil {
+			return nil
+		}
+		if err := e.encodeInsertions(row); err != nil {
+			return err
 		}
 	}
 }
 
-func (e *InsertExec) encodeVertex(graphID, vertexID int64, insertion *planner.ElementInsertion) error {
+func (e *InsertExec) encodeVertex(graphID, vertexID int64, insertion *planner.ElementInsertion, matchRow expression.Row) error {
 	key := codec.VertexKey(graphID, vertexID)
-	var propertyIDs []uint16
-	var row expression.Row
+	var (
+		propertyIDs []uint16
+		values      []types.Datum
+	)
 	for _, assignment := range insertion.Assignments {
-		constant, ok := assignment.Expr.(*expression.Constant)
-		if !ok {
-			return errors.Errorf("unsupported expression: %T", assignment.Expr)
+		value, err := assignment.Expr.Eval(e.sc, matchRow)
+		if err != nil {
+			return err
 		}
 		propertyIDs = append(propertyIDs, assignment.PropertyRef.Property.ID)
-		row = append(row, constant.Value)
+		values = append(values, value)
 	}
-	ret, err := e.encoder.Encode(e.buffer, nil, propertyIDs, row)
+	var labelIDs []uint16
+	for _, label := range insertion.Labels {
+		labelIDs = append(labelIDs, uint16(label.Meta().ID))
+	}
+	ret, err := e.encoder.Encode(e.buffer, labelIDs, propertyIDs, values)
 	if err != nil {
 		return err
 	}
 	val := make([]byte, len(ret))
 	copy(val, ret)
 	e.kvs = append(e.kvs, kv.Pair{Key: key, Val: val})
+	return nil
+}
+
+func (e *InsertExec) encodeEdge(graphID int64, insertion *planner.ElementInsertion, matchRow expression.Row) error {
+	// TODO: Edge also need an unique ID. How to encode and index it? See https://pgql-lang.org/spec/1.5/#id.
+	var (
+		propertyIDs []uint16
+		values      []types.Datum
+	)
+	for _, assignment := range insertion.Assignments {
+		value, err := assignment.Expr.Eval(e.sc, matchRow)
+		if err != nil {
+			return err
+		}
+		propertyIDs = append(propertyIDs, assignment.PropertyRef.Property.ID)
+		values = append(values, value)
+	}
+
+	srcIDVal, err := insertion.FromIDExpr.Eval(e.sc, matchRow)
+	if err != nil {
+		return err
+	}
+	dstIDVal, err := insertion.ToIDExpr.Eval(e.sc, matchRow)
+	if err != nil {
+		return err
+	}
+
+	var labelIDs []uint16
+	for _, label := range insertion.Labels {
+		labelIDs = append(labelIDs, uint16(label.Meta().ID))
+	}
+	ret, err := e.encoder.Encode(e.buffer, labelIDs, propertyIDs, values)
+	if err != nil {
+		return err
+	}
+	val := make([]byte, len(ret))
+	copy(val, ret)
+	e.kvs = append(e.kvs, kv.Pair{Key: codec.IncomingEdgeKey(graphID, srcIDVal.GetInt64(), dstIDVal.GetInt64()), Val: val})
+	e.kvs = append(e.kvs, kv.Pair{Key: codec.OutgoingEdgeKey(graphID, srcIDVal.GetInt64(), dstIDVal.GetInt64()), Val: val})
+	return nil
+}
+
+func (e *InsertExec) Close() error {
+	if e.matchExec != nil {
+		return e.matchExec.Close()
+	}
 	return nil
 }

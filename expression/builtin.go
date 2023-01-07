@@ -42,6 +42,10 @@ var funcs = map[string]functionClass{
 	opcode.Minus.String(): &arithmeticMinusFunctionClass{baseFunctionClass{opcode.Minus.String(), 2, 2}},
 	opcode.Mul.String():   &arithmeticMultiplyFunctionClass{baseFunctionClass{opcode.Mul.String(), 2, 2}},
 	opcode.Div.String():   &arithmeticDivideFunctionClass{baseFunctionClass{opcode.Div.String(), 2, 2}},
+	// TODO: define function names in parser package.
+	"id":     &idFunctionClass{baseFunctionClass{"id", 1, 1}},
+	"label":  &labelFunctionClass{baseFunctionClass{"label", 1, 1}},
+	"labels": &labelsFunctionClass{baseFunctionClass{"labels", 1, 1}},
 }
 
 type baseBuiltinFunc struct {

@@ -34,6 +34,6 @@ func (c *Constant) String() string {
 	return "datum doesn't implement fmt.Stringer)"
 }
 
-func (c *Constant) Eval(ctx *stmtctx.Context, row Row) (types.Datum, error) {
+func (c *Constant) Eval(_ *stmtctx.Context, _ Row) (types.Datum, error) {
 	return c.Value, nil
 }

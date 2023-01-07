@@ -18,10 +18,13 @@ import (
 	"context"
 
 	"github.com/vescale/zgraph/expression"
+	"github.com/vescale/zgraph/planner"
 )
 
 type MatchExec struct {
 	baseExecutor
+
+	subgraph *planner.Subgraph
 }
 
 func (m *MatchExec) Next(_ context.Context) (expression.Row, error) {

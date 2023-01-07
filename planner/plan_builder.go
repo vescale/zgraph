@@ -139,30 +139,31 @@ func (b *Builder) buildInsert(stmt *ast.InsertStmt) error {
 			}
 			assignments = append(assignments, assignment)
 		}
-		var variable *expression.VariableRef
-		if !insertion.VariableName.IsEmpty() {
-			variable = &expression.VariableRef{
-				Name: insertion.VariableName,
-			}
-		}
-		var fromRef, toRef *expression.VariableRef
+		var fromIDExpr, toIDExpr expression.Expression
 		if insertion.InsertionType == ast.InsertionTypeEdge {
-			fromRef = &expression.VariableRef{
-				Name: insertion.From,
-			}
-			toRef = &expression.VariableRef{
-				Name: insertion.To,
-			}
+			// TODO: Add FromIDExpr and ToIDExpr.
 		}
 		gi := &ElementInsertion{
-			Type:             insertion.InsertionType,
-			Labels:           labels,
-			Assignments:      assignments,
-			ElementReference: variable,
-			FromReference:    fromRef,
-			ToReference:      toRef,
+			Type:        insertion.InsertionType,
+			Labels:      labels,
+			Assignments: assignments,
+			FromIDExpr:  fromIDExpr,
+			ToIDExpr:    toIDExpr,
 		}
 		insertions = append(insertions, gi)
+	}
+
+	plan := &Insert{
+		Graph:      graph,
+		Insertions: insertions,
+	}
+
+	if stmt.From != nil {
+		matchPlan, err := b.buildMatch(stmt.From.Matches)
+		if err != nil {
+			return err
+		}
+		plan.MatchPlan = Optimize(matchPlan)
 	}
 
 	b.setPlan(&Insert{

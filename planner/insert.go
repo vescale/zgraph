@@ -26,17 +26,16 @@ type Insert struct {
 
 	Graph      *catalog.Graph
 	Insertions []*ElementInsertion
+	MatchPlan  Plan
 }
 
 // ElementInsertion represents a graph insertion element.
 type ElementInsertion struct {
-	Type             ast.InsertionType
-	ElementReference *expression.VariableRef
+	Type ast.InsertionType
 	// INSERT EDGE e BETWEEN x AND y FROM MATCH (x) , MATCH (y) WHERE id(x) = 1 AND id(y) = 2
-	// FromReference represents the source vertex of an edge.
-	FromReference *expression.VariableRef
-	// ToReference represents the destination vertex of an edge.
-	ToReference *expression.VariableRef
+	// FromIDExpr and ToIDExpr are the expressions to get the ID of the source and destination vertex.
+	FromIDExpr  expression.Expression
+	ToIDExpr    expression.Expression
 	Labels      []*catalog.Label
 	Assignments []*expression.Assignment
 }
