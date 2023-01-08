@@ -62,7 +62,7 @@ func (s *builtinIDSig) eval(ctx *stmtctx.Context, row Row) (types.Datum, error) 
 	}
 	id := val.GetGraphVar().ID
 	var result types.Datum
-	result.SetUint64(id)
+	result.SetInt64(id)
 	return result, nil
 }
 

@@ -47,6 +47,8 @@ func (b *Builder) Build(plan planner.Plan) Executor {
 		return b.buildMatch(p)
 	case *planner.PhysicalProjection:
 		return b.buildProjection(p)
+	case *planner.PhysicalSelection:
+		return b.buildSelection(p)
 	default:
 		b.err = errors.Errorf("unknown plan: %T", plan)
 	}
@@ -91,14 +93,25 @@ func (b *Builder) buildInsert(plan *planner.Insert) Executor {
 func (b *Builder) buildMatch(plan *planner.PhysicalMatch) Executor {
 	exec := &MatchExec{
 		baseExecutor: newBaseExecutor(b.sc, plan.Schema(), plan.ID()),
+		subgraph:     plan.Subgraph,
 	}
 	return exec
 }
 
 func (b *Builder) buildProjection(plan *planner.PhysicalProjection) Executor {
+	childExec := b.Build(plan.Children()[0])
 	exec := &ProjectionExec{
-		baseExecutor: newBaseExecutor(b.sc, plan.Schema(), plan.ID()),
+		baseExecutor: newBaseExecutor(b.sc, plan.Schema(), plan.ID(), childExec),
 		exprs:        plan.Exprs,
+	}
+	return exec
+}
+
+func (b *Builder) buildSelection(plan *planner.PhysicalSelection) Executor {
+	childExec := b.Build(plan.Children()[0])
+	exec := &SelectionExec{
+		baseExecutor: newBaseExecutor(b.sc, plan.Schema(), plan.ID(), childExec),
+		condition:    plan.Condition,
 	}
 	return exec
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/vescale/zgraph/expression"
 	"github.com/vescale/zgraph/meta"
 	"github.com/vescale/zgraph/parser/ast"
+	"github.com/vescale/zgraph/parser/model"
 	"github.com/vescale/zgraph/stmtctx"
 )
 
@@ -109,6 +110,30 @@ func (b *Builder) buildInsert(stmt *ast.InsertStmt) error {
 		return errors.Annotatef(meta.ErrGraphNotExists, "graph %s", intoGraph)
 	}
 
+	var fromPlan LogicalPlan
+	if stmt.From != nil {
+		p, err := b.buildMatch(stmt.From.Matches)
+		if err != nil {
+			return err
+		}
+
+		if stmt.Where != nil {
+			cond, err := RewriteExpr(stmt.Where, p)
+			if err != nil {
+				return err
+			}
+			where := &LogicalSelection{
+				Condition: cond,
+			}
+			where.SetChildren(p)
+			p = where
+		}
+		fromPlan = p
+
+	} else {
+		fromPlan = &LogicalDual{}
+	}
+
 	var insertions []*ElementInsertion
 	for _, insertion := range stmt.Insertions {
 		var labels []*catalog.Label
@@ -128,7 +153,7 @@ func (b *Builder) buildInsert(stmt *ast.InsertStmt) error {
 			if propInfo == nil {
 				return errors.Errorf("property %s not exists", prop.PropertyAccess.PropertyName.L)
 			}
-			expr, err := RewriteExpr(prop.ValueExpression)
+			expr, err := RewriteExpr(prop.ValueExpression, fromPlan)
 			if err != nil {
 				return err
 			}
@@ -141,7 +166,22 @@ func (b *Builder) buildInsert(stmt *ast.InsertStmt) error {
 		}
 		var fromIDExpr, toIDExpr expression.Expression
 		if insertion.InsertionType == ast.InsertionTypeEdge {
-			// TODO: Add FromIDExpr and ToIDExpr.
+			fromExpr, err := RewriteExpr(&ast.VariableReference{VariableName: insertion.From}, fromPlan)
+			if err != nil {
+				return err
+			}
+			fromIDExpr, err = expression.NewFunction("id", fromExpr)
+			if err != nil {
+				return err
+			}
+			toExpr, err := RewriteExpr(&ast.VariableReference{VariableName: insertion.To}, fromPlan)
+			if err != nil {
+				return err
+			}
+			toIDExpr, err = expression.NewFunction("id", toExpr)
+			if err != nil {
+				return err
+			}
 		}
 		gi := &ElementInsertion{
 			Type:        insertion.InsertionType,
@@ -157,19 +197,11 @@ func (b *Builder) buildInsert(stmt *ast.InsertStmt) error {
 		Graph:      graph,
 		Insertions: insertions,
 	}
-
 	if stmt.From != nil {
-		matchPlan, err := b.buildMatch(stmt.From.Matches)
-		if err != nil {
-			return err
-		}
-		plan.MatchPlan = Optimize(matchPlan)
+		plan.MatchPlan = Optimize(fromPlan)
 	}
 
-	b.setPlan(&Insert{
-		Graph:      graph,
-		Insertions: insertions,
-	})
+	b.setPlan(plan)
 	return nil
 }
 
@@ -182,7 +214,7 @@ func (b *Builder) buildSelect(stmt *ast.SelectStmt) error {
 
 	// Build selection
 	if stmt.Where != nil {
-		expr, err := RewriteExpr(stmt.Where)
+		expr, err := RewriteExpr(stmt.Where, plan)
 		if err != nil {
 			return err
 		}
@@ -201,7 +233,7 @@ func (b *Builder) buildSelect(stmt *ast.SelectStmt) error {
 	}
 
 	if stmt.Having != nil {
-		expr, err := RewriteExpr(stmt.Having.Expr)
+		expr, err := RewriteExpr(stmt.Having.Expr, plan)
 		if err != nil {
 			return err
 		}
@@ -215,7 +247,7 @@ func (b *Builder) buildSelect(stmt *ast.SelectStmt) error {
 	if stmt.OrderBy != nil {
 		byItems := make([]*ByItem, 0, len(stmt.OrderBy.Items))
 		for _, item := range stmt.OrderBy.Items {
-			expr, err := RewriteExpr(item.Expr.Expr)
+			expr, err := RewriteExpr(item.Expr.Expr, plan)
 			if err != nil {
 				return err
 			}
@@ -234,11 +266,11 @@ func (b *Builder) buildSelect(stmt *ast.SelectStmt) error {
 	}
 
 	if stmt.Limit != nil {
-		offset, err := RewriteExpr(stmt.Limit.Offset)
+		offset, err := RewriteExpr(stmt.Limit.Offset, plan)
 		if err != nil {
 			return err
 		}
-		count, err := RewriteExpr(stmt.Limit.Count)
+		count, err := RewriteExpr(stmt.Limit.Count, plan)
 		if err != nil {
 			return err
 		}
@@ -254,7 +286,7 @@ func (b *Builder) buildSelect(stmt *ast.SelectStmt) error {
 	proj := &LogicalProjection{}
 	for _, elem := range stmt.Select.Elements {
 		// TODO: resolve reference.
-		expr, err := RewriteExpr(elem.ExpAsVar.Expr)
+		expr, err := RewriteExpr(elem.ExpAsVar.Expr, plan)
 		if err != nil {
 			return err
 		}
@@ -281,8 +313,24 @@ func (b *Builder) buildMatch(matches []*ast.MatchClause) (LogicalPlan, error) {
 		return nil, err
 	}
 
+	var (
+		cols  []*expression.Column
+		names []model.CIStr
+	)
+	// TODO: support group variables.
+	for i, v := range sg.SingletonVars {
+		cols = append(cols, &expression.Column{
+			ID:    b.sc.AllocPlanColumnID(),
+			Index: i,
+		})
+		names = append(names, v.Name)
+	}
+
 	plan := &LogicalMatch{
 		Subgraph: sg,
 	}
+	plan.SetSchema(expression.NewSchema(cols...))
+	plan.SetOutputNames(names)
+
 	return plan, nil
 }

@@ -17,6 +17,7 @@ package catalog
 import (
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/vescale/zgraph/parser/model"
 )
@@ -26,12 +27,10 @@ type Graph struct {
 	// mdl preventing multiple threads change the graph metadata concurrently.
 	mdl sync.Mutex
 
-	// mu protect the global fields of the graph.
-	mu sync.RWMutex
 	// NOTE: DON'T CHANGE THE CONTENT OF THIS POINTER.
 	// The information object will be used by multiple package, and we need to clone a
 	// new object if we want to modify it and keep the original one immutable.
-	meta *model.GraphInfo
+	meta atomic.Pointer[model.GraphInfo]
 
 	labels struct {
 		sync.RWMutex
@@ -55,7 +54,8 @@ type Graph struct {
 
 // NewGraph returns a graph instance.
 func NewGraph(meta *model.GraphInfo) *Graph {
-	g := &Graph{meta: meta}
+	g := &Graph{}
+	g.meta.Store(meta)
 
 	g.labels.byName = map[string]*Label{}
 	g.labels.byID = map[int64]*Label{}
@@ -85,7 +85,7 @@ func NewGraph(meta *model.GraphInfo) *Graph {
 
 // Meta returns the meta information object of this graph.
 func (g *Graph) Meta() *model.GraphInfo {
-	return g.meta
+	return g.meta.Load()
 }
 
 // Label returns the label of specified name.
@@ -137,9 +137,7 @@ func (g *Graph) Labels() []*Label {
 
 // Properties returns the Properties.
 func (g *Graph) Properties() []*model.PropertyInfo {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
-	return g.meta.Properties
+	return g.meta.Load().Properties
 }
 
 // CreateLabel create a new label and append to the graph labels list.
@@ -150,6 +148,10 @@ func (g *Graph) CreateLabel(labelInfo *model.LabelInfo) {
 	label := NewLabel(labelInfo)
 	g.labels.byName[labelInfo.Name.L] = label
 	g.labels.byID[labelInfo.ID] = label
+
+	meta := *g.meta.Load()
+	meta.Labels = append(meta.Labels, labelInfo)
+	g.meta.Store(&meta)
 }
 
 // DropLabel removes specified label from graph.
@@ -159,6 +161,15 @@ func (g *Graph) DropLabel(labelInfo *model.LabelInfo) {
 
 	delete(g.labels.byName, labelInfo.Name.L)
 	delete(g.labels.byID, labelInfo.ID)
+
+	meta := *g.meta.Load()
+	for i, l := range meta.Labels {
+		if l.ID == labelInfo.ID {
+			meta.Labels = append(meta.Labels[:i], meta.Labels[i+1:]...)
+			break
+		}
+	}
+	g.meta.Store(&meta)
 }
 
 // CreateProperty create a new property and append to the graph properties list.
@@ -168,6 +179,10 @@ func (g *Graph) CreateProperty(propertyInfo *model.PropertyInfo) {
 
 	g.properties.byName[propertyInfo.Name.L] = propertyInfo
 	g.properties.byID[propertyInfo.ID] = propertyInfo
+
+	meta := *g.meta.Load()
+	meta.Properties = append(meta.Properties, propertyInfo)
+	g.meta.Store(&meta)
 }
 
 // DropProperty removes specified property from graph.
@@ -177,6 +192,15 @@ func (g *Graph) DropProperty(propertyInfo *model.PropertyInfo) {
 
 	delete(g.properties.byName, propertyInfo.Name.L)
 	delete(g.properties.byID, propertyInfo.ID)
+
+	meta := *g.meta.Load()
+	for i, p := range meta.Properties {
+		if p.ID == propertyInfo.ID {
+			meta.Properties = append(meta.Properties[:i], meta.Properties[i+1:]...)
+			break
+		}
+	}
+	g.meta.Store(&meta)
 }
 
 // Index returns the label of specified name.
@@ -212,9 +236,9 @@ func (g *Graph) Indexes() []*Index {
 
 // SetNextPropID sets the next property id.
 func (g *Graph) SetNextPropID(propID uint16) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	g.meta.NextPropID = propID
+	meta := *g.meta.Load()
+	meta.NextPropID = propID
+	g.meta.Store(&meta)
 }
 
 // MDLock locks the metadata of the current graph.

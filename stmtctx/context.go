@@ -17,6 +17,7 @@ package stmtctx
 import (
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/storage/kv"
@@ -45,6 +46,10 @@ type Context struct {
 		warnings   []SQLWarn
 		errorCount uint16
 	}
+
+	// TODO: perhaps we can move these to a separate struct.
+	planID       atomic.Int64
+	planColumnID atomic.Int64
 }
 
 // New returns a session statement context instance.
@@ -86,7 +91,6 @@ func (sc *Context) CurrentGraph() *catalog.Graph {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
 
-	// return catalog.Graph
 	return sc.Catalog().Graph(sc.mu.currentGraph)
 }
 
@@ -104,4 +108,12 @@ func (sc *Context) CurrentGraphName() string {
 	defer sc.mu.RUnlock()
 
 	return sc.mu.currentGraph
+}
+
+func (sc *Context) AllocPlanID() int {
+	return int(sc.planID.Add(1))
+}
+
+func (sc *Context) AllocPlanColumnID() int64 {
+	return sc.planColumnID.Add(1)
 }

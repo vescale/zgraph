@@ -1,4 +1,4 @@
-// Copyright 2022 zGraph Authors. All rights reserved.
+// Copyright 2023 zGraph Authors. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,26 +20,25 @@ import (
 	"github.com/vescale/zgraph/expression"
 )
 
-// ProjectionExec represents a projection executor.
-type ProjectionExec struct {
+// SelectionExec represents a selection executor.
+type SelectionExec struct {
 	baseExecutor
 
-	exprs []expression.Expression
+	condition expression.Expression
 }
 
-func (p *ProjectionExec) Next(ctx context.Context) (expression.Row, error) {
-	childRow, err := p.children[0].Next(ctx)
-	if err != nil || childRow == nil {
-		return nil, err
-	}
-
-	row := make(expression.Row, len(p.exprs))
-	for i, expr := range p.exprs {
-		val, err := expr.Eval(p.sc, childRow)
+func (p *SelectionExec) Next(ctx context.Context) (expression.Row, error) {
+	for {
+		row, err := p.children[0].Next(ctx)
+		if err != nil || row == nil {
+			return nil, err
+		}
+		result, err := p.condition.Eval(p.sc, row)
 		if err != nil {
 			return nil, err
 		}
-		row[i] = val
+		if result.GetBool() {
+			return row, nil
+		}
 	}
-	return row, nil
 }

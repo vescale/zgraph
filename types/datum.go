@@ -66,6 +66,12 @@ func NewStringDatum(val string) Datum {
 	return d
 }
 
+func NewBoolDatum(val bool) Datum {
+	var d Datum
+	d.SetBool(val)
+	return d
+}
+
 func (d *Datum) SetValue(val any) {
 	switch x := val.(type) {
 	case nil:
@@ -231,7 +237,7 @@ func (d *Datum) SetInterval(i Interval) {
 }
 
 type GraphVar struct {
-	ID         uint64
+	ID         int64
 	Labels     []string
 	Properties map[string]Datum
 }

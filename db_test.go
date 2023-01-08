@@ -87,8 +87,6 @@ func TestDB_DDL(t *testing.T) {
 }
 
 func TestDB_Select(t *testing.T) {
-	t.Skip()
-
 	db, err := Open(t.TempDir(), nil)
 	require.NoError(t, err)
 	require.NotNil(t, db)
@@ -118,6 +116,7 @@ func TestDB_Select(t *testing.T) {
 	tk.MustExec(ctx, `INSERT EDGE e BETWEEN x AND y LABELS ( studentOf ) FROM MATCH (x), MATCH (y) WHERE x.name = 'Lee' AND y.name = 'UC Berkeley'`)
 	tk.MustExec(ctx, `INSERT EDGE e BETWEEN x AND y LABELS ( studentOf ) FROM MATCH (x), MATCH (y) WHERE x.name = 'Riya' AND y.name = 'UC Berkeley'`)
 
+	t.Skipf("SELECT is not fully implemented yet")
 	rs, err := sess.Execute(ctx, `SELECT a.name AS a, b.name AS b FROM MATCH (a:Person) -[e:knows]-> (b:Person)`)
 	require.NoError(t, err)
 	require.Len(t, rs.Fields(), 2)

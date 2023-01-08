@@ -38,10 +38,12 @@ type functionClass interface {
 // check expression/function_traits.go to see if it should be appended to
 // any set there.
 var funcs = map[string]functionClass{
-	opcode.Plus.String():  &arithmeticPlusFunctionClass{baseFunctionClass{opcode.Plus.String(), 2, 2}},
-	opcode.Minus.String(): &arithmeticMinusFunctionClass{baseFunctionClass{opcode.Minus.String(), 2, 2}},
-	opcode.Mul.String():   &arithmeticMultiplyFunctionClass{baseFunctionClass{opcode.Mul.String(), 2, 2}},
-	opcode.Div.String():   &arithmeticDivideFunctionClass{baseFunctionClass{opcode.Div.String(), 2, 2}},
+	opcode.Plus.String():     &arithmeticPlusFunctionClass{baseFunctionClass{opcode.Plus.String(), 2, 2}},
+	opcode.Minus.String():    &arithmeticMinusFunctionClass{baseFunctionClass{opcode.Minus.String(), 2, 2}},
+	opcode.Mul.String():      &arithmeticMultiplyFunctionClass{baseFunctionClass{opcode.Mul.String(), 2, 2}},
+	opcode.Div.String():      &arithmeticDivideFunctionClass{baseFunctionClass{opcode.Div.String(), 2, 2}},
+	opcode.EQ.String():       &compareFunctionClass{baseFunctionClass{opcode.EQ.String(), 2, 2}, opcode.EQ},
+	opcode.LogicAnd.String(): &logicAndFunctionClass{baseFunctionClass{opcode.LogicAnd.String(), 2, 2}},
 	// TODO: define function names in parser package.
 	"id":     &idFunctionClass{baseFunctionClass{"id", 1, 1}},
 	"label":  &labelFunctionClass{baseFunctionClass{"label", 1, 1}},

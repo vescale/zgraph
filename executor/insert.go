@@ -202,6 +202,9 @@ func (e *InsertExec) encodeEdge(graphID int64, insertion *planner.ElementInserti
 		return err
 	}
 
+	srcID := srcIDVal.GetInt64()
+	dstID := dstIDVal.GetInt64()
+
 	var labelIDs []uint16
 	for _, label := range insertion.Labels {
 		labelIDs = append(labelIDs, uint16(label.Meta().ID))
@@ -212,8 +215,8 @@ func (e *InsertExec) encodeEdge(graphID int64, insertion *planner.ElementInserti
 	}
 	val := make([]byte, len(ret))
 	copy(val, ret)
-	e.kvs = append(e.kvs, kv.Pair{Key: codec.IncomingEdgeKey(graphID, srcIDVal.GetInt64(), dstIDVal.GetInt64()), Val: val})
-	e.kvs = append(e.kvs, kv.Pair{Key: codec.OutgoingEdgeKey(graphID, srcIDVal.GetInt64(), dstIDVal.GetInt64()), Val: val})
+	e.kvs = append(e.kvs, kv.Pair{Key: codec.IncomingEdgeKey(graphID, srcID, dstID), Val: val})
+	e.kvs = append(e.kvs, kv.Pair{Key: codec.OutgoingEdgeKey(graphID, srcID, dstID), Val: val})
 	return nil
 }
 

@@ -242,14 +242,19 @@ func (s *SubgraphBuilder) buildVertices() {
 	for _, path := range s.paths {
 		for _, astVertex := range path.Vertices {
 			astVar := astVertex.Variable
-			labels := astVar.Labels
 			if v, ok := s.vertices[astVar.Name.L]; ok {
-				if len(labels) > 0 {
-					v.Labels = slicesext.FilterFunc(v.Labels, func(l *catalog.Label) bool {
-						return slicesext.ContainsFunc(labels, func(label model.CIStr) bool {
-							return l.Meta().Name.Equal(label)
+				if labels := astVar.Labels; len(labels) > 0 {
+					if len(v.Labels) > 0 {
+						v.Labels = slicesext.FilterFunc(v.Labels, func(l *catalog.Label) bool {
+							return slicesext.ContainsFunc(labels, func(label model.CIStr) bool {
+								return l.Meta().Name.Equal(label)
+							})
 						})
-					})
+					} else {
+						for _, l := range astVar.Labels {
+							v.Labels = append(v.Labels, s.graph.Label(l.L))
+						}
+					}
 				}
 			} else {
 				s.vertices[astVar.Name.L] = s.buildVertex(astVar)
@@ -270,12 +275,8 @@ func (s *SubgraphBuilder) buildVertex(astVar *ast.VariableSpec) *Vertex {
 	v := &Vertex{
 		Name: astVar.Name,
 	}
-	if len(astVar.Labels) == 0 {
-		v.Labels = s.graph.Labels()
-	} else {
-		for _, l := range astVar.Labels {
-			v.Labels = append(v.Labels, s.graph.Label(l.L))
-		}
+	for _, l := range astVar.Labels {
+		v.Labels = append(v.Labels, s.graph.Label(l.L))
 	}
 	return v
 }
@@ -305,7 +306,7 @@ func (s *SubgraphBuilder) buildConnections() error {
 			}
 			leftVarName := path.Vertices[i].Variable.Name
 			rightVarName := path.Vertices[i+1].Variable.Name
-			srcVarName, dstVarName, anyDirected, err := resolveSrcDstVarName(leftVarName, rightVarName, direction)
+			srcVarName, dstVarName, anyDirected, err := resolveAndSrcDstVarName(leftVarName, rightVarName, direction)
 			if err != nil {
 				return err
 			}
@@ -323,12 +324,8 @@ func (s *SubgraphBuilder) buildSimplePath(astConn ast.VertexPairConnection) (Ver
 	case *ast.EdgePattern:
 		varName := x.Variable.Name
 		edge := &Edge{}
-		if len(x.Variable.Labels) == 0 {
-			edge.Labels = s.graph.Labels()
-		} else {
-			for _, l := range x.Variable.Labels {
-				edge.Labels = append(edge.Labels, s.graph.Label(l.L))
-			}
+		for _, l := range x.Variable.Labels {
+			edge.Labels = append(edge.Labels, s.graph.Label(l.L))
 		}
 		s.singletonVars = append(s.singletonVars, &GraphVar{
 			Name:      varName,
@@ -469,7 +466,7 @@ func (s *SubgraphBuilder) buildConnWithCpe(varName model.CIStr, labelOrCpeNames 
 	return edge, nil
 }
 
-func resolveSrcDstVarName(
+func resolveAndSrcDstVarName(
 	leftVarName, rightVarName model.CIStr, direction ast.EdgeDirection,
 ) (srcVarName, dstVarName model.CIStr, anyDirected bool, err error) {
 	switch direction {

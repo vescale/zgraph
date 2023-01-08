@@ -21,11 +21,13 @@ const (
 	outgoingEdgeSep = 'o'
 )
 
+const EdgeKeyLen = 1 /*prefix*/ + 8 /*graphID*/ + 8 /*srcVertexID*/ + 1 /*edgeSep*/ + 8 /*dstVertexID*/
+
 // IncomingEdgeKey encodes the incoming edge key.
 //
 // The key format is: ${Prefix}${GraphID}${DstVertexID}${IncomingEdgeSep}${SrcVertexID}.
 func IncomingEdgeKey(graphID, srcVertexID, dstVertexID int64) []byte {
-	result := make([]byte, 0, len(prefix)+8 /*graphID*/ +8 /*srcVertexID*/ +1 /*incomingEdgeSep*/ +8 /*dstVertexID*/)
+	result := make([]byte, 0, EdgeKeyLen)
 	result = append(result, prefix...)
 	result = EncodeInt(result, graphID)
 	result = EncodeInt(result, dstVertexID)
@@ -36,7 +38,7 @@ func IncomingEdgeKey(graphID, srcVertexID, dstVertexID int64) []byte {
 
 // ParseIncomingEdgeKey parse the incoming edge key.
 func ParseIncomingEdgeKey(key []byte) (graphID, srcVertexID, dstVertexID int64, err error) {
-	if len(key) < len(prefix)+8+8+1+8 {
+	if len(key) < EdgeKeyLen {
 		return 0, 0, 0, errors.New("insufficient key length")
 	}
 	_, graphID, err = DecodeInt(key[len(prefix):])
@@ -55,7 +57,7 @@ func ParseIncomingEdgeKey(key []byte) (graphID, srcVertexID, dstVertexID int64, 
 //
 // The key format is: ${Prefix}${GraphID}${SrcVertexID}${outgoingEdgeSep}${DstVertexID}.
 func OutgoingEdgeKey(graphID, srcVertexID, dstVertexID int64) []byte {
-	result := make([]byte, 0, len(prefix)+8 /*graphID*/ +8 /*srcVertexID*/ +1 /*outgoingEdgeSep*/ +8 /*dstVertexID*/)
+	result := make([]byte, 0, EdgeKeyLen)
 	result = append(result, prefix...)
 	result = EncodeInt(result, graphID)
 	result = EncodeInt(result, srcVertexID)
@@ -66,7 +68,7 @@ func OutgoingEdgeKey(graphID, srcVertexID, dstVertexID int64) []byte {
 
 // ParseOutgoingEdgeKey parse the outgoing edge key.
 func ParseOutgoingEdgeKey(key []byte) (graphID, srcVertexID, dstVertexID int64, err error) {
-	if len(key) < len(prefix)+8+8+1+8 {
+	if len(key) < EdgeKeyLen {
 		return 0, 0, 0, errors.New("insufficient key length")
 	}
 	_, graphID, err = DecodeInt(key[len(prefix):])

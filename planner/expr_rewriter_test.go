@@ -36,7 +36,7 @@ func TestRewriteExpr(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		expr, err := planner.RewriteExpr(c.expr)
+		expr, err := planner.RewriteExpr(c.expr, &planner.LogicalDual{})
 		assert.Nil(t, err)
 		assert.Equal(t, c.expect, expr)
 	}

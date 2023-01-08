@@ -15,17 +15,24 @@
 package planner
 
 import (
+	"fmt"
+
 	"github.com/vescale/zgraph/expression"
 	"github.com/vescale/zgraph/parser/ast"
+	"github.com/vescale/zgraph/parser/model"
+	"golang.org/x/exp/slices"
 )
 
 type exprRewriter struct {
+	p        LogicalPlan
 	ctxStack []expression.Expression
 	err      error
 }
 
-func RewriteExpr(expr ast.ExprNode) (expression.Expression, error) {
-	rewriter := &exprRewriter{}
+func RewriteExpr(expr ast.ExprNode, p LogicalPlan) (expression.Expression, error) {
+	rewriter := &exprRewriter{
+		p: p,
+	}
 	expr.Accept(rewriter)
 	if rewriter.err != nil {
 		return nil, rewriter.err
@@ -61,6 +68,36 @@ func (er *exprRewriter) Leave(n ast.Node) (node ast.Node, ok bool) {
 			return n, true
 		}
 		er.ctxStackAppend(opFunc)
+	case *ast.VariableReference:
+		idx := slices.IndexFunc(er.p.OutputNames(), func(name model.CIStr) bool {
+			return expr.VariableName.Equal(name)
+		})
+		if idx == -1 {
+			er.err = fmt.Errorf("unresolved variable %s", expr.VariableName)
+			return n, true
+		}
+		er.ctxStackAppend(er.p.Schema().Columns[idx])
+	case *ast.PropertyAccess:
+		idx := slices.IndexFunc(er.p.OutputNames(), func(name model.CIStr) bool {
+			return expr.VariableName.Equal(name)
+		})
+		if idx == -1 {
+			er.err = fmt.Errorf("unresolved variable %s", expr.VariableName)
+			return n, true
+		}
+		col := er.p.Schema().Columns[idx]
+		er.ctxStackAppend(&expression.PropertyAccess{
+			Column: col,
+			VariableRef: &expression.VariableRef{
+				Name: expr.VariableName,
+			},
+			PropertyRef: &expression.PropertyRef{
+				Property: &model.PropertyInfo{
+					ID:   0, // FIXME: Set correct ID
+					Name: expr.PropertyName,
+				},
+			},
+		})
 	}
 
 	return n, true
