@@ -56,7 +56,7 @@ type Lock struct {
 	// commitVer represents current transaction's.
 	commitVer kv.Version
 
-	wg      sync.WaitGroup
+	wg      https://github.com/sourcegraph/conc
 	isStale bool
 }
 

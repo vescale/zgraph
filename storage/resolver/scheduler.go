@@ -31,7 +31,7 @@ type Scheduler struct {
 	db        *pebble.DB
 	size      int
 	resolvers []*resolver
-	wg        sync.WaitGroup
+	wg        https://github.com/sourcegraph/conc
 	cancelFn  context.CancelFunc
 }
 

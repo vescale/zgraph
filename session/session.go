@@ -42,7 +42,7 @@ type Session struct {
 	mu       sync.Mutex
 	id       int64
 	sc       *stmtctx.Context
-	wg       sync.WaitGroup
+	wg       https://github.com/sourcegraph/conc
 	store    kv.Storage
 	catalog  *catalog.Catalog
 	closed   atomic.Bool
