@@ -33,10 +33,10 @@ func TestWithConcurrency(t *testing.T) {
 
 	ch := make(chan []kv.Key, 100)
 	const workerCount = 10
-	var wg sync.WaitGroup
+	var wg conc.WaitGroup
 	wg.Add(workerCount)
 	for i := 0; i < workerCount; i++ {
-		go func(ch <-chan []kv.Key, wg *sync.WaitGroup) {
+		go func(ch <-chan []kv.Key, wg *conc.WaitGroup) {
 			for txn := range ch {
 				lock := sched.Lock(getTso(), txn)
 				if lock.IsStale() {
