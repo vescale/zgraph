@@ -32,7 +32,7 @@ type Manager struct {
 	db       *pebble.DB
 	resolver *resolver.Scheduler
 	workers  []*worker
-	wg       https://github.com/sourcegraph/conc
+	wg       conc.WaitGroup
 	cancelFn context.CancelFunc
 	pending  chan Task
 }
