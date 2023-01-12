@@ -15,6 +15,8 @@
 package planner
 
 import (
+	"bytes"
+
 	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/expression"
@@ -282,17 +284,30 @@ func (b *Builder) buildSelect(stmt *ast.SelectStmt) error {
 		plan = limit
 	}
 
+	cols := make([]*expression.Column, 0, len(stmt.Select.Elements))
+	outputNames := make([]model.CIStr, 0, len(stmt.Select.Elements))
 	// TODO: support DISTINCT and wildcard.
 	proj := &LogicalProjection{}
-	for _, elem := range stmt.Select.Elements {
-		// TODO: resolve reference.
+	for i, elem := range stmt.Select.Elements {
 		expr, err := RewriteExpr(elem.ExpAsVar.Expr, plan)
 		if err != nil {
 			return err
 		}
 		proj.Exprs = append(proj.Exprs, expr)
+		cols = append(cols, &expression.Column{
+			ID:    b.sc.AllocPlanColumnID(),
+			Index: i,
+		})
+		if elem.ExpAsVar.AsName.IsEmpty() {
+			var buf bytes.Buffer
+			elem.ExpAsVar.Expr.Format(&buf)
+			outputNames = append(outputNames, model.NewCIStr(buf.String()))
+		} else {
+			outputNames = append(outputNames, elem.ExpAsVar.AsName)
+		}
 	}
-	proj.SetSchema(expression.NewSchema())
+	proj.SetSchema(expression.NewSchema(cols...))
+	proj.SetOutputNames(outputNames)
 	proj.SetChildren(plan)
 
 	b.setPlan(proj)

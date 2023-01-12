@@ -119,6 +119,10 @@ func (q *queryResultSet) Next(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if r == nil {
+		q.valid = false
+		return nil
+	}
 	q.row = r
 	return nil
 }

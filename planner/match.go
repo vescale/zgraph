@@ -324,6 +324,7 @@ func (s *SubgraphBuilder) buildSimplePath(astConn ast.VertexPairConnection) (Ver
 	case *ast.EdgePattern:
 		varName := x.Variable.Name
 		edge := &Edge{}
+		edge.SetName(varName)
 		for _, l := range x.Variable.Labels {
 			edge.Labels = append(edge.Labels, s.graph.Label(l.L))
 		}

@@ -116,7 +116,6 @@ func TestDB_Select(t *testing.T) {
 	tk.MustExec(ctx, `INSERT EDGE e BETWEEN x AND y LABELS ( studentOf ) FROM MATCH (x), MATCH (y) WHERE x.name = 'Lee' AND y.name = 'UC Berkeley'`)
 	tk.MustExec(ctx, `INSERT EDGE e BETWEEN x AND y LABELS ( studentOf ) FROM MATCH (x), MATCH (y) WHERE x.name = 'Riya' AND y.name = 'UC Berkeley'`)
 
-	t.Skipf("SELECT is not fully implemented yet")
 	rs, err := sess.Execute(ctx, `SELECT a.name AS a, b.name AS b FROM MATCH (a:Person) -[e:knows]-> (b:Person)`)
 	require.NoError(t, err)
 	require.Len(t, rs.Fields(), 2)
@@ -129,9 +128,10 @@ func TestDB_Select(t *testing.T) {
 		}
 		var a, b string
 		require.NoError(t, rs.Scan(&a, &b))
+		knows = append(knows, [2]string{a, b})
 	}
 	sort.Slice(knows, func(i, j int) bool {
-		return knows[i][0] < knows[j][0] || knows[i][1] < knows[j][1]
+		return knows[i][0] < knows[j][0] || (knows[i][0] == knows[j][0] && knows[i][1] < knows[j][1])
 	})
 	require.Len(t, knows, 3)
 	require.Equal(t, [][2]string{{"Kathrine", "Lee"}, {"Kathrine", "Riya"}, {"Lee", "Kathrine"}}, knows)
