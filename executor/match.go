@@ -19,11 +19,10 @@ import (
 	"math"
 
 	"github.com/pingcap/errors"
-	"github.com/vescale/zgraph/parser/ast"
-
 	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/codec"
 	"github.com/vescale/zgraph/expression"
+	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/parser/model"
 	"github.com/vescale/zgraph/planner"
 	"github.com/vescale/zgraph/storage/kv"
@@ -180,6 +179,7 @@ func (m *MatchExec) iterVertex(vertex *planner.Vertex, f func(vertexVar *types.G
 	upper := codec.VertexKey(graph.Meta().ID, math.MaxInt64)
 	iter, err := m.txn.Iter(lower, upper)
 	if err != nil {
+
 		return err
 	}
 	defer iter.Close()
@@ -279,16 +279,20 @@ func (m *MatchExec) matchVertex(ctx context.Context, vertex *planner.Vertex, ver
 	key := codec.VertexKey(graph.Meta().ID, vertexID)
 	val, err := m.txn.Get(ctx, key)
 	if err != nil {
+		if errors.ErrorEqual(err, kv.ErrNotExist) {
+			return nil, nil
+		}
 		return nil, err
 	}
-	edgeVar, err := m.decodeGraphVar(val)
+	vertexVar, err := m.decodeGraphVar(val)
 	if err != nil {
 		return nil, err
 	}
-	if !matchLabels(edgeVar.Labels, vertex.Labels) {
+	vertexVar.ID = vertexID
+	if !matchLabels(vertexVar.Labels, vertex.Labels) {
 		return nil, nil
 	}
-	return edgeVar, nil
+	return vertexVar, nil
 }
 
 func (m *MatchExec) matchEdge(ctx context.Context, edge *planner.Edge, srcVertexID, dstVertexID int64) (*types.GraphVar, error) {
@@ -296,6 +300,9 @@ func (m *MatchExec) matchEdge(ctx context.Context, edge *planner.Edge, srcVertex
 	edgeKey := codec.OutgoingEdgeKey(graph.Meta().ID, srcVertexID, dstVertexID)
 	val, err := m.txn.Get(ctx, edgeKey)
 	if err != nil {
+		if errors.ErrorEqual(err, kv.ErrNotExist) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	edgeVar, err := m.decodeGraphVar(val)

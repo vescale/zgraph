@@ -96,7 +96,9 @@ func TestDB_Select(t *testing.T) {
 	require.NotNil(t, sess)
 	tk := NewTestKit(t, sess)
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	tk.MustExec(ctx, "CREATE GRAPH student_network")
 	tk.MustExec(ctx, "USE student_network")
 	tk.MustExec(ctx, "CREATE LABEL Person")
@@ -135,4 +137,46 @@ func TestDB_Select(t *testing.T) {
 	})
 	require.Len(t, knows, 3)
 	require.Equal(t, [][2]string{{"Kathrine", "Lee"}, {"Kathrine", "Riya"}, {"Lee", "Kathrine"}}, knows)
+
+	// A more complex example in https://pgql-lang.org/spec/1.5/#more-complex-patterns.
+	// TODO: currently we assume every edge and vertex has explicit name, so here we assign a name to each edge.
+	rs, err = sess.Execute(ctx, `SELECT p2.name AS friend, u.name AS university
+  FROM MATCH (u:University) <-[anon1:studentOf]- (p1:Person) -[anon2:knows]-> (p2:Person) -[anon3:studentOf]-> (u)
+ WHERE p1.name = 'Lee'`)
+	require.NoError(t, err)
+	require.Len(t, rs.Fields(), 2)
+
+	var friend, university string
+	require.NoError(t, rs.Next(ctx))
+	require.True(t, rs.Valid())
+	require.NoError(t, rs.Scan(&friend, &university))
+	require.NoError(t, rs.Next(ctx))
+	require.False(t, rs.Valid(), "only one row should be returned")
+	require.Equal(t, "Kathrine", friend)
+	require.Equal(t, "UC Berkeley", university)
+
+	// An example in https://pgql-lang.org/spec/1.5/#binding-an-element-multiple-times.
+	// TODO: currently we assume every edge and vertex has explicit name, so here we assign a name to each edge.
+	rs, err = sess.Execute(ctx, `SELECT p1.name AS p1, p2.name AS p2, p3.name AS p3
+  FROM MATCH (p1:Person) -[anon1:knows]-> (p2:Person) -[anon2:knows]-> (p3:Person)
+ WHERE p1.name = 'Lee'`)
+	require.NoError(t, err)
+	require.Len(t, rs.Fields(), 3)
+	var tuples [][3]string
+	for {
+		require.NoError(t, rs.Next(ctx))
+		if !rs.Valid() {
+			break
+		}
+		var p1, p2, p3 string
+		require.NoError(t, rs.Scan(&p1, &p2, &p3))
+		tuples = append(tuples, [3]string{p1, p2, p3})
+	}
+	sort.Slice(tuples, func(i, j int) bool {
+		return tuples[i][0] < tuples[j][0] ||
+			(tuples[i][0] == tuples[j][0] && tuples[i][1] < tuples[j][1]) ||
+			(tuples[i][0] == tuples[j][0] && tuples[i][1] == tuples[j][1] && tuples[i][2] < tuples[j][2])
+	})
+	require.Len(t, tuples, 2)
+	require.Equal(t, [][3]string{{"Lee", "Kathrine", "Lee"}, {"Lee", "Kathrine", "Riya"}}, tuples)
 }
