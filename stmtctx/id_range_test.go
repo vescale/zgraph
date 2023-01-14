@@ -43,7 +43,7 @@ func TestIDRange_NextParallel(t *testing.T) {
 
 	const p = 20
 
-	wg := sync.WaitGroup{}
+	wg := conc.WaitGroup
 	total := atomic.Int64{}
 	for i := 0; i < p; i++ {
 		wg.Add(1)
