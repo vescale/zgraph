@@ -18,10 +18,10 @@ package latch
 import (
 	"bytes"
 	"math/rand"
-	"sync"
 	"testing"
 	"time"
 
+	"github.com/sourcegraph/conc"
 	"github.com/vescale/zgraph/storage/kv"
 )
 
@@ -34,9 +34,8 @@ func TestWithConcurrency(t *testing.T) {
 	ch := make(chan []kv.Key, 100)
 	const workerCount = 10
 	var wg conc.WaitGroup
-	wg.Add(workerCount)
 	for i := 0; i < workerCount; i++ {
-		go func(ch <-chan []kv.Key, wg *conc.WaitGroup) {
+		wg.Go(func() {
 			for txn := range ch {
 				lock := sched.Lock(getTso(), txn)
 				if lock.IsStale() {
@@ -47,8 +46,7 @@ func TestWithConcurrency(t *testing.T) {
 				}
 				sched.UnLock(lock)
 			}
-			wg.Done()
-		}(ch, &wg)
+		})
 	}
 
 	for i := 0; i < 999; i++ {

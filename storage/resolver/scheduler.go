@@ -20,6 +20,7 @@ import (
 	"sync/atomic"
 
 	"github.com/cockroachdb/pebble"
+	"github.com/sourcegraph/conc"
 	"github.com/twmb/murmur3"
 	"github.com/vescale/zgraph/storage/kv"
 )
@@ -58,11 +59,7 @@ func (s *Scheduler) Run() {
 	for i := 0; i < s.size; i++ {
 		r := newResolver(s.db)
 		s.resolvers = append(s.resolvers, r)
-		s.wg.Add(1)
-		go func() {
-			defer s.wg.Done()
-			r.run(ctx)
-		}()
+		s.wg.Go(func() { r.run(ctx) })
 	}
 	s.cancelFn = cancelFn
 }

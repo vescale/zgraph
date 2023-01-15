@@ -15,10 +15,10 @@
 package stmtctx
 
 import (
-	"sync"
 	"sync/atomic"
 	"testing"
 
+	"github.com/sourcegraph/conc"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,12 +43,10 @@ func TestIDRange_NextParallel(t *testing.T) {
 
 	const p = 20
 
-	wg := conc.WaitGroup
+	wg := conc.WaitGroup{}
 	total := atomic.Int64{}
 	for i := 0; i < p; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			var subn int64
 			for {
 				_, err := rang.Next()
@@ -58,7 +56,7 @@ func TestIDRange_NextParallel(t *testing.T) {
 				}
 				subn++
 			}
-		}()
+		})
 	}
 
 	wg.Wait()

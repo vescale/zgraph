@@ -23,7 +23,7 @@ type Notifier interface {
 }
 
 type MultiKeysNotifier struct {
-	wg   conc.WaitGroup
+	wg   sync.WaitGroup
 	mu   sync.RWMutex
 	errs []error
 }

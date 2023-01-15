@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/pebble"
+	"github.com/sourcegraph/conc"
 	"github.com/vescale/zgraph/storage/resolver"
 )
 
@@ -65,22 +66,15 @@ func (m *Manager) Run() {
 	for i := 0; i < m.size; i++ {
 		worker := newWorker(m.db, m.resolver)
 		m.workers = append(m.workers, worker)
-		m.wg.Add(1)
-		go func() {
-			m.wg.Done()
-			worker.run(ctx, m.pending)
-		}()
+		m.wg.Go(func() { worker.run(ctx, m.pending) })
 	}
 	m.cancelFn = cancelFn
 
 	// Schedule tasks
-	m.wg.Add(1)
-	go m.scheduler(ctx)
+	m.wg.Go(func() { m.scheduler(ctx) })
 }
 
 func (m *Manager) scheduler(ctx context.Context) {
-	defer m.wg.Done()
-
 	const interval = time.Second * 5
 	timer := time.NewTimer(interval)
 	for {
