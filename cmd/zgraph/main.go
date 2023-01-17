@@ -19,7 +19,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 	"github.com/vescale/zgraph"
 	"github.com/vescale/zgraph/session"
@@ -58,21 +60,74 @@ func main() {
 func interact(session *session.Session) {
 	fmt.Println("Welcome to zGraph interactive command line.")
 	for {
-		// TODO: scan text and execute it.
+		fmt.Print("zgraph> ")
+		var buf string
 		reader := bufio.NewReader(os.Stdin)
-		text, err := reader.ReadString('\n')
-		// if something goes wrong, just read newline.
-		if err != nil {
-			fmt.Println(err)
+		for {
+
+			line, _ := reader.ReadString('\n')
+			buf += line
+			if strings.Contains(line, ";") {
+				break
+			}
+			fmt.Print("      > ")
+		}
+
+		semicolon := strings.Index(buf, ";")
+		query := strings.TrimSpace(buf[:semicolon])
+		buf = buf[semicolon+1:]
+		if query == "" {
 			continue
 		}
-		execute, err := session.Execute(context.Background(), text)
-		// is something goes wrong, just show error, and read newline.
+
+		rs, err := session.Execute(context.Background(), query)
 		if err != nil {
-			fmt.Println(err)
+			outputError(err)
 			continue
 		}
-		// TODO: show result better
-		fmt.Println(execute)
+		output, err := renderResult(rs)
+		if err != nil {
+			outputError(err)
+			continue
+		}
+		if len(output) > 0 {
+			fmt.Println(output)
+		}
 	}
+}
+
+func renderResult(rs session.ResultSet) (string, error) {
+	defer rs.Close()
+	w := table.NewWriter()
+
+	// TODO: set table header
+
+	fields := make([]any, 0, len(rs.Fields()))
+	for range rs.Fields() {
+		var s string
+		fields = append(fields, &s)
+	}
+
+	for {
+		if err := rs.Next(context.Background()); err != nil {
+			return "", err
+		}
+		if !rs.Valid() {
+			break
+		}
+		if err := rs.Scan(fields...); err != nil {
+			return "", err
+		}
+		var row []any
+		for _, f := range fields {
+			row = append(row, *f.(*string))
+		}
+		w.AppendRow(row)
+	}
+
+	return w.Render(), nil
+}
+
+func outputError(err error) {
+	fmt.Printf("Error: %v\n", err)
 }

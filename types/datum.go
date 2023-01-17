@@ -16,6 +16,7 @@ package types
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 )
 
@@ -234,6 +235,43 @@ func (d *Datum) GetInterval() Interval {
 func (d *Datum) SetInterval(i Interval) {
 	d.k = KindInterval
 	d.i = int64(i)
+}
+
+func (d *Datum) ToString() string {
+	switch d.k {
+	case KindNull:
+		return "NULL"
+	case KindBool:
+		if d.GetBool() {
+			return "TRUE"
+		} else {
+			return "FALSE"
+		}
+	case KindInt64:
+		return strconv.FormatInt(d.GetInt64(), 10)
+	case KindUint64:
+		return strconv.FormatUint(d.GetUint64(), 10)
+	case KindFloat64:
+		return strconv.FormatFloat(d.GetFloat64(), 'f', -1, 64)
+	case KindString:
+		return d.GetString()
+	case KindBytes:
+		return fmt.Sprintf("X'%X'", d.GetBytes())
+	case KindDecimal:
+		return d.GetDecimal().String()
+	case KindDate:
+		return d.GetDate().String()
+	case KindTime:
+		return d.GetTime().String()
+	case KindTimestamp:
+		return d.GetTimestamp().String()
+	case KindInterval:
+		return d.GetInterval().StringValue() + " " + d.GetInterval().Field().String()
+	case KindGraphVar:
+		return d.GetGraphVar().String()
+	default:
+		panic(fmt.Sprintf("unexpected datum kind %v", d.k))
+	}
 }
 
 type GraphVar struct {
