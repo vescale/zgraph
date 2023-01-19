@@ -21,6 +21,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/jedib0t/go-pretty/v6/text"
+
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 	"github.com/vescale/zgraph"
@@ -99,8 +101,19 @@ func interact(session *session.Session) {
 func renderResult(rs session.ResultSet) (string, error) {
 	defer rs.Close()
 	w := table.NewWriter()
+	w.Style().Format = table.FormatOptions{
+		Footer: text.FormatDefault,
+		Header: text.FormatDefault,
+		Row:    text.FormatDefault,
+	}
 
-	// TODO: set table header
+	if len(rs.Fields()) > 0 {
+		var header []any
+		for _, field := range rs.Fields() {
+			header = append(header, field.Name)
+		}
+		w.AppendHeader(header)
+	}
 
 	fields := make([]any, 0, len(rs.Fields()))
 	for range rs.Fields() {

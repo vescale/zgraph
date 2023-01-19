@@ -86,8 +86,12 @@ type queryResultSet struct {
 }
 
 func retrieveFields(schema *expression.Schema) []*Field {
-	// TODO: fill filed information
-	fields := make([]*Field, len(schema.Columns))
+	fields := make([]*Field, 0, len(schema.Columns))
+	for _, col := range schema.Columns {
+		fields = append(fields, &Field{
+			Name: col.Name.O,
+		})
+	}
 	return fields
 }
 

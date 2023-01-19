@@ -28,10 +28,6 @@ type Plan interface {
 	TP() string
 	// Schema returns the schema.
 	Schema() *expression.Schema
-	// OutputNames returns the output names.
-	OutputNames() []model.CIStr
-	// SetOutputNames sets the output names.
-	SetOutputNames(names []model.CIStr)
 	// ExplainID gets the ID in explain statement
 	ExplainID() string
 	// ExplainInfo returns operator information to be explained.
@@ -90,20 +86,11 @@ type baseSchemaProducer struct {
 	basePlan
 
 	schema *expression.Schema
-	names  []model.CIStr
 }
 
 // Schema implements the Plan interface.
 func (sp *baseSchemaProducer) Schema() *expression.Schema {
 	return sp.schema
-}
-
-func (sp *baseSchemaProducer) OutputNames() []model.CIStr {
-	return sp.names
-}
-
-func (sp *baseSchemaProducer) SetOutputNames(names []model.CIStr) {
-	sp.names = names
 }
 
 type baseLogicalPlan struct {
@@ -177,25 +164,11 @@ func (s *physicalSchemaProducer) SetSchema(schema *expression.Schema) {
 	s.schema = schema
 }
 
-func (s *physicalSchemaProducer) OutputNames() []model.CIStr {
-	if s.names == nil && len(s.Children()) == 1 {
-		// default implementation for plans has only one child: proprgate child `OutputNames`.
-		// multi-children plans are likely to have particular implementation.
-		s.names = s.Children()[0].OutputNames()
-	}
-	return s.names
-}
-
-func (s *physicalSchemaProducer) SetOutputNames(names []model.CIStr) {
-	s.names = names
-}
-
 // logicalSchemaProducer stores the schema for the logical plans who can produce schema directly.
 type logicalSchemaProducer struct {
 	baseLogicalPlan
 
 	schema *expression.Schema
-	names  []model.CIStr
 }
 
 // Schema implements the Plan.Schema interface.
@@ -215,19 +188,6 @@ func (s *logicalSchemaProducer) Schema() *expression.Schema {
 // SetSchema implements the Plan.SetSchema interface.
 func (s *logicalSchemaProducer) SetSchema(schema *expression.Schema) {
 	s.schema = schema
-}
-
-func (s *logicalSchemaProducer) OutputNames() []model.CIStr {
-	if s.names == nil && len(s.Children()) == 1 {
-		// default implementation for plans has only one child: proprgate child `OutputNames`.
-		// multi-children plans are likely to have particular implementation.
-		s.names = s.Children()[0].OutputNames()
-	}
-	return s.names
-}
-
-func (s *logicalSchemaProducer) SetOutputNames(names []model.CIStr) {
-	s.names = names
 }
 
 // LogicalDual represents the plan which returns empty result set.

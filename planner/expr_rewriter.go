@@ -69,8 +69,8 @@ func (er *exprRewriter) Leave(n ast.Node) (node ast.Node, ok bool) {
 		}
 		er.ctxStackAppend(opFunc)
 	case *ast.VariableReference:
-		idx := slices.IndexFunc(er.p.OutputNames(), func(name model.CIStr) bool {
-			return expr.VariableName.Equal(name)
+		idx := slices.IndexFunc(er.p.Schema().Columns, func(col *expression.Column) bool {
+			return expr.VariableName.Equal(col.Name)
 		})
 		if idx == -1 {
 			er.err = fmt.Errorf("unresolved variable %s", expr.VariableName)
@@ -78,8 +78,8 @@ func (er *exprRewriter) Leave(n ast.Node) (node ast.Node, ok bool) {
 		}
 		er.ctxStackAppend(er.p.Schema().Columns[idx])
 	case *ast.PropertyAccess:
-		idx := slices.IndexFunc(er.p.OutputNames(), func(name model.CIStr) bool {
-			return expr.VariableName.Equal(name)
+		idx := slices.IndexFunc(er.p.Schema().Columns, func(col *expression.Column) bool {
+			return expr.VariableName.Equal(col.Name)
 		})
 		if idx == -1 {
 			er.err = fmt.Errorf("unresolved variable %s", expr.VariableName)

@@ -285,7 +285,6 @@ func (b *Builder) buildSelect(stmt *ast.SelectStmt) error {
 	}
 
 	cols := make([]*expression.Column, 0, len(stmt.Select.Elements))
-	outputNames := make([]model.CIStr, 0, len(stmt.Select.Elements))
 	// TODO: support DISTINCT and wildcard.
 	proj := &LogicalProjection{}
 	for i, elem := range stmt.Select.Elements {
@@ -294,20 +293,24 @@ func (b *Builder) buildSelect(stmt *ast.SelectStmt) error {
 			return err
 		}
 		proj.Exprs = append(proj.Exprs, expr)
-		cols = append(cols, &expression.Column{
-			ID:    b.sc.AllocPlanColumnID(),
-			Index: i,
-		})
+
+		var colName model.CIStr
 		if elem.ExpAsVar.AsName.IsEmpty() {
 			var buf bytes.Buffer
 			elem.ExpAsVar.Expr.Format(&buf)
-			outputNames = append(outputNames, model.NewCIStr(buf.String()))
+			colName = model.NewCIStr(buf.String())
 		} else {
-			outputNames = append(outputNames, elem.ExpAsVar.AsName)
+			colName = elem.ExpAsVar.AsName
 		}
+
+		cols = append(cols, &expression.Column{
+			ID:    b.sc.AllocPlanColumnID(),
+			Index: i,
+			Name:  colName,
+		})
+
 	}
 	proj.SetSchema(expression.NewSchema(cols...))
-	proj.SetOutputNames(outputNames)
 	proj.SetChildren(plan)
 
 	b.setPlan(proj)
@@ -337,6 +340,7 @@ func (b *Builder) buildMatch(matches []*ast.MatchClause) (LogicalPlan, error) {
 		cols = append(cols, &expression.Column{
 			ID:    b.sc.AllocPlanColumnID(),
 			Index: i,
+			Name:  v.Name,
 		})
 		names = append(names, v.Name)
 	}
@@ -345,7 +349,6 @@ func (b *Builder) buildMatch(matches []*ast.MatchClause) (LogicalPlan, error) {
 		Subgraph: sg,
 	}
 	plan.SetSchema(expression.NewSchema(cols...))
-	plan.SetOutputNames(names)
 
 	return plan, nil
 }
