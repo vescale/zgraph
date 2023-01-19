@@ -237,7 +237,7 @@ func (d *Datum) SetInterval(i Interval) {
 	d.i = int64(i)
 }
 
-func (d *Datum) ToString() string {
+func (d *Datum) AsString() string {
 	switch d.k {
 	case KindNull:
 		return "NULL"

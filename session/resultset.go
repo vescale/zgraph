@@ -153,7 +153,7 @@ func (q *queryResultSet) Close() error {
 func assignField(field any, datum types.Datum) error {
 	switch f := field.(type) {
 	case *string:
-		*f = datum.ToString()
+		*f = datum.AsString()
 	case *int:
 		*f = int(datum.GetInt64())
 	case *int64:
