@@ -15,15 +15,16 @@
 package main
 
 import (
-	"bufio"
 	"context"
+	"errors"
 	"fmt"
-	"os"
+	"io"
 	"strings"
 
-	"github.com/jedib0t/go-pretty/v6/text"
-
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/knz/bubbline"
 	"github.com/spf13/cobra"
 	"github.com/vescale/zgraph"
 	"github.com/vescale/zgraph/session"
@@ -61,44 +62,70 @@ func main() {
 
 func interact(session *session.Session) {
 	fmt.Println("Welcome to zGraph interactive command line.")
-	for {
-		fmt.Print("zgraph> ")
-		var buf string
-		reader := bufio.NewReader(os.Stdin)
-		for {
 
-			line, _ := reader.ReadString('\n')
-			buf += line
-			if strings.Contains(line, ";") {
+	m := bubbline.New()
+	m.Prompt = "zgraph> "
+	m.NextPrompt = "      > "
+	m.CheckInputComplete = func(input [][]rune, line, col int) bool {
+		inputLine := string(input[line])
+		if len(input) == 1 && strings.TrimSpace(inputLine) == "" {
+			return true
+		}
+		return strings.Contains(inputLine, ";")
+	}
+
+	var lastStmt string
+	for {
+		m.Reset()
+		if _, err := tea.NewProgram(m).Run(); err != nil {
+			outputError(err)
+			continue
+		}
+
+		if m.Err != nil {
+			if m.Err == io.EOF {
+				// No more input.
 				break
 			}
-			fmt.Print("      > ")
-		}
-
-		semicolon := strings.Index(buf, ";")
-		query := strings.TrimSpace(buf[:semicolon])
-		buf = buf[semicolon+1:]
-		if query == "" {
+			if errors.Is(m.Err, bubbline.ErrInterrupted) {
+				// Entered Ctrl+C to cancel input.
+				fmt.Println("^C")
+			} else {
+				outputError(m.Err)
+			}
 			continue
 		}
 
-		rs, err := session.Execute(context.Background(), query)
-		if err != nil {
-			outputError(err)
-			continue
+		input := lastStmt + m.Value()
+		stmts := strings.Split(input, ";")
+		for i := 0; i < len(stmts)-1; i++ {
+			stmt := strings.TrimSpace(stmts[i])
+			if stmt == "" {
+				continue
+			}
+			runQuery(session, stmt)
 		}
-		output, err := renderResult(rs)
-		if err != nil {
-			outputError(err)
-			continue
-		}
-		if len(output) > 0 {
-			fmt.Println(output)
-		}
+		lastStmt = stmts[len(stmts)-1]
 	}
 }
 
-func renderResult(rs session.ResultSet) (string, error) {
+func runQuery(session *session.Session, query string) {
+	rs, err := session.Execute(context.Background(), query)
+	if err != nil {
+		outputError(err)
+		return
+	}
+	output, err := render(rs)
+	if err != nil {
+		outputError(err)
+		return
+	}
+	if len(output) > 0 {
+		fmt.Println(output)
+	}
+}
+
+func render(rs session.ResultSet) (string, error) {
 	defer rs.Close()
 	w := table.NewWriter()
 	w.Style().Format = table.FormatOptions{
