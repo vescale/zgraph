@@ -22,6 +22,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/vescale/zgraph/types"
 )
 
@@ -211,9 +212,10 @@ func toInt(l yyLexer, lval *yySymType, str string) int {
 }
 
 func toDecimal(l yyLexer, lval *yySymType, str string) int {
-	dec, err := types.NewDecimal(str)
+	d := &apd.Decimal{}
+	dec, _, err := d.SetString(str)
 	if err != nil {
-		l.AppendError(l.Errorf("decimal literal: %v", err))
+		l.AppendError(fmt.Errorf("decimal literal: %v", err))
 		return invalid
 	}
 	lval.item = dec

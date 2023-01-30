@@ -18,6 +18,8 @@ import (
 	"math"
 	"strconv"
 	"strings"
+
+	"github.com/cockroachdb/apd/v3"
 )
 
 // Kind represents the kind of datum.
@@ -91,7 +93,7 @@ func (d *Datum) SetValue(val any) {
 		d.SetString(x)
 	case []byte:
 		d.SetBytes(x)
-	case *Decimal:
+	case *apd.Decimal:
 		d.SetDecimal(x)
 	case Date:
 		d.SetDate(x)
@@ -192,11 +194,11 @@ func (d *Datum) SetBytes(b []byte) {
 	d.b = b
 }
 
-func (d *Datum) GetDecimal() *Decimal {
-	return d.d.(*Decimal)
+func (d *Datum) GetDecimal() *apd.Decimal {
+	return d.d.(*apd.Decimal)
 }
 
-func (d *Datum) SetDecimal(dec *Decimal) {
+func (d *Datum) SetDecimal(dec *apd.Decimal) {
 	d.k = KindDecimal
 	d.d = dec
 }

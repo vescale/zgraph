@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/charmbracelet/bubbletea v0.23.1
+	github.com/cockroachdb/apd/v3 v3.1.2
 	github.com/cockroachdb/pebble v0.0.0-20221122204154-936e011bb911
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548
 	github.com/cznic/sortutil v0.0.0-20181122101858-f5f958428db8
