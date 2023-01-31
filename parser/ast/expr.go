@@ -16,7 +16,6 @@ package ast
 
 import (
 	"fmt"
-	"io"
 	"strconv"
 	"strings"
 
@@ -114,26 +113,6 @@ func (n *ValueExpr) GetDatumString() string {
 	return n.GetString()
 }
 
-// Format the ExprNode into a Writer.
-func (n *ValueExpr) Format(w io.Writer) {
-	var s string
-	switch n.Kind() {
-	case types.KindNull:
-		s = "NULL"
-	case types.KindInt64:
-		s = strconv.FormatInt(n.GetInt64(), 10)
-	case types.KindFloat64:
-		s = strconv.FormatFloat(n.GetFloat64(), 'e', -1, 64)
-	case types.KindString, types.KindBytes:
-		s = strconv.Quote(n.GetString())
-	case types.KindDecimal:
-		s = n.GetDecimal().String()
-	default:
-		panic("not implemented")
-	}
-	_, _ = fmt.Fprint(w, s)
-}
-
 // Accept implements Node interface.
 func (n *ValueExpr) Accept(v Visitor) (Node, bool) {
 	newNode, skipChildren := v.Enter(n)
@@ -148,10 +127,6 @@ type VariableReference struct {
 	exprNode
 
 	VariableName model.CIStr
-}
-
-func (n *VariableReference) Format(w io.Writer) {
-	fmt.Fprint(w, n.VariableName.O)
 }
 
 func (n *VariableReference) Restore(ctx *format.RestoreCtx) error {
@@ -169,12 +144,6 @@ type PropertyAccess struct {
 
 	VariableName model.CIStr
 	PropertyName model.CIStr
-}
-
-func (n *PropertyAccess) Format(w io.Writer) {
-	fmt.Print(w, n.VariableName.O)
-	fmt.Fprint(w, ".")
-	fmt.Fprint(w, n.PropertyName.O)
 }
 
 func (n *PropertyAccess) Restore(ctx *format.RestoreCtx) error {
@@ -203,11 +172,6 @@ func (b *BindVariable) Accept(v Visitor) (node Node, ok bool) {
 	panic("implement me")
 }
 
-func (b *BindVariable) Format(w io.Writer) {
-	//TODO implement me
-	panic("implement me")
-}
-
 // UnaryOperationExpr is the expression for unary operator.
 type UnaryOperationExpr struct {
 	exprNode
@@ -226,12 +190,6 @@ func (n *UnaryOperationExpr) Restore(ctx *format.RestoreCtx) error {
 		return errors.Trace(err)
 	}
 	return nil
-}
-
-// Format the ExprNode into a Writer.
-func (n *UnaryOperationExpr) Format(w io.Writer) {
-	n.Op.Format(w)
-	n.V.Format(w)
 }
 
 // Accept implements Node Accept interface.
@@ -294,15 +252,6 @@ func (n *BinaryOperationExpr) Restore(ctx *format.RestoreCtx) error {
 	return nil
 }
 
-// Format the ExprNode into a Writer.
-func (n *BinaryOperationExpr) Format(w io.Writer) {
-	n.L.Format(w)
-	fmt.Fprint(w, " ")
-	n.Op.Format(w)
-	fmt.Fprint(w, " ")
-	n.R.Format(w)
-}
-
 // Accept implements Node interface.
 func (n *BinaryOperationExpr) Accept(v Visitor) (Node, bool) {
 	newNode, skipChildren := v.Enter(n)
@@ -341,13 +290,6 @@ func (n *ParenthesesExpr) Restore(ctx *format.RestoreCtx) error {
 	}
 	ctx.WritePlain(")")
 	return nil
-}
-
-// Format the ExprNode into a Writer.
-func (n *ParenthesesExpr) Format(w io.Writer) {
-	fmt.Fprint(w, "(")
-	n.Expr.Format(w)
-	fmt.Fprint(w, ")")
 }
 
 // Accept implements Node Accept interface.
@@ -406,34 +348,6 @@ func (n *FuncCallExpr) Restore(ctx *format.RestoreCtx) error {
 	return nil
 }
 
-// Format the ExprNode into a Writer.
-func (n *FuncCallExpr) Format(w io.Writer) {
-	fmt.Fprintf(w, "%s(", n.FnName.L)
-	if !n.specialFormatArgs(w) {
-		for i, arg := range n.Args {
-			arg.Format(w)
-			if i != len(n.Args)-1 {
-				fmt.Fprint(w, ", ")
-			}
-		}
-	}
-	fmt.Fprint(w, ")")
-}
-
-// specialFormatArgs formats argument list for some special functions.
-func (n *FuncCallExpr) specialFormatArgs(w io.Writer) bool {
-	switch n.FnName.L {
-	//case DateAdd, DateSub, AddDate, SubDate:
-	//	n.Args[0].Format(w)
-	//	fmt.Fprint(w, ", INTERVAL ")
-	//	n.Args[1].Format(w)
-	//	fmt.Fprint(w, " ")
-	//	n.Args[2].Format(w)
-	//	return true
-	}
-	return false
-}
-
 // Accept implements Node interface.
 func (n *FuncCallExpr) Accept(v Visitor) (Node, bool) {
 	newNode, skipChildren := v.Enter(n)
@@ -466,11 +380,6 @@ func (s *SubstrFuncExpr) Restore(ctx *format.RestoreCtx) error {
 }
 
 func (s *SubstrFuncExpr) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s *SubstrFuncExpr) Format(w io.Writer) {
 	//TODO implement me
 	panic("implement me")
 }
@@ -523,11 +432,6 @@ func (n *AggregateFuncExpr) Restore(ctx *format.RestoreCtx) error {
 	return nil
 }
 
-// Format the ExprNode into a Writer.
-func (n *AggregateFuncExpr) Format(w io.Writer) {
-	panic("Not implemented")
-}
-
 // Accept implements Node Accept interface.
 func (n *AggregateFuncExpr) Accept(v Visitor) (Node, bool) {
 	newNode, skipChildren := v.Enter(n)
@@ -577,11 +481,6 @@ func (e *ExtractFuncExpr) Accept(v Visitor) (node Node, ok bool) {
 	panic("implement me")
 }
 
-func (e *ExtractFuncExpr) Format(w io.Writer) {
-	//TODO implement me
-	panic("implement me")
-}
-
 // IsNullExpr is the expression for null check.
 type IsNullExpr struct {
 	exprNode
@@ -602,16 +501,6 @@ func (n *IsNullExpr) Restore(ctx *format.RestoreCtx) error {
 		ctx.WriteKeyWord(" IS NULL")
 	}
 	return nil
-}
-
-// Format the ExprNode into a Writer.
-func (n *IsNullExpr) Format(w io.Writer) {
-	n.Expr.Format(w)
-	if n.Not {
-		fmt.Fprint(w, " IS NOT NULL")
-		return
-	}
-	fmt.Fprint(w, " IS NULL")
 }
 
 // Accept implements Node Accept interface.
@@ -695,15 +584,6 @@ func (n *CastFuncExpr) Restore(ctx *format.RestoreCtx) error {
 	return nil
 }
 
-// Format the ExprNode into a Writer.
-func (n *CastFuncExpr) Format(w io.Writer) {
-	fmt.Fprint(w, "CAST(")
-	n.Expr.Format(w)
-	fmt.Fprint(w, " AS ")
-	fmt.Fprint(w, n.DataType.String())
-	fmt.Fprint(w, ")")
-}
-
 // Accept implements Node Accept interface.
 func (n *CastFuncExpr) Accept(v Visitor) (Node, bool) {
 	newNode, skipChildren := v.Enter(n)
@@ -754,28 +634,6 @@ func (n *CaseExpr) Restore(ctx *format.RestoreCtx) error {
 	ctx.WriteKeyWord(" END")
 
 	return nil
-}
-
-// Format the ExprNode into a Writer.
-func (n *CaseExpr) Format(w io.Writer) {
-	fmt.Fprint(w, "CASE")
-	// Because the presence of `case when` syntax, `Value` could be nil and we need check this.
-	if n.Value != nil {
-		fmt.Fprint(w, " ")
-		n.Value.Format(w)
-	}
-	for _, clause := range n.WhenClauses {
-		fmt.Fprint(w, " ")
-		fmt.Fprint(w, "WHEN ")
-		clause.Expr.Format(w)
-		fmt.Fprint(w, " THEN ")
-		clause.Result.Format(w)
-	}
-	if n.ElseClause != nil {
-		fmt.Fprint(w, " ELSE ")
-		n.ElseClause.Format(w)
-	}
-	fmt.Fprint(w, " END")
 }
 
 // Accept implements Node Accept interface.
@@ -889,23 +747,6 @@ func (n *PatternInExpr) Restore(ctx *format.RestoreCtx) error {
 	return nil
 }
 
-// Format the ExprNode into a Writer.
-func (n *PatternInExpr) Format(w io.Writer) {
-	n.Expr.Format(w)
-	if n.Not {
-		fmt.Fprint(w, " NOT IN (")
-	} else {
-		fmt.Fprint(w, " IN (")
-	}
-	for i, expr := range n.List {
-		if i != 0 {
-			fmt.Fprint(w, ",")
-		}
-		expr.Format(w)
-	}
-	fmt.Fprint(w, ")")
-}
-
 // Accept implements Node Accept interface.
 func (n *PatternInExpr) Accept(v Visitor) (Node, bool) {
 	newNode, skipChildren := v.Enter(n)
@@ -951,11 +792,6 @@ func (n *SubqueryExpr) Restore(ctx *format.RestoreCtx) error {
 	return nil
 }
 
-// Format the ExprNode into a Writer.
-func (n *SubqueryExpr) Format(w io.Writer) {
-	panic("Not implemented")
-}
-
 // Accept implements Node Accept interface.
 func (n *SubqueryExpr) Accept(v Visitor) (Node, bool) {
 	newNode, skipChildren := v.Enter(n)
@@ -992,11 +828,6 @@ func (n *ExistsSubqueryExpr) Restore(ctx *format.RestoreCtx) error {
 		return errors.Annotate(err, "An error occurred while restore ExistsSubqueryExpr.Sel")
 	}
 	return nil
-}
-
-// Format the ExprNode into a Writer.
-func (n *ExistsSubqueryExpr) Format(w io.Writer) {
-	panic("Not implemented")
 }
 
 // Accept implements Node Accept interface.

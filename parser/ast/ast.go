@@ -18,8 +18,6 @@
 package ast
 
 import (
-	"io"
-
 	"github.com/vescale/zgraph/parser/format"
 	"github.com/vescale/zgraph/parser/model"
 )
@@ -72,9 +70,6 @@ type ExprNode interface {
 	SetFlag(flag uint64)
 	// GetFlag returns the flag of the expression.
 	GetFlag() uint64
-
-	// Format formats the AST into a writer.
-	Format(w io.Writer)
 }
 
 // FuncNode represents function call expression node.
