@@ -17,6 +17,8 @@ package planner
 import (
 	"bytes"
 
+	"github.com/vescale/zgraph/parser/format"
+
 	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/expression"
@@ -297,7 +299,10 @@ func (b *Builder) buildSelect(stmt *ast.SelectStmt) error {
 		var colName model.CIStr
 		if elem.ExpAsVar.AsName.IsEmpty() {
 			var buf bytes.Buffer
-			elem.ExpAsVar.Expr.Format(&buf)
+			restoreCtx := format.NewRestoreCtx(format.DefaultRestoreFlags, &buf)
+			if err := elem.ExpAsVar.Expr.Restore(restoreCtx); err != nil {
+				return err
+			}
 			colName = model.NewCIStr(buf.String())
 		} else {
 			colName = elem.ExpAsVar.AsName
