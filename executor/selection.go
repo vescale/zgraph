@@ -17,6 +17,7 @@ package executor
 import (
 	"context"
 
+	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/expression"
 )
 
@@ -27,17 +28,18 @@ type SelectionExec struct {
 	condition expression.Expression
 }
 
-func (p *SelectionExec) Next(ctx context.Context) (expression.Row, error) {
+func (p *SelectionExec) Next(ctx context.Context) (datum.Datums, error) {
+	evalCtx := expression.NewEvalContext(p.sc)
 	for {
 		row, err := p.children[0].Next(ctx)
 		if err != nil || row == nil {
 			return nil, err
 		}
-		result, err := p.condition.Eval(p.sc, row)
+		d, err := evalCtx.EvalExprWithCurRow(p.condition, row)
 		if err != nil {
 			return nil, err
 		}
-		if result.GetBool() {
+		if datum.MustBeBool(d) {
 			return row, nil
 		}
 	}

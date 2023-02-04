@@ -1,4 +1,4 @@
-// Copyright 2022 zGraph Authors. All rights reserved.
+// Copyright 2023 zGraph Authors. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,21 +17,32 @@ package expression
 import (
 	"fmt"
 
+	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/parser/model"
 	"github.com/vescale/zgraph/stmtctx"
 	"github.com/vescale/zgraph/types"
 )
 
-// Row represents a row of data.
-type Row []types.Datum
+type EvalContext struct {
+	StmtCtx *stmtctx.Context
+	CurRow  datum.Datums
+}
+
+func NewEvalContext(stmtCtx *stmtctx.Context) *EvalContext {
+	return &EvalContext{
+		StmtCtx: stmtCtx,
+	}
+}
+
+func (ec *EvalContext) EvalExprWithCurRow(expr Expression, curRow datum.Datums) (datum.Datum, error) {
+	ec.CurRow = curRow
+	return expr.Eval(ec)
+}
 
 type Expression interface {
 	fmt.Stringer
-
-	// Clone deeply clones an expression.
-	Clone() Expression
-	// Eval evaluates an expression through a row.
-	Eval(ctx *stmtctx.Context, row Row) (types.Datum, error)
+	ReturnType() types.T
+	Eval(evalCtx *EvalContext) (datum.Datum, error)
 }
 
 // Assignment represents an assignment in INSERT/UPDATE statements.

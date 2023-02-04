@@ -18,7 +18,7 @@ import "github.com/vescale/zgraph/parser/ast"
 
 // DDL represents the physical plan of DDL statement.
 type DDL struct {
-	baseSchemaProducer
+	basePlan
 
 	Statement ast.DDLNode
 }

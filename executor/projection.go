@@ -17,6 +17,7 @@ package executor
 import (
 	"context"
 
+	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/expression"
 )
 
@@ -27,19 +28,21 @@ type ProjectionExec struct {
 	exprs []expression.Expression
 }
 
-func (p *ProjectionExec) Next(ctx context.Context) (expression.Row, error) {
+func (p *ProjectionExec) Next(ctx context.Context) (datum.Datums, error) {
 	childRow, err := p.children[0].Next(ctx)
 	if err != nil || childRow == nil {
 		return nil, err
 	}
 
-	row := make(expression.Row, len(p.exprs))
+	evalCtx := expression.NewEvalContext(p.sc)
+
+	result := make(datum.Datums, len(p.exprs))
 	for i, expr := range p.exprs {
-		val, err := expr.Eval(p.sc, childRow)
+		d, err := evalCtx.EvalExprWithCurRow(expr, childRow)
 		if err != nil {
 			return nil, err
 		}
-		row[i] = val
+		result[i] = d
 	}
-	return row, nil
+	return result, nil
 }

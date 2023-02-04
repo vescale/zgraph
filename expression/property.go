@@ -1,4 +1,4 @@
-// Copyright 2022 zGraph Authors. All rights reserved.
+// Copyright 2023 zGraph Authors. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,46 +17,52 @@ package expression
 import (
 	"fmt"
 
-	"github.com/vescale/zgraph/stmtctx"
+	"github.com/vescale/zgraph/datum"
+	"github.com/vescale/zgraph/parser/model"
 	"github.com/vescale/zgraph/types"
 )
 
+var _ Expression = &PropertyAccess{}
+
 // PropertyAccess represents a property access expression.
 type PropertyAccess struct {
-	// Column is the column that the property is being accessed from.
-	// e.g:
-	// SELECT n.name, n.age FROM MATCH (n)
-	// -----------------^-----------------
-	// n.age is being accessed from the second column.
-	Column      *Column
-	VariableRef *VariableRef
-	PropertyRef *PropertyRef
+	Expr         Expression
+	VariableName model.CIStr
+	PropertyName model.CIStr
 }
 
 func (p *PropertyAccess) String() string {
-	return fmt.Sprintf("%s.%s", p.VariableRef.String(), p.PropertyRef.String())
+	return p.VariableName.O + "." + p.PropertyName.O
 }
 
-func (p *PropertyAccess) Clone() Expression {
-	return &PropertyAccess{
-		Column:      p.Column.Clone().(*Column),
-		VariableRef: p.VariableRef,
-		PropertyRef: p.PropertyRef,
-	}
+func (p *PropertyAccess) ReturnType() types.T {
+	// Property types are unknown until runtime.
+	return types.Unknown
 }
 
-func (p *PropertyAccess) Eval(ctx *stmtctx.Context, row Row) (types.Datum, error) {
-	value, err := p.Column.Eval(ctx, row)
-	if err != nil {
-		return types.Datum{}, err
+func (p *PropertyAccess) Eval(evalCtx *EvalContext) (datum.Datum, error) {
+	d, err := p.Expr.Eval(evalCtx)
+	if err != nil || d == datum.Null {
+		return d, err
 	}
-	if value.Kind() != types.KindGraphVar {
-		return types.Datum{}, fmt.Errorf("cannot access property from non-graph variable")
+
+	v, ok := d.(*datum.Vertex)
+	if ok {
+		d, ok := v.Properties[p.PropertyName.L]
+		if !ok {
+			return datum.Null, nil
+		}
+		return d, nil
 	}
-	graphVar := value.GetGraphVar()
-	if property, ok := graphVar.Properties[p.PropertyRef.Property.Name.L]; ok {
-		return property, nil
-	} else {
-		return types.Datum{}, nil
+
+	e, ok := d.(*datum.Edge)
+	if ok {
+		d, ok := e.Properties[p.PropertyName.L]
+		if !ok {
+			return datum.Null, nil
+		}
+		return d, nil
 	}
+
+	return nil, fmt.Errorf("cannot access property on non-vertex or non-edge type %T", d)
 }

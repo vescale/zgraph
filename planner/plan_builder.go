@@ -17,13 +17,12 @@ package planner
 import (
 	"bytes"
 
-	"github.com/vescale/zgraph/parser/format"
-
 	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/expression"
 	"github.com/vescale/zgraph/meta"
 	"github.com/vescale/zgraph/parser/ast"
+	"github.com/vescale/zgraph/parser/format"
 	"github.com/vescale/zgraph/parser/model"
 	"github.com/vescale/zgraph/stmtctx"
 )
@@ -174,7 +173,7 @@ func (b *Builder) buildInsert(stmt *ast.InsertStmt) error {
 			if err != nil {
 				return err
 			}
-			fromIDExpr, err = expression.NewFunction("id", fromExpr)
+			fromIDExpr, err = expression.NewFuncExpr("id", fromExpr)
 			if err != nil {
 				return err
 			}
@@ -182,7 +181,7 @@ func (b *Builder) buildInsert(stmt *ast.InsertStmt) error {
 			if err != nil {
 				return err
 			}
-			toIDExpr, err = expression.NewFunction("id", toExpr)
+			toIDExpr, err = expression.NewFuncExpr("id", toExpr)
 			if err != nil {
 				return err
 			}
@@ -286,10 +285,10 @@ func (b *Builder) buildSelect(stmt *ast.SelectStmt) error {
 		plan = limit
 	}
 
-	cols := make([]*expression.Column, 0, len(stmt.Select.Elements))
+	cols := make(ResultColumns, 0, len(stmt.Select.Elements))
 	// TODO: support DISTINCT and wildcard.
 	proj := &LogicalProjection{}
-	for i, elem := range stmt.Select.Elements {
+	for _, elem := range stmt.Select.Elements {
 		expr, err := RewriteExpr(elem.ExpAsVar.Expr, plan)
 		if err != nil {
 			return err
@@ -308,14 +307,13 @@ func (b *Builder) buildSelect(stmt *ast.SelectStmt) error {
 			colName = elem.ExpAsVar.AsName
 		}
 
-		cols = append(cols, &expression.Column{
-			ID:    b.sc.AllocPlanColumnID(),
-			Index: i,
-			Name:  colName,
+		cols = append(cols, ResultColumn{
+			Name: colName,
+			Type: expr.ReturnType(),
 		})
 
 	}
-	proj.SetSchema(expression.NewSchema(cols...))
+	proj.SetColumns(cols)
 	proj.SetChildren(plan)
 
 	b.setPlan(proj)
@@ -336,24 +334,9 @@ func (b *Builder) buildMatch(matches []*ast.MatchClause) (LogicalPlan, error) {
 		return nil, err
 	}
 
-	var (
-		cols  []*expression.Column
-		names []model.CIStr
-	)
-	// TODO: support group variables.
-	for i, v := range sg.SingletonVars {
-		cols = append(cols, &expression.Column{
-			ID:    b.sc.AllocPlanColumnID(),
-			Index: i,
-			Name:  v.Name,
-		})
-		names = append(names, v.Name)
-	}
-
-	plan := &LogicalMatch{
-		Subgraph: sg,
-	}
-	plan.SetSchema(expression.NewSchema(cols...))
+	cols := ResultColumnsFromSubgraph(sg)
+	plan := &LogicalMatch{Subgraph: sg}
+	plan.SetColumns(cols)
 
 	return plan, nil
 }

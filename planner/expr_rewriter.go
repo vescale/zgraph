@@ -19,8 +19,6 @@ import (
 
 	"github.com/vescale/zgraph/expression"
 	"github.com/vescale/zgraph/parser/ast"
-	"github.com/vescale/zgraph/parser/model"
-	"golang.org/x/exp/slices"
 )
 
 type exprRewriter struct {
@@ -62,41 +60,38 @@ func (er *exprRewriter) Leave(n ast.Node) (node ast.Node, ok bool) {
 		lExpr := er.ctxStack[er.ctxStackLen()-2]
 		rExpr := er.ctxStack[er.ctxStackLen()-1]
 		er.ctxStackPop(2)
-		opFunc, err := expression.NewFunction(expr.Op.String(), lExpr, rExpr)
+		opFunc, err := expression.NewBinaryExpr(expr.Op, lExpr, rExpr)
 		if err != nil {
 			er.err = err
 			return n, true
 		}
 		er.ctxStackAppend(opFunc)
 	case *ast.VariableReference:
-		idx := slices.IndexFunc(er.p.Schema().Columns, func(col *expression.Column) bool {
-			return expr.VariableName.Equal(col.Name)
-		})
+		idx := er.p.Columns().FindColumnIndex(expr.VariableName)
 		if idx == -1 {
 			er.err = fmt.Errorf("unresolved variable %s", expr.VariableName)
 			return n, true
 		}
-		er.ctxStackAppend(er.p.Schema().Columns[idx])
+		er.ctxStackAppend(&expression.Column{
+			Index: idx,
+			Name:  expr.VariableName,
+			Type:  er.p.Columns()[idx].Type,
+		})
 	case *ast.PropertyAccess:
-		idx := slices.IndexFunc(er.p.Schema().Columns, func(col *expression.Column) bool {
-			return expr.VariableName.Equal(col.Name)
-		})
+		idx := er.p.Columns().FindColumnIndex(expr.VariableName)
 		if idx == -1 {
 			er.err = fmt.Errorf("unresolved variable %s", expr.VariableName)
 			return n, true
 		}
-		col := er.p.Schema().Columns[idx]
+		col := &expression.Column{
+			Index: idx,
+			Name:  expr.VariableName,
+			Type:  er.p.Columns()[idx].Type,
+		}
 		er.ctxStackAppend(&expression.PropertyAccess{
-			Column: col,
-			VariableRef: &expression.VariableRef{
-				Name: expr.VariableName,
-			},
-			PropertyRef: &expression.PropertyRef{
-				Property: &model.PropertyInfo{
-					ID:   0, // FIXME: Set correct ID
-					Name: expr.PropertyName,
-				},
-			},
+			Expr:         col,
+			VariableName: expr.VariableName,
+			PropertyName: expr.PropertyName,
 		})
 	}
 

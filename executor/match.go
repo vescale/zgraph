@@ -21,12 +21,11 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/codec"
-	"github.com/vescale/zgraph/expression"
+	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/parser/model"
 	"github.com/vescale/zgraph/planner"
 	"github.com/vescale/zgraph/storage/kv"
-	"github.com/vescale/zgraph/types"
 	"golang.org/x/exp/slices"
 )
 
@@ -36,12 +35,12 @@ type MatchExec struct {
 	subgraph *planner.Subgraph
 
 	prepared bool
-	matched  map[string]*types.GraphVar
-	results  []expression.Row
+	matched  map[string]datum.Datum
+	results  []datum.Datums
 	txn      kv.Transaction
 }
 
-func (m *MatchExec) Next(ctx context.Context) (expression.Row, error) {
+func (m *MatchExec) Next(ctx context.Context) (datum.Datums, error) {
 	if !m.prepared {
 		if err := m.prepare(ctx); err != nil {
 			return nil, err
@@ -57,7 +56,7 @@ func (m *MatchExec) Next(ctx context.Context) (expression.Row, error) {
 }
 
 func (m *MatchExec) prepare(ctx context.Context) error {
-	m.matched = make(map[string]*types.GraphVar)
+	m.matched = make(map[string]datum.Datum)
 
 	txn, err := m.sc.Store().Begin()
 	if err != nil {
@@ -86,7 +85,9 @@ func (m *MatchExec) search(ctx context.Context) error {
 		}
 
 		if srcVisited && dstVisited {
-			edgeVar, err := m.matchEdge(ctx, edge, m.matched[edge.SrcVarName().L].ID, m.matched[edge.DstVarName().L].ID)
+			srcVertexID := m.matched[edge.SrcVarName().L].(*datum.Vertex).ID
+			dstVertexID := m.matched[edge.DstVarName().L].(*datum.Vertex).ID
+			edgeVar, err := m.matchEdge(ctx, edge, srcVertexID, dstVertexID)
 			if err != nil {
 				return err
 			}
@@ -97,27 +98,41 @@ func (m *MatchExec) search(ctx context.Context) error {
 		}
 
 		if !dstVisited {
-			srcID := m.matched[edge.SrcVarName().L].ID
+			srcID := m.matched[edge.SrcVarName().L].(*datum.Vertex).ID
 			dstVertex := m.subgraph.Vertices[edge.DstVarName().L]
-			return m.iterEdge(ctx, edge, srcID, dstVertex, ast.EdgeDirectionOutgoing, func(edgeVar, endVar *types.GraphVar) error {
-				m.matched[edge.DstVarName().L] = endVar
-				defer func() {
-					delete(m.matched, edge.DstVarName().L)
-				}()
-				return m.stepEdge(ctx, edge, edgeVar)
-			})
+			return m.iterEdge(
+				ctx,
+				edge,
+				srcID,
+				dstVertex,
+				ast.EdgeDirectionOutgoing,
+				func(edgeVar *datum.Edge, endVar *datum.Vertex) error {
+					m.matched[edge.DstVarName().L] = endVar
+					defer func() {
+						delete(m.matched, edge.DstVarName().L)
+					}()
+					return m.stepEdge(ctx, edge, edgeVar)
+				},
+			)
 		}
 
 		if !srcVisited {
-			dstID := m.matched[edge.DstVarName().L].ID
+			dstID := m.matched[edge.DstVarName().L].(*datum.Vertex).ID
 			srcVertex := m.subgraph.Vertices[edge.SrcVarName().L]
-			return m.iterEdge(ctx, edge, dstID, srcVertex, ast.EdgeDirectionIncoming, func(edgeVar, endVar *types.GraphVar) error {
-				m.matched[edge.SrcVarName().L] = endVar
-				defer func() {
-					delete(m.matched, edge.SrcVarName().L)
-				}()
-				return m.stepEdge(ctx, edge, edgeVar)
-			})
+			return m.iterEdge(
+				ctx,
+				edge,
+				dstID,
+				srcVertex,
+				ast.EdgeDirectionIncoming,
+				func(edgeVar *datum.Edge, endVar *datum.Vertex) error {
+					m.matched[edge.SrcVarName().L] = endVar
+					defer func() {
+						delete(m.matched, edge.SrcVarName().L)
+					}()
+					return m.stepEdge(ctx, edge, edgeVar)
+				},
+			)
 		}
 	}
 
@@ -127,7 +142,7 @@ func (m *MatchExec) search(ctx context.Context) error {
 		if visited {
 			continue
 		}
-		return m.iterVertex(vertex, func(vertexVar *types.GraphVar) error {
+		return m.iterVertex(vertex, func(vertexVar *datum.Vertex) error {
 			return m.stepVertex(ctx, vertex, vertexVar)
 		})
 	}
@@ -135,7 +150,7 @@ func (m *MatchExec) search(ctx context.Context) error {
 	return nil
 }
 
-func (m *MatchExec) stepVertex(ctx context.Context, vertex *planner.Vertex, vertexVar *types.GraphVar) error {
+func (m *MatchExec) stepVertex(ctx context.Context, vertex *planner.Vertex, vertexVar *datum.Vertex) error {
 	m.matched[vertex.Name.L] = vertexVar
 	defer func() {
 		delete(m.matched, vertex.Name.L)
@@ -147,7 +162,7 @@ func (m *MatchExec) stepVertex(ctx context.Context, vertex *planner.Vertex, vert
 	return m.search(ctx)
 }
 
-func (m *MatchExec) stepEdge(ctx context.Context, edge *planner.Edge, edgeVar *types.GraphVar) error {
+func (m *MatchExec) stepEdge(ctx context.Context, edge *planner.Edge, edgeVar *datum.Edge) error {
 	m.matched[edge.Name().L] = edgeVar
 	defer func() {
 		delete(m.matched, edge.Name().L)
@@ -164,16 +179,15 @@ func (m *MatchExec) isMatched() bool {
 }
 
 func (m *MatchExec) appendResult() {
-	result := make(expression.Row, 0, len(m.subgraph.SingletonVars))
+	result := make(datum.Datums, 0, len(m.subgraph.SingletonVars))
 	for _, singletonVar := range m.subgraph.SingletonVars {
-		var d types.Datum
-		d.SetGraphVar(m.matched[singletonVar.Name.L])
+		d := m.matched[singletonVar.Name.L]
 		result = append(result, d)
 	}
 	m.results = append(m.results, result)
 }
 
-func (m *MatchExec) iterVertex(vertex *planner.Vertex, f func(vertexVar *types.GraphVar) error) error {
+func (m *MatchExec) iterVertex(vertex *planner.Vertex, f func(vertexVar *datum.Vertex) error) error {
 	graph := m.sc.CurrentGraph()
 	lower := codec.VertexKey(graph.Meta().ID, 0)
 	upper := codec.VertexKey(graph.Meta().ID, math.MaxInt64)
@@ -194,11 +208,12 @@ func (m *MatchExec) iterVertex(vertex *planner.Vertex, f func(vertexVar *types.G
 			return err
 		}
 
-		vertexVar, err := m.decodeGraphVar(iter.Value())
-		if err != nil {
+		vertexVar := &datum.Vertex{
+			ID: vertexID,
+		}
+		if err := m.decodeVertexValue(iter.Value(), vertexVar); err != nil {
 			return err
 		}
-		vertexVar.ID = vertexID
 		if !matchLabels(vertexVar.Labels, vertex.Labels) {
 			continue
 		}
@@ -226,7 +241,7 @@ func (m *MatchExec) iterEdge(
 	startID int64,
 	endVertex *planner.Vertex,
 	direction ast.EdgeDirection,
-	f func(edgeVar, endVar *types.GraphVar) error,
+	f func(edgeVar *datum.Edge, endVar *datum.Vertex) error,
 ) error {
 	graph := m.sc.CurrentGraph()
 	var lower, upper []byte
@@ -251,7 +266,10 @@ func (m *MatchExec) iterEdge(
 			_, endVertexID, _, err = codec.ParseIncomingEdgeKey(iter.Key())
 		}
 
-		edgeVar, err := m.decodeGraphVar(iter.Value())
+		edgeVar := &datum.Edge{}
+		if err := m.decodeEdgeValue(iter.Value(), edgeVar); err != nil {
+			return err
+		}
 		if err != nil {
 			return err
 		}
@@ -274,7 +292,7 @@ func (m *MatchExec) iterEdge(
 	return nil
 }
 
-func (m *MatchExec) matchVertex(ctx context.Context, vertex *planner.Vertex, vertexID int64) (*types.GraphVar, error) {
+func (m *MatchExec) matchVertex(ctx context.Context, vertex *planner.Vertex, vertexID int64) (*datum.Vertex, error) {
 	graph := m.sc.CurrentGraph()
 	key := codec.VertexKey(graph.Meta().ID, vertexID)
 	val, err := m.txn.Get(ctx, key)
@@ -284,18 +302,19 @@ func (m *MatchExec) matchVertex(ctx context.Context, vertex *planner.Vertex, ver
 		}
 		return nil, err
 	}
-	vertexVar, err := m.decodeGraphVar(val)
-	if err != nil {
+	vertexVar := &datum.Vertex{
+		ID: vertexID,
+	}
+	if err := m.decodeVertexValue(val, vertexVar); err != nil {
 		return nil, err
 	}
-	vertexVar.ID = vertexID
 	if !matchLabels(vertexVar.Labels, vertex.Labels) {
 		return nil, nil
 	}
 	return vertexVar, nil
 }
 
-func (m *MatchExec) matchEdge(ctx context.Context, edge *planner.Edge, srcVertexID, dstVertexID int64) (*types.GraphVar, error) {
+func (m *MatchExec) matchEdge(ctx context.Context, edge *planner.Edge, srcVertexID, dstVertexID int64) (*datum.Edge, error) {
 	graph := m.sc.CurrentGraph()
 	edgeKey := codec.OutgoingEdgeKey(graph.Meta().ID, srcVertexID, dstVertexID)
 	val, err := m.txn.Get(ctx, edgeKey)
@@ -305,8 +324,11 @@ func (m *MatchExec) matchEdge(ctx context.Context, edge *planner.Edge, srcVertex
 		}
 		return nil, err
 	}
-	edgeVar, err := m.decodeGraphVar(val)
-	if err != nil {
+	edgeVar := &datum.Edge{
+		SrcID: srcVertexID,
+		DstID: dstVertexID,
+	}
+	if err := m.decodeEdgeValue(val, edgeVar); err != nil {
 		return nil, err
 	}
 	if !matchLabels(edgeVar.Labels, edge.Labels) {
@@ -326,7 +348,27 @@ func matchLabels(labelNames []string, labels []*catalog.Label) bool {
 	})
 }
 
-func (m *MatchExec) decodeGraphVar(val []byte) (*types.GraphVar, error) {
+func (m *MatchExec) decodeVertexValue(val []byte, v *datum.Vertex) error {
+	labels, properties, err := m.decodeLabelsAndProperties(val)
+	if err != nil {
+		return err
+	}
+	v.Labels = labels
+	v.Properties = properties
+	return nil
+}
+
+func (m *MatchExec) decodeEdgeValue(val []byte, v *datum.Edge) error {
+	labels, properties, err := m.decodeLabelsAndProperties(val)
+	if err != nil {
+		return err
+	}
+	v.Labels = labels
+	v.Properties = properties
+	return nil
+}
+
+func (m *MatchExec) decodeLabelsAndProperties(val []byte) (labels []string, properties map[string]datum.Datum, _ error) {
 	graph := m.sc.CurrentGraph()
 
 	var labelInfos []*model.LabelInfo
@@ -337,19 +379,17 @@ func (m *MatchExec) decodeGraphVar(val []byte) (*types.GraphVar, error) {
 
 	labelIDs, propertyValues, err := dec.Decode(val)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	graphVar := &types.GraphVar{
-		Properties: make(map[string]types.Datum),
-	}
+	properties = make(map[string]datum.Datum)
 	for labelID := range labelIDs {
-		graphVar.Labels = append(graphVar.Labels, graph.LabelByID(int64(labelID)).Meta().Name.L)
+		labels = append(labels, graph.LabelByID(int64(labelID)).Meta().Name.L)
 	}
 	for propID, propVal := range propertyValues {
 		propName := graph.PropertyByID(propID).Name.L
-		graphVar.Properties[propName] = propVal
+		properties[propName] = propVal
 	}
-	return graphVar, nil
+	return labels, properties, nil
 }
 
 func (m *MatchExec) Close() error {

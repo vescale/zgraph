@@ -19,32 +19,32 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/parser/model"
-	"github.com/vescale/zgraph/types"
 )
 
 func TestPropertyDecoder_Decode(t *testing.T) {
 	cases := []struct {
 		labelIDs    []uint16
 		propertyIDs []uint16
-		values      []types.Datum
+		values      datum.Datums
 	}{
 		{
 			labelIDs:    []uint16{1, 2, 3},
 			propertyIDs: []uint16{1, 2, 3},
-			values: []types.Datum{
-				types.NewStringDatum("hello"),
-				types.NewDatum(1),
-				types.NewDatum(1.1),
+			values: datum.Datums{
+				datum.NewString("hello"),
+				datum.NewInt(1),
+				datum.NewFloat(1.1),
 			},
 		},
 		{
 			labelIDs:    []uint16{2, 3, 1},
 			propertyIDs: []uint16{2, 3, 1},
-			values: []types.Datum{
-				types.NewDatum(1),
-				types.NewDatum(1.1),
-				types.NewStringDatum("hello"),
+			values: datum.Datums{
+				datum.NewInt(1),
+				datum.NewFloat(1.1),
+				datum.NewString("hello"),
 			},
 		},
 	}
@@ -78,10 +78,10 @@ func TestPropertyDecoder_Decode(t *testing.T) {
 			2: {},
 			3: {},
 		}, labelIDs)
-		assert.Equal(t, map[uint16]types.Datum{
-			1: types.NewStringDatum("hello"),
-			2: types.NewDatum(1),
-			3: types.NewDatum(1.1),
+		assert.Equal(t, map[uint16]datum.Datum{
+			1: datum.NewString("hello"),
+			2: datum.NewInt(1),
+			3: datum.NewFloat(1.1),
 		}, row)
 	}
 }

@@ -17,13 +17,13 @@ package planner
 import "github.com/vescale/zgraph/expression"
 
 type LogicalProjection struct {
-	logicalSchemaProducer
+	baseLogicalPlan
 
 	Exprs []expression.Expression
 }
 
 type PhysicalProjection struct {
-	physicalSchemaProducer
+	basePhysicalPlan
 
 	Exprs []expression.Expression
 }

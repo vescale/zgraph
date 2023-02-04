@@ -17,32 +17,33 @@ package executor
 import (
 	"context"
 
-	"github.com/vescale/zgraph/expression"
+	"github.com/vescale/zgraph/datum"
+	"github.com/vescale/zgraph/planner"
 	"github.com/vescale/zgraph/stmtctx"
 )
 
 // Executor is the physical implementation of an algebra operator.
 type Executor interface {
 	base() *baseExecutor
-	Schema() *expression.Schema
+	Columns() planner.ResultColumns
 	Open(context.Context) error
-	Next(context.Context) (expression.Row, error)
+	Next(context.Context) (datum.Datums, error)
 	Close() error
 }
 
 type baseExecutor struct {
 	sc       *stmtctx.Context
 	id       int
-	schema   *expression.Schema // output schema
+	columns  planner.ResultColumns // output columns
 	children []Executor
 }
 
-func newBaseExecutor(sc *stmtctx.Context, schema *expression.Schema, id int, children ...Executor) baseExecutor {
+func newBaseExecutor(sc *stmtctx.Context, cols planner.ResultColumns, id int, children ...Executor) baseExecutor {
 	e := baseExecutor{
 		children: children,
 		sc:       sc,
 		id:       id,
-		schema:   schema,
+		columns:  cols,
 	}
 	return e
 }
@@ -64,7 +65,7 @@ func (e *baseExecutor) Open(ctx context.Context) error {
 }
 
 // Next fills multiple rows into a chunk.
-func (e *baseExecutor) Next(context.Context) (expression.Row, error) {
+func (e *baseExecutor) Next(context.Context) (datum.Datums, error) {
 	return nil, nil
 }
 
@@ -79,10 +80,6 @@ func (e *baseExecutor) Close() error {
 	return firstErr
 }
 
-// Schema returns the current baseExecutor's schema. If it is nil, then create and return a new one.
-func (e *baseExecutor) Schema() *expression.Schema {
-	if e.schema == nil {
-		return expression.NewSchema()
-	}
-	return e.schema
+func (e *baseExecutor) Columns() planner.ResultColumns {
+	return e.columns
 }

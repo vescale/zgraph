@@ -12,29 +12,43 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package expression
+package planner
 
 import (
-	"github.com/vescale/zgraph/datum"
+	"github.com/vescale/zgraph/parser/model"
 	"github.com/vescale/zgraph/types"
 )
 
-var _ Expression = &Constant{}
-
-// Constant represents a literal constant.
-type Constant struct {
-	Value datum.Datum
+type ResultColumn struct {
+	Name   model.CIStr
+	Type   types.T
+	Hidden bool
 }
 
-// String implements the fmt.Stringer interface.
-func (c *Constant) String() string {
-	return c.Value.AsString()
+type ResultColumns []ResultColumn
+
+func (r ResultColumns) FindColumnIndex(name model.CIStr) int {
+	for i, col := range r {
+		if col.Name.L == name.L {
+			return i
+		}
+	}
+	return -1
 }
 
-func (c *Constant) ReturnType() types.T {
-	return c.Value.Type()
-}
-
-func (c *Constant) Eval(evalCtx *EvalContext) (datum.Datum, error) {
-	return c.Value, nil
+func ResultColumnsFromSubgraph(sg *Subgraph) ResultColumns {
+	var cols ResultColumns
+	for _, v := range sg.SingletonVars {
+		var colType types.T
+		if _, isVertex := sg.Vertices[v.Name.L]; isVertex {
+			colType = types.Vertex
+		} else {
+			colType = types.Edge
+		}
+		cols = append(cols, ResultColumn{
+			Name: v.Name,
+			Type: colType,
+		})
+	}
+	return cols
 }

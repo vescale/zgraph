@@ -37,10 +37,10 @@ import __yyfmt__ "fmt"
 import (
 	"math"
 
+	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/parser/model"
 	"github.com/vescale/zgraph/parser/opcode"
-	"github.com/vescale/zgraph/types"
 )
 
 type yySymType struct {
@@ -297,9 +297,9 @@ var (
 		57388: 82,  // where (100x)
 		57546: 83,  // Identifier (81x)
 		57614: 84,  // UnReservedKeyword (81x)
-		57462: 85,  // intLit (64x)
+		57462: 85,  // intLit (65x)
 		46:    86,  // '.' (63x)
-		57347: 87,  // stringLit (63x)
+		57347: 87,  // stringLit (62x)
 		57620: 88,  // VariableName (62x)
 		57473: 89,  // paramMarker (61x)
 		57484: 90,  // reachIncomingRight (60x)
@@ -1350,7 +1350,7 @@ var (
 		{38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 33: 38, 38, 38, 38, 38, 38, 38, 38, 38, 86: 38, 832, 159: 38},
 		{35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 33: 35, 35, 35, 35, 35, 35, 35, 35, 35, 86: 35, 831, 159: 35},
 		{36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 33: 36, 36, 36, 36, 36, 36, 36, 36, 36, 86: 36, 830, 159: 36},
-		{24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 33: 24, 24, 24, 24, 24, 24, 24, 24, 24, 86: 24, 822, 159: 24},
+		{24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 33: 24, 24, 24, 24, 24, 24, 24, 24, 24, 85: 822, 24, 159: 24},
 		{262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 262, 33: 262, 262, 262, 262, 262, 262, 262, 262, 262},
 		// 130
 		{1: 415, 4: 414, 397, 422, 8: 491, 493, 32: 494, 42: 412, 505, 411, 407, 409, 410, 487, 413, 396, 398, 403, 400, 408, 417, 418, 419, 406, 420, 435, 401, 436, 399, 486, 437, 434, 488, 431, 432, 518, 516, 521, 513, 520, 394, 489, 519, 515, 514, 512, 517, 83: 527, 395, 481, 87: 478, 449, 92: 480, 525, 479, 504, 99: 490, 499, 511, 524, 500, 501, 482, 508, 484, 483, 502, 506, 503, 509, 498, 496, 507, 510, 485, 497, 122: 451, 124: 471, 127: 526, 461, 454, 453, 473, 458, 466, 465, 460, 474, 469, 462, 459, 495, 467, 477, 464, 463, 452, 456, 468, 472, 455, 470, 523, 522, 457, 475, 476, 821, 450},
@@ -2398,7 +2398,7 @@ yynewstate:
 		}
 	case 89:
 		{
-			d, err := types.ParseDate(yyS[yypt-0].ident)
+			d, err := datum.ParseDate(yyS[yypt-0].ident)
 			if err != nil {
 				yylex.AppendError(err)
 				return 1
@@ -2407,54 +2407,57 @@ yynewstate:
 		}
 	case 90:
 		{
-			t, err := types.ParseTime(yyS[yypt-0].ident)
+			t, ttz, err := datum.ParseTimeOrTimeTZ(yyS[yypt-0].ident)
 			if err != nil {
 				yylex.AppendError(err)
 				return 1
 			}
-			parser.yyVAL.expr = ast.NewValueExpr(t)
+			if t != nil {
+				parser.yyVAL.expr = ast.NewValueExpr(t)
+			} else {
+				parser.yyVAL.expr = ast.NewValueExpr(ttz)
+			}
 		}
 	case 91:
 		{
-			t, err := types.ParseTimestamp(yyS[yypt-0].ident)
+			t, ttz, err := datum.ParseTimestampOrTimestampTZ(yyS[yypt-0].ident)
 			if err != nil {
 				yylex.AppendError(err)
 				return 1
 			}
-			parser.yyVAL.expr = ast.NewValueExpr(t)
+			if t != nil {
+				parser.yyVAL.expr = ast.NewValueExpr(t)
+			} else {
+				parser.yyVAL.expr = ast.NewValueExpr(ttz)
+			}
 		}
 	case 92:
 		{
-			i, err := types.NewInterval(yyS[yypt-1].ident, yyS[yypt-0].item.(types.DateTimeField))
-			if err != nil {
-				yylex.AppendError(err)
-				return 1
-			}
-			parser.yyVAL.expr = ast.NewValueExpr(i)
+			parser.yyVAL.expr = ast.NewValueExpr(datum.NewInterval(yyS[yypt-1].item.(int64), yyS[yypt-0].item.(datum.IntervalUnit)))
 		}
 	case 93:
 		{
-			parser.yyVAL.item = types.DateTimeFieldYear
+			parser.yyVAL.item = datum.IntervalUnitYear
 		}
 	case 94:
 		{
-			parser.yyVAL.item = types.DateTimeFieldMonth
+			parser.yyVAL.item = datum.IntervalUnitMonth
 		}
 	case 95:
 		{
-			parser.yyVAL.item = types.DateTimeFieldDay
+			parser.yyVAL.item = datum.IntervalUnitDay
 		}
 	case 96:
 		{
-			parser.yyVAL.item = types.DateTimeFieldHour
+			parser.yyVAL.item = datum.IntervalUnitHour
 		}
 	case 97:
 		{
-			parser.yyVAL.item = types.DateTimeFieldMinute
+			parser.yyVAL.item = datum.IntervalUnitMinute
 		}
 	case 98:
 		{
-			parser.yyVAL.item = types.DateTimeFieldSecond
+			parser.yyVAL.item = datum.IntervalUnitSecond
 		}
 	case 99:
 		{

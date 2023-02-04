@@ -18,7 +18,7 @@ import "github.com/vescale/zgraph/parser/ast"
 
 // Simple represents the physical plan of simple statements.
 type Simple struct {
-	baseSchemaProducer
+	basePlan
 
 	Statement ast.StmtNode
 }

@@ -16,9 +16,6 @@ package planner
 
 import (
 	"strconv"
-
-	"github.com/vescale/zgraph/expression"
-	"github.com/vescale/zgraph/parser/model"
 )
 
 type Plan interface {
@@ -26,8 +23,10 @@ type Plan interface {
 	ID() int
 	// TP gets the plan type.
 	TP() string
-	// Schema returns the schema.
-	Schema() *expression.Schema
+	// Columns gets the result columns.
+	Columns() ResultColumns
+	// SetColumns sets the result columns
+	SetColumns(cols ResultColumns)
 	// ExplainID gets the ID in explain statement
 	ExplainID() string
 	// ExplainInfo returns operator information to be explained.
@@ -57,8 +56,9 @@ type PhysicalPlan interface {
 }
 
 type basePlan struct {
-	tp string
-	id int
+	tp      string
+	id      int
+	columns ResultColumns
 }
 
 // ID implements the Plan interface.
@@ -71,6 +71,15 @@ func (p *basePlan) TP() string {
 	return p.tp
 }
 
+// Columns implements the Plan.Columns interface.
+func (p *basePlan) Columns() ResultColumns {
+	return p.columns
+}
+
+func (p *basePlan) SetColumns(cols ResultColumns) {
+	p.columns = cols
+}
+
 // ExplainID implements the Plan interface.
 func (p *basePlan) ExplainID() string {
 	return p.tp + "_" + strconv.Itoa(p.id)
@@ -79,18 +88,6 @@ func (p *basePlan) ExplainID() string {
 // ExplainInfo implements Plan interface.
 func (*basePlan) ExplainInfo() string {
 	return "N/A"
-}
-
-// baseSchemaProducer stores the schema for the base plans who can produce schema directly.
-type baseSchemaProducer struct {
-	basePlan
-
-	schema *expression.Schema
-}
-
-// Schema implements the Plan interface.
-func (sp *baseSchemaProducer) Schema() *expression.Schema {
-	return sp.schema
 }
 
 type baseLogicalPlan struct {
@@ -115,6 +112,15 @@ func (p *baseLogicalPlan) SetChild(i int, child LogicalPlan) {
 	p.children[i] = child
 }
 
+func (p *baseLogicalPlan) Columns() ResultColumns {
+	if p.columns == nil && len(p.Children()) == 1 {
+		// default implementation for plans has only one child: proprgate child columns.
+		// multi-children plans are likely to have particular implementation.
+		p.columns = p.Children()[0].Columns()
+	}
+	return p.columns
+}
+
 type basePhysicalPlan struct {
 	basePlan
 
@@ -137,60 +143,16 @@ func (p *basePhysicalPlan) SetChild(i int, child PhysicalPlan) {
 	p.children[i] = child
 }
 
-// physicalSchemaProducer stores the schema for the physical plans who can produce schema directly.
-type physicalSchemaProducer struct {
-	basePhysicalPlan
-
-	schema *expression.Schema
-	names  []model.CIStr
-}
-
-// Schema implements the Plan.Schema interface.
-func (s *physicalSchemaProducer) Schema() *expression.Schema {
-	if s.schema == nil {
-		if len(s.Children()) == 1 {
-			// default implementation for plans has only one child: proprgate child schema.
-			// multi-children plans are likely to have particular implementation.
-			s.schema = s.Children()[0].Schema().Clone()
-		} else {
-			s.schema = expression.NewSchema()
-		}
+func (p *basePhysicalPlan) Columns() ResultColumns {
+	if p.columns == nil && len(p.Children()) == 1 {
+		// default implementation for plans has only one child: proprgate child columns.
+		// multi-children plans are likely to have particular implementation.
+		p.columns = p.Children()[0].Columns()
 	}
-	return s.schema
-}
-
-// SetSchema implements the Plan.SetSchema interface.
-func (s *physicalSchemaProducer) SetSchema(schema *expression.Schema) {
-	s.schema = schema
-}
-
-// logicalSchemaProducer stores the schema for the logical plans who can produce schema directly.
-type logicalSchemaProducer struct {
-	baseLogicalPlan
-
-	schema *expression.Schema
-}
-
-// Schema implements the Plan.Schema interface.
-func (s *logicalSchemaProducer) Schema() *expression.Schema {
-	if s.schema == nil {
-		if len(s.Children()) == 1 {
-			// default implementation for plans has only one child: proprgate child schema.
-			// multi-children plans are likely to have particular implementation.
-			s.schema = s.Children()[0].Schema().Clone()
-		} else {
-			s.schema = expression.NewSchema()
-		}
-	}
-	return s.schema
-}
-
-// SetSchema implements the Plan.SetSchema interface.
-func (s *logicalSchemaProducer) SetSchema(schema *expression.Schema) {
-	s.schema = schema
+	return p.columns
 }
 
 // LogicalDual represents the plan which returns empty result set.
 type LogicalDual struct {
-	logicalSchemaProducer
+	baseLogicalPlan
 }

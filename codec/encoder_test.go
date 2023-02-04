@@ -18,22 +18,22 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/vescale/zgraph/types"
+	"github.com/vescale/zgraph/datum"
 )
 
 func TestPropertyEncoder_Encode(t *testing.T) {
 	cases := []struct {
 		labelIDs    []uint16
 		propertyIDs []uint16
-		values      []types.Datum
+		values      datum.Datums
 	}{
 		{
 			labelIDs:    []uint16{1, 2, 3},
 			propertyIDs: []uint16{1, 2, 3},
-			values: []types.Datum{
-				types.NewStringDatum("hello"),
-				types.NewDatum(1),
-				types.NewDatum(1.1),
+			values: datum.Datums{
+				datum.NewString("hello"),
+				datum.NewInt(1),
+				datum.NewFloat(1.1),
 			},
 		},
 	}

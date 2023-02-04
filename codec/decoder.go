@@ -16,8 +16,9 @@ package codec
 
 import (
 	"encoding/binary"
+	"fmt"
 
-	"github.com/pingcap/errors"
+	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/parser/model"
 	"github.com/vescale/zgraph/types"
 )
@@ -37,7 +38,7 @@ func NewPropertyDecoder(labels []*model.LabelInfo, properties []*model.PropertyI
 	}
 }
 
-func (d *PropertyDecoder) Decode(rowData []byte) (map[uint16]struct{}, map[uint16]types.Datum, error) {
+func (d *PropertyDecoder) Decode(rowData []byte) (map[uint16]struct{}, map[uint16]datum.Datum, error) {
 	err := d.fromBytes(rowData)
 	if err != nil {
 		return nil, nil, err
@@ -50,7 +51,7 @@ func (d *PropertyDecoder) Decode(rowData []byte) (map[uint16]struct{}, map[uint1
 		}
 	}
 
-	row := make(map[uint16]types.Datum)
+	row := make(map[uint16]datum.Datum)
 	for _, property := range d.properties {
 		idx := d.findProperty(property.ID)
 		if idx >= 0 {
@@ -66,29 +67,25 @@ func (d *PropertyDecoder) Decode(rowData []byte) (map[uint16]struct{}, map[uint1
 	return labelIDs, row, nil
 }
 
-func (d *PropertyDecoder) decodeColDatum(propData []byte) (types.Datum, error) {
-	var value types.Datum
-	kind := types.Kind(propData[0])
-	switch kind {
-	case types.KindInt64:
-		value.SetInt64(decodeInt(propData[1:]))
-	case types.KindUint64:
-		value.SetUint64(decodeUint(propData[1:]))
-	case types.KindString:
-		value.SetString(string(propData[1:]))
-	case types.KindBytes:
-		value.SetBytes(propData[1:])
-	case types.KindFloat64:
-		_, fVal, err := DecodeFloat(propData[1:])
+func (d *PropertyDecoder) decodeColDatum(propData []byte) (datum.Datum, error) {
+	var value datum.Datum
+	typ := types.T(propData[0])
+	switch typ {
+	case types.Int:
+		value = datum.NewInt(decodeInt(propData[1:]))
+	case types.Float:
+		_, v, err := DecodeFloat(propData[1:])
 		if err != nil {
-			return value, err
+			return nil, err
 		}
-		value.SetFloat64(fVal)
-	case types.KindDate:
-		value.SetDate(decodeDate(propData[1:]))
+		value = datum.NewFloat(v)
+	case types.String:
+		value = datum.NewString(string(propData[1:]))
+	case types.Date:
+		value = decodeDate(propData[1:])
 	default:
 		// TODO: support more types
-		return value, errors.Errorf("unknown type %d", kind)
+		return value, fmt.Errorf("unknown type %s", typ)
 	}
 	return value, nil
 }
@@ -106,20 +103,6 @@ func decodeInt(val []byte) int64 {
 	}
 }
 
-func decodeUint(val []byte) uint64 {
-	switch len(val) {
-	case 1:
-		return uint64(val[0])
-	case 2:
-		return uint64(binary.LittleEndian.Uint16(val))
-	case 4:
-		return uint64(binary.LittleEndian.Uint32(val))
-	default:
-		return binary.LittleEndian.Uint64(val)
-	}
-}
-
-func decodeDate(val []byte) types.Date {
-	ct := types.CoreTime(decodeInt(val))
-	return types.NewDate(ct)
+func decodeDate(val []byte) *datum.Date {
+	return datum.NewDateFromUnixEpochDays(int32(decodeInt(val)))
 }

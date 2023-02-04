@@ -37,19 +37,14 @@ func (by *ByItem) String() string {
 	return by.Expr.String()
 }
 
-// Clone makes a copy of ByItem.
-func (by *ByItem) Clone() *ByItem {
-	return &ByItem{Expr: by.Expr.Clone(), Desc: by.Desc}
-}
-
 type LogicalSort struct {
-	logicalSchemaProducer
+	baseLogicalPlan
 
 	ByItems []*ByItem
 }
 
 type PhysicalSort struct {
-	physicalSchemaProducer
+	basePhysicalPlan
 
 	ByItems []*ByItem
 }

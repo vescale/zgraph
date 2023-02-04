@@ -34,10 +34,10 @@ package parser
 import (
 	"math"
 
+	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/parser/model"
 	"github.com/vescale/zgraph/parser/opcode"
-	"github.com/vescale/zgraph/types"
 )
 
 %}
@@ -779,7 +779,7 @@ BooleanLiteral:
 DateLiteral:
 	"DATE" stringLit
 	{
-		d, err := types.ParseDate($2)
+		d, err := datum.ParseDate($2)
 		if err != nil {
 			yylex.AppendError(err)
 			return 1
@@ -790,60 +790,63 @@ DateLiteral:
 TimeLiteral:
 	"TIME" stringLit
 	{
-		t, err := types.ParseTime($2)
+		t, ttz, err := datum.ParseTimeOrTimeTZ($2)
 		if err != nil {
 			yylex.AppendError(err)
 			return 1
 		}
-		$$ = ast.NewValueExpr(t)
+		if t != nil {
+			$$ = ast.NewValueExpr(t)
+		} else {
+			$$ = ast.NewValueExpr(ttz)
+		}
 	}
 
 TimestampLiteral:
 	"TIMESTAMP" stringLit
 	{
-		t, err := types.ParseTimestamp($2)
+		t, ttz, err := datum.ParseTimestampOrTimestampTZ($2)
 		if err != nil {
 			yylex.AppendError(err)
 			return 1
 		}
-		$$ = ast.NewValueExpr(t)
+		if t != nil {
+			$$ = ast.NewValueExpr(t)
+		} else {
+			$$ = ast.NewValueExpr(ttz)
+		}
 	}
 
 IntervalLiteral:
-	"INTERVAL" stringLit DateTimeField
+	"INTERVAL" intLit DateTimeField
 	{
-		i, err := types.NewInterval($2, $3.(types.DateTimeField))
-		if err != nil {
-			yylex.AppendError(err)
-			return 1
-		}
-		$$ = ast.NewValueExpr(i)
+		$$ = ast.NewValueExpr(datum.NewInterval($2.(int64), $3.(datum.IntervalUnit)))
 	}
 
 DateTimeField:
 	"YEAR"
 	{
-		$$ = types.DateTimeFieldYear
+		$$ = datum.IntervalUnitYear
 	}
 |	"MONTH"
 	{
-		$$ = types.DateTimeFieldMonth
+		$$ = datum.IntervalUnitMonth
 	}
 |	"DAY"
 	{
-		$$ = types.DateTimeFieldDay
+		$$ = datum.IntervalUnitDay
 	}
 |	"HOUR"
 	{
-		$$ = types.DateTimeFieldHour
+		$$ = datum.IntervalUnitHour
 	}
 |	"MINUTE"
 	{
-		$$ = types.DateTimeFieldMinute
+		$$ = datum.IntervalUnitMinute
 	}
 |	"SECOND"
 	{
-		$$ = types.DateTimeFieldSecond
+		$$ = datum.IntervalUnitSecond
 	}
 
 BindVariable:

@@ -17,14 +17,14 @@ package planner
 import "github.com/vescale/zgraph/expression"
 
 type LogicalLimit struct {
-	logicalSchemaProducer
+	baseLogicalPlan
 
 	Offset expression.Expression
 	Count  expression.Expression
 }
 
 type PhysicalLimit struct {
-	physicalSchemaProducer
+	basePhysicalPlan
 
 	Offset expression.Expression
 	Count  expression.Expression

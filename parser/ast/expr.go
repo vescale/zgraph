@@ -16,10 +16,10 @@ package ast
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/pingcap/errors"
+	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/parser/format"
 	"github.com/vescale/zgraph/parser/model"
 	"github.com/vescale/zgraph/parser/opcode"
@@ -52,65 +52,64 @@ var (
 type ValueExpr struct {
 	exprNode
 
-	types.Datum
+	datum.Datum
 }
 
 // NewValueExpr creates a ValueExpr with value, and sets default field type.
-func NewValueExpr(value interface{}) *ValueExpr {
-	if ve, ok := value.(*ValueExpr); ok {
-		return ve
+func NewValueExpr(lit interface{}) *ValueExpr {
+	if d, ok := lit.(datum.Datum); ok {
+		return &ValueExpr{
+			Datum: d,
+		}
 	}
-	ve := &ValueExpr{}
-	ve.SetValue(value)
-	return ve
+	var d datum.Datum
+	switch v := lit.(type) {
+	case int:
+		d = datum.NewInt(int64(v))
+	case int64:
+		d = datum.NewInt(v)
+	case uint64:
+		d = datum.NewInt(int64(v))
+	case float64:
+		d = datum.NewFloat(v)
+	case bool:
+		d = datum.NewBool(v)
+	case string:
+		d = datum.NewString(v)
+	default:
+		panic(fmt.Sprintf("unknown literal type %T", v))
+	}
+	return &ValueExpr{
+		Datum: d,
+	}
 }
 
 // Restore implements Node interface.
 func (n *ValueExpr) Restore(ctx *format.RestoreCtx) error {
-	switch n.Kind() {
-	case types.KindNull:
-		ctx.WriteKeyWord("NULL")
-	case types.KindBool:
-		if n.GetBool() {
-			ctx.WriteKeyWord("TRUE")
-		} else {
-			ctx.WriteKeyWord("FALSE")
-		}
-	case types.KindInt64:
-		ctx.WritePlain(strconv.FormatInt(n.GetInt64(), 10))
-	case types.KindUint64:
-		ctx.WritePlain(strconv.FormatUint(n.GetUint64(), 10))
-	case types.KindFloat64:
-		ctx.WritePlain(strconv.FormatFloat(n.GetFloat64(), 'e', -1, 64))
-	case types.KindString:
-		ctx.WriteString(n.GetString())
-	case types.KindBytes:
-		ctx.WritePlain(fmt.Sprintf("X'%X'", n.GetBytes()))
-	case types.KindDecimal:
-		ctx.WritePlain(n.GetDecimal().String())
-	case types.KindDate:
+	str := n.Datum.AsString()
+	switch n.Type() {
+	case types.Bool, types.Int, types.Float, types.Decimal:
+		ctx.WritePlain(str)
+	case types.String:
+		ctx.WriteString(str)
+	case types.Bytes:
+		ctx.WritePlain(fmt.Sprintf("X'%X'", str))
+	case types.Date:
 		ctx.WriteKeyWord("DATE ")
-		ctx.WriteString(n.GetDate().String())
-	case types.KindTime:
+		ctx.WriteString(str)
+	case types.Time, types.TimeTZ:
 		ctx.WriteKeyWord("TIME ")
-		ctx.WriteString(n.GetTime().String())
-	case types.KindTimestamp:
+		ctx.WriteString(str)
+	case types.Timestamp, types.TimestampTZ:
 		ctx.WriteKeyWord("TIMESTAMP ")
-		ctx.WriteString(n.GetTimestamp().String())
-	case types.KindInterval:
+		ctx.WriteString(str)
+	case types.Interval:
 		ctx.WriteKeyWord("INTERVAL ")
-		ctx.WriteString(n.GetInterval().StringValue())
-		ctx.WritePlain(" ")
-		ctx.WriteKeyWord(n.GetInterval().Field().String())
+		ctx.WritePlain(str)
 	default:
-		return fmt.Errorf("can't format to string")
+		return fmt.Errorf("unexpected datum type %s in ValueExpr", n.Type())
 	}
 	return nil
-}
-
-// GetDatumString implements the ValueExpr interface.
-func (n *ValueExpr) GetDatumString() string {
-	return n.GetString()
 }
 
 // Accept implements Node interface.

@@ -29,14 +29,14 @@ func Optimize(plan LogicalPlan) Plan {
 
 func optimizeMatch(plan *LogicalMatch) Plan {
 	result := &PhysicalMatch{}
-	result.SetSchema(plan.Schema())
+	result.SetColumns(plan.Columns())
 	result.Subgraph = plan.Subgraph
 	return result
 }
 
 func optimizeProjection(plan *LogicalProjection) Plan {
 	result := &PhysicalProjection{}
-	result.SetSchema(plan.Schema())
+	result.SetColumns(plan.Columns())
 	result.Exprs = plan.Exprs
 	childPlan := Optimize(plan.Children()[0])
 	result.SetChildren(childPlan.(PhysicalPlan))
@@ -45,7 +45,7 @@ func optimizeProjection(plan *LogicalProjection) Plan {
 
 func optimizeSelection(plan *LogicalSelection) Plan {
 	result := &PhysicalSelection{}
-	result.SetSchema(plan.Schema())
+	result.SetColumns(plan.Columns())
 	result.Condition = plan.Condition
 	childPlan := Optimize(plan.Children()[0])
 	result.SetChildren(childPlan.(PhysicalPlan))

@@ -16,14 +16,14 @@ package parser
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"strconv"
 	"strings"
 	"unicode"
 
-	"github.com/cockroachdb/apd/v3"
-	"github.com/vescale/zgraph/types"
+	"github.com/vescale/zgraph/datum"
 )
 
 var _ = yyLexer(&Lexer{})
@@ -165,8 +165,6 @@ func (l *Lexer) Lex(v *yySymType) int {
 		return toDecimal(l, v, lit)
 	case hexLit:
 		return toHex(l, v, lit)
-	case bitLit:
-		return toBit(l, v, lit)
 	case singleAtIdentifier, doubleAtIdentifier, cast, extract:
 		v.item = lit
 		return tok
@@ -212,8 +210,7 @@ func toInt(l yyLexer, lval *yySymType, str string) int {
 }
 
 func toDecimal(l yyLexer, lval *yySymType, str string) int {
-	d := &apd.Decimal{}
-	dec, _, err := d.SetString(str)
+	dec, err := datum.ParseDecimal(str)
 	if err != nil {
 		l.AppendError(fmt.Errorf("decimal literal: %v", err))
 		return invalid
@@ -233,26 +230,15 @@ func toFloat(l yyLexer, lval *yySymType, str string) int {
 	return floatLit
 }
 
-// See https://dev.mysql.com/doc/refman/5.7/en/hexadecimal-literals.html
 func toHex(l yyLexer, lval *yySymType, str string) int {
-	h, err := types.NewHexLiteral(str)
+	str = strings.TrimPrefix(str, "0x")
+	buf, err := hex.DecodeString(str)
 	if err != nil {
 		l.AppendError(l.Errorf("hex literal: %v", err))
 		return invalid
 	}
-	lval.item = h
+	lval.item = datum.NewBytes(buf)
 	return hexLit
-}
-
-// See https://dev.mysql.com/doc/refman/5.7/en/bit-type.html
-func toBit(l yyLexer, lval *yySymType, str string) int {
-	b, err := types.NewBitLiteral(str)
-	if err != nil {
-		l.AppendError(l.Errorf("bit literal: %v", err))
-		return invalid
-	}
-	lval.item = b
-	return bitLit
 }
 
 // LexLiteral returns the value of the converted literal
@@ -580,18 +566,7 @@ func startWithNumber(s *Lexer) (tok int, pos Pos, lit string) {
 				s.r.incAsLongAs(isIdentChar)
 				return identifier, pos, s.r.data(&pos)
 			}
-			tok = intLit
-		case ch1 == 'b':
-			s.r.inc()
-			p1 := s.r.pos()
-			s.scanBit()
-			p2 := s.r.pos()
-			// 0b, 0b123, 0b1ab are identifier
-			if p1 == p2 || isDigit(s.r.peek()) {
-				s.r.incAsLongAs(isIdentChar)
-				return identifier, pos, s.r.data(&pos)
-			}
-			tok = intLit
+			tok = hexLit
 		case ch1 == '.':
 			return s.scanFloat(&pos)
 		case ch1 == 'B':
@@ -670,7 +645,7 @@ func (l *Lexer) scanFloat(beg *Pos) (tok int, pos Pos, lit string) {
 		}
 		if isDigit(l.r.peek()) {
 			l.scanDigits()
-			tok = decLit
+			tok = floatLit
 		} else {
 			// D1 . D2 e XX when XX is not D3, parse the result to an identifier.
 			// 9e9e = 9e9(float) + e(identifier)

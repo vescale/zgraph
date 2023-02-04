@@ -16,21 +16,21 @@ package codec
 
 import (
 	"encoding/binary"
+	"fmt"
 	"sort"
 
-	"github.com/pingcap/errors"
-	"github.com/vescale/zgraph/types"
+	"github.com/vescale/zgraph/datum"
 )
 
 // PropertyEncoder is used to encode datums into value bytes.
 type PropertyEncoder struct {
 	rowBytes
 
-	values []*types.Datum
+	values datum.Datums
 }
 
 // Encode encodes properties into a value bytes.
-func (e *PropertyEncoder) Encode(buf []byte, labelIDs, propertyIDs []uint16, values []types.Datum) ([]byte, error) {
+func (e *PropertyEncoder) Encode(buf []byte, labelIDs, propertyIDs []uint16, values datum.Datums) ([]byte, error) {
 	e.reform(labelIDs, propertyIDs, values)
 	for i, value := range e.values {
 		err := e.encodeDatum(value)
@@ -42,23 +42,20 @@ func (e *PropertyEncoder) Encode(buf []byte, labelIDs, propertyIDs []uint16, val
 	return e.toBytes(buf[:0]), nil
 }
 
-func (e *PropertyEncoder) encodeDatum(value *types.Datum) error {
-	// Put the kind information first.
-	e.data = append(e.data, byte(value.Kind()))
-	switch value.Kind() {
-	case types.KindInt64:
-		e.data = encodeInt(e.data, value.GetInt64())
-	case types.KindUint64:
-		e.data = encodeUint(e.data, value.GetUint64())
-	case types.KindFloat64:
-		e.data = EncodeFloat(e.data, value.GetFloat64())
-	case types.KindString, types.KindBytes:
-		e.data = append(e.data, value.GetBytes()...)
-	case types.KindDate:
-		e.data = encodeDate(e.data, value.GetDate())
+func (e *PropertyEncoder) encodeDatum(value datum.Datum) error {
+	// Put the type information first.
+	e.data = append(e.data, byte(value.Type()))
+	switch v := value.(type) {
+	case *datum.Int:
+		e.data = encodeInt(e.data, int64(*v))
+	case *datum.Float:
+		e.data = EncodeFloat(e.data, float64(*v))
+	case *datum.String:
+		e.data = append(e.data, []byte((*v))...)
+	case *datum.Date:
+		e.data = encodeDate(e.data, *v)
 	default:
-		// TODO: support more types.
-		return errors.Errorf("unsupported encode type %d", value.Kind())
+		return fmt.Errorf("unsupported encode type %T", value)
 	}
 	return nil
 }
@@ -80,35 +77,18 @@ func encodeInt(buf []byte, iVal int64) []byte {
 	return buf
 }
 
-func encodeUint(buf []byte, uVal uint64) []byte {
-	var tmp [8]byte
-	if uint64(uint8(uVal)) == uVal {
-		buf = append(buf, byte(uVal))
-	} else if uint64(uint16(uVal)) == uVal {
-		binary.LittleEndian.PutUint16(tmp[:], uint16(uVal))
-		buf = append(buf, tmp[:2]...)
-	} else if uint64(uint32(uVal)) == uVal {
-		binary.LittleEndian.PutUint32(tmp[:], uint32(uVal))
-		buf = append(buf, tmp[:4]...)
-	} else {
-		binary.LittleEndian.PutUint64(tmp[:], uVal)
-		buf = append(buf, tmp[:8]...)
-	}
-	return buf
+func encodeDate(buf []byte, date datum.Date) []byte {
+	return encodeInt(buf, int64(date.UnixEpochDays()))
 }
 
-func encodeDate(buf []byte, date types.Date) []byte {
-	return encodeInt(buf, int64(date.CoreTime()))
-}
-
-func (e *PropertyEncoder) reform(labelIDs, propertyIDs []uint16, values []types.Datum) {
+func (e *PropertyEncoder) reform(labelIDs, propertyIDs []uint16, values []datum.Datum) {
 	e.labelIDs = append(e.labelIDs[:0], labelIDs...)
 	e.propertyIDs = append(e.propertyIDs[:0], propertyIDs...)
 	e.offsets = make([]uint16, len(e.propertyIDs))
 	e.data = e.data[:0]
 	e.values = e.values[:0]
 	for i := range values {
-		e.values = append(e.values, &values[i])
+		e.values = append(e.values, values[i])
 	}
 
 	sort.Slice(e.labelIDs, func(i, j int) bool {
@@ -122,7 +102,7 @@ func (e *PropertyEncoder) reform(labelIDs, propertyIDs []uint16, values []types.
 
 type propertySorter struct {
 	propertyIDs []uint16
-	values      []*types.Datum
+	values      datum.Datums
 }
 
 // Less implements the Sorter interface.

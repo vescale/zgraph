@@ -26,13 +26,13 @@ import (
 )
 
 type LogicalMatch struct {
-	logicalSchemaProducer
+	baseLogicalPlan
 
 	Subgraph *Subgraph
 }
 
 type PhysicalMatch struct {
-	physicalSchemaProducer
+	basePhysicalPlan
 	Subgraph *Subgraph
 }
 

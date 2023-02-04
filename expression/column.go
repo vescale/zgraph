@@ -1,10 +1,10 @@
-// Copyright 2022 zGraph Authors. All rights reserved.
+// Copyright 2023 zGraph Authors. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,35 +17,30 @@ package expression
 import (
 	"fmt"
 
+	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/parser/model"
-	"github.com/vescale/zgraph/stmtctx"
 	"github.com/vescale/zgraph/types"
 )
 
-type Column struct {
-	// ID is the unique id of this column.
-	ID int64
-	// Name is the name of this column.
-	Name model.CIStr
-	// Index is used for execution, to tell the column's position in the given row.
-	Index int
-	// If set, this column is used internally, and should not be exposed to the user.
-	Hidden bool
-}
+var _ Expression = &Column{}
 
-func (c *Column) Clone() Expression {
-	return &Column{
-		ID:     c.ID,
-		Name:   c.Name,
-		Index:  c.Index,
-		Hidden: c.Hidden,
-	}
+type Column struct {
+	Index int
+	Name  model.CIStr
+	Type  types.T
 }
 
 func (c *Column) String() string {
-	return fmt.Sprintf("Column#%d", c.ID)
+	return c.Name.O
 }
 
-func (c *Column) Eval(_ *stmtctx.Context, row Row) (types.Datum, error) {
-	return row[c.Index], nil
+func (c *Column) ReturnType() types.T {
+	return c.Type
+}
+
+func (c *Column) Eval(evalCtx *EvalContext) (datum.Datum, error) {
+	if c.Index >= len(evalCtx.CurRow) {
+		return nil, fmt.Errorf("column index %d out of evalCtx.CurRow length %d", c.Index, len(evalCtx.CurRow))
+	}
+	return evalCtx.CurRow[c.Index], nil
 }

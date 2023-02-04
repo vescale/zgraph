@@ -18,11 +18,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/vescale/zgraph/types"
-
+	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/executor"
-	"github.com/vescale/zgraph/expression"
 	"github.com/vescale/zgraph/internal/chunk"
+	"github.com/vescale/zgraph/planner"
 )
 
 // Field represents a field information.
@@ -80,14 +79,14 @@ func (e emptyResultSet) Close() error {
 type queryResultSet struct {
 	valid  bool
 	alloc  *chunk.Allocator
-	row    expression.Row
+	row    datum.Datums
 	fields []*Field
 	exec   executor.Executor
 }
 
-func retrieveFields(schema *expression.Schema) []*Field {
-	fields := make([]*Field, 0, len(schema.Columns))
-	for _, col := range schema.Columns {
+func retrieveFields(cols planner.ResultColumns) []*Field {
+	fields := make([]*Field, 0, len(cols))
+	for _, col := range cols {
 		fields = append(fields, &Field{
 			Name: col.Name.O,
 		})
@@ -101,7 +100,7 @@ func newQueryResultSet(exec executor.Executor) ResultSet {
 		alloc:  alloc,
 		valid:  true,
 		exec:   exec,
-		fields: retrieveFields(exec.Schema()),
+		fields: retrieveFields(exec.Columns()),
 		// TODO: implement row
 		// row:  exec.NewChunk(alloc),
 	}
@@ -150,14 +149,14 @@ func (q *queryResultSet) Close() error {
 	return q.exec.Close()
 }
 
-func assignField(field any, datum types.Datum) error {
+func assignField(field any, d datum.Datum) error {
 	switch f := field.(type) {
 	case *string:
-		*f = datum.AsString()
+		*f = d.AsString()
 	case *int:
-		*f = int(datum.GetInt64())
+		*f = int(datum.MustBeInt(d))
 	case *int64:
-		*f = datum.GetInt64()
+		*f = int64(datum.MustBeInt(d))
 	default:
 		// TODO: support more types
 		return fmt.Errorf("unsupported field type: %T", field)

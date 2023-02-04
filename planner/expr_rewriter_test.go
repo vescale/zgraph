@@ -18,10 +18,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/expression"
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/planner"
-	"github.com/vescale/zgraph/types"
 )
 
 func TestRewriteExpr(t *testing.T) {
@@ -30,8 +30,8 @@ func TestRewriteExpr(t *testing.T) {
 		expect expression.Expression
 	}{
 		{
-			expr:   &ast.ValueExpr{Datum: types.NewDatum(1)},
-			expect: &expression.Constant{Value: types.NewDatum(1)},
+			expr:   &ast.ValueExpr{Datum: datum.NewInt(1)},
+			expect: &expression.Constant{Value: datum.NewInt(1)},
 		},
 	}
 

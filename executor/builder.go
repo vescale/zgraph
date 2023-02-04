@@ -62,7 +62,7 @@ func (b *Builder) Error() error {
 
 func (b *Builder) buildDDL(plan *planner.DDL) Executor {
 	exec := &DDLExec{
-		baseExecutor: newBaseExecutor(b.sc, plan.Schema(), plan.ID()),
+		baseExecutor: newBaseExecutor(b.sc, plan.Columns(), plan.ID()),
 		statement:    plan.Statement,
 	}
 	return exec
@@ -70,7 +70,7 @@ func (b *Builder) buildDDL(plan *planner.DDL) Executor {
 
 func (b *Builder) buildSimple(plan *planner.Simple) Executor {
 	exec := &SimpleExec{
-		baseExecutor: newBaseExecutor(b.sc, plan.Schema(), plan.ID()),
+		baseExecutor: newBaseExecutor(b.sc, plan.Columns(), plan.ID()),
 		statement:    plan.Statement,
 	}
 	return exec
@@ -78,7 +78,7 @@ func (b *Builder) buildSimple(plan *planner.Simple) Executor {
 
 func (b *Builder) buildInsert(plan *planner.Insert) Executor {
 	exec := &InsertExec{
-		baseExecutor: newBaseExecutor(b.sc, plan.Schema(), plan.ID()),
+		baseExecutor: newBaseExecutor(b.sc, plan.Columns(), plan.ID()),
 		graph:        plan.Graph,
 		insertions:   plan.Insertions,
 		encoder:      &codec.PropertyEncoder{},
@@ -92,7 +92,7 @@ func (b *Builder) buildInsert(plan *planner.Insert) Executor {
 
 func (b *Builder) buildMatch(plan *planner.PhysicalMatch) Executor {
 	exec := &MatchExec{
-		baseExecutor: newBaseExecutor(b.sc, plan.Schema(), plan.ID()),
+		baseExecutor: newBaseExecutor(b.sc, plan.Columns(), plan.ID()),
 		subgraph:     plan.Subgraph,
 	}
 	return exec
@@ -101,7 +101,7 @@ func (b *Builder) buildMatch(plan *planner.PhysicalMatch) Executor {
 func (b *Builder) buildProjection(plan *planner.PhysicalProjection) Executor {
 	childExec := b.Build(plan.Children()[0])
 	exec := &ProjectionExec{
-		baseExecutor: newBaseExecutor(b.sc, plan.Schema(), plan.ID(), childExec),
+		baseExecutor: newBaseExecutor(b.sc, plan.Columns(), plan.ID(), childExec),
 		exprs:        plan.Exprs,
 	}
 	return exec
@@ -110,7 +110,7 @@ func (b *Builder) buildProjection(plan *planner.PhysicalProjection) Executor {
 func (b *Builder) buildSelection(plan *planner.PhysicalSelection) Executor {
 	childExec := b.Build(plan.Children()[0])
 	exec := &SelectionExec{
-		baseExecutor: newBaseExecutor(b.sc, plan.Schema(), plan.ID(), childExec),
+		baseExecutor: newBaseExecutor(b.sc, plan.Columns(), plan.ID(), childExec),
 		condition:    plan.Condition,
 	}
 	return exec

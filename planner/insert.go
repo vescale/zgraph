@@ -22,7 +22,7 @@ import (
 
 // Insert represents the plan of INSERT statement.
 type Insert struct {
-	baseSchemaProducer
+	basePlan
 
 	Graph      *catalog.Graph
 	Insertions []*ElementInsertion

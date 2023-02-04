@@ -19,12 +19,12 @@ import (
 
 	"github.com/vescale/zgraph/catalog"
 	"github.com/vescale/zgraph/codec"
+	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/expression"
 	"github.com/vescale/zgraph/internal/logutil"
 	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/planner"
 	"github.com/vescale/zgraph/storage/kv"
-	"github.com/vescale/zgraph/types"
 )
 
 // InsertExec represents the executor of INSERT statement.
@@ -67,7 +67,7 @@ func (e *InsertExec) Open(ctx context.Context) error {
 }
 
 // Next implements the Executor interface.
-func (e *InsertExec) Next(ctx context.Context) (expression.Row, error) {
+func (e *InsertExec) Next(ctx context.Context) (datum.Datums, error) {
 	if e.done {
 		return nil, nil
 	}
@@ -108,7 +108,7 @@ func (e *InsertExec) Next(ctx context.Context) (expression.Row, error) {
 	return nil, err
 }
 
-func (e *InsertExec) encodeInsertions(matchRow expression.Row) error {
+func (e *InsertExec) encodeInsertions(matchRow datum.Datums) error {
 	graphID := e.graph.Meta().ID
 	idRange, err := e.sc.AllocID(e.graph, len(e.insertions))
 	if err != nil {
@@ -150,14 +150,15 @@ func (e *InsertExec) encodeInsertionsFromMatch(ctx context.Context) error {
 	}
 }
 
-func (e *InsertExec) encodeVertex(graphID, vertexID int64, insertion *planner.ElementInsertion, matchRow expression.Row) error {
+func (e *InsertExec) encodeVertex(graphID, vertexID int64, insertion *planner.ElementInsertion, matchRow datum.Datums) error {
 	key := codec.VertexKey(graphID, vertexID)
 	var (
 		propertyIDs []uint16
-		values      []types.Datum
+		values      datum.Datums
 	)
+	evalCtx := expression.NewEvalContext(e.sc)
 	for _, assignment := range insertion.Assignments {
-		value, err := assignment.Expr.Eval(e.sc, matchRow)
+		value, err := evalCtx.EvalExprWithCurRow(assignment.Expr, matchRow)
 		if err != nil {
 			return err
 		}
@@ -178,14 +179,15 @@ func (e *InsertExec) encodeVertex(graphID, vertexID int64, insertion *planner.El
 	return nil
 }
 
-func (e *InsertExec) encodeEdge(graphID int64, insertion *planner.ElementInsertion, matchRow expression.Row) error {
+func (e *InsertExec) encodeEdge(graphID int64, insertion *planner.ElementInsertion, matchRow datum.Datums) error {
 	// TODO: Edge also need an unique ID. How to encode and index it? See https://pgql-lang.org/spec/1.5/#id.
 	var (
 		propertyIDs []uint16
-		values      []types.Datum
+		values      datum.Datums
 	)
+	evalCtx := expression.NewEvalContext(e.sc)
 	for _, assignment := range insertion.Assignments {
-		value, err := assignment.Expr.Eval(e.sc, matchRow)
+		value, err := evalCtx.EvalExprWithCurRow(assignment.Expr, matchRow)
 		if err != nil {
 			return err
 		}
@@ -193,17 +195,17 @@ func (e *InsertExec) encodeEdge(graphID int64, insertion *planner.ElementInserti
 		values = append(values, value)
 	}
 
-	srcIDVal, err := insertion.FromIDExpr.Eval(e.sc, matchRow)
+	srcIDVal, err := evalCtx.EvalExprWithCurRow(insertion.FromIDExpr, matchRow)
 	if err != nil {
 		return err
 	}
-	dstIDVal, err := insertion.ToIDExpr.Eval(e.sc, matchRow)
+	dstIDVal, err := evalCtx.EvalExprWithCurRow(insertion.ToIDExpr, matchRow)
 	if err != nil {
 		return err
 	}
 
-	srcID := srcIDVal.GetInt64()
-	dstID := dstIDVal.GetInt64()
+	srcID := int64(datum.MustBeInt(srcIDVal))
+	dstID := int64(datum.MustBeInt(dstIDVal))
 
 	var labelIDs []uint16
 	for _, label := range insertion.Labels {
