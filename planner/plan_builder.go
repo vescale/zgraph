@@ -173,7 +173,7 @@ func (b *Builder) buildInsert(stmt *ast.InsertStmt) error {
 			if err != nil {
 				return err
 			}
-			fromIDExpr, err = expression.NewFuncExpr("id", fromExpr)
+			fromIDExpr, err = expression.NewFuncExpr(ast.ID, fromExpr)
 			if err != nil {
 				return err
 			}
@@ -181,7 +181,7 @@ func (b *Builder) buildInsert(stmt *ast.InsertStmt) error {
 			if err != nil {
 				return err
 			}
-			toIDExpr, err = expression.NewFuncExpr("id", toExpr)
+			toIDExpr, err = expression.NewFuncExpr(ast.ID, toExpr)
 			if err != nil {
 				return err
 			}

@@ -308,6 +308,25 @@ func (n *ParenthesesExpr) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+const (
+	JavaRegexpLike = "JAVA_REGEXP_LIKE"
+	Lower          = "LOWER"
+	Upper          = "UPPER"
+	Abs            = "ABS"
+	Ceil           = "CEIL"
+	Ceiling        = "CEILING"
+	Floor          = "FLOOR"
+	ID             = "ID"
+	Label          = "LABEL"
+	Labels         = "LABELS"
+	HasLabel       = "HAS_LABEL"
+	MatchNumber    = "MATCH_NUMBER"
+	ElementNumber  = "ELEMENT_NUMBER"
+	AllDifferent   = "ALL_DIFFERENT"
+	InDegree       = "IN_DEGREE"
+	OutDegree      = "OUT_DEGREE"
+)
+
 // FuncCallExpr is for function expression.
 type FuncCallExpr struct {
 	exprNode

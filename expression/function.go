@@ -19,43 +19,57 @@ import (
 	"strings"
 
 	"github.com/vescale/zgraph/datum"
+	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/types"
+	"golang.org/x/exp/slices"
 )
 
 var _ Expression = &FuncExpr{}
 
 type FuncExpr struct {
-	FnName   string
-	Exprs    []Expression
-	Overload *FnOverload
+	FnName      string
+	Exprs       []Expression
+	overloadSet *funcOverloadSet
 }
 
-func (f *FuncExpr) String() string {
-	argStrs := make([]string, 0, len(f.Exprs))
-	for _, expr := range f.Exprs {
+func (expr *FuncExpr) String() string {
+	argStrs := make([]string, 0, len(expr.Exprs))
+	for _, expr := range expr.Exprs {
 		argStrs = append(argStrs, expr.String())
 	}
-	return fmt.Sprintf("%s(%s)", strings.ToUpper(f.FnName), strings.Join(argStrs, ", "))
+	return fmt.Sprintf("%s(%s)", strings.ToUpper(expr.FnName), strings.Join(argStrs, ", "))
 }
 
-func (f *FuncExpr) ReturnType() types.T {
-	return f.Overload.ReturnType
+func (expr *FuncExpr) ReturnType() types.T {
+	var argTypes []types.T
+	for _, argExpr := range expr.Exprs {
+		argTypes = append(argTypes, argExpr.ReturnType())
+	}
+	return expr.overloadSet.inferReturnType(argTypes)
 }
 
-func (f *FuncExpr) Eval(evalCtx *EvalContext) (datum.Datum, error) {
-	nullResult, args, err := f.evalFuncArgs(evalCtx)
+func (expr *FuncExpr) Eval(evalCtx *EvalContext) (datum.Datum, error) {
+	nullResult, args, err := expr.evalFuncArgs(evalCtx)
 	if err != nil {
 		return nil, err
 	}
 	if nullResult {
 		return datum.Null, nil
 	}
-	return f.Overload.Fn(evalCtx, args)
+	var argTypes []types.T
+	for _, arg := range args {
+		argTypes = append(argTypes, arg.Type())
+	}
+	overload, ok := expr.overloadSet.lookupImpl(argTypes)
+	if !ok {
+		return datum.Null, nil
+	}
+	return overload.eval(evalCtx, args)
 }
 
-func (f *FuncExpr) evalFuncArgs(evalCtx *EvalContext) (propagateNulls bool, args datum.Datums, _ error) {
-	args = make(datum.Datums, 0, len(f.Exprs))
-	for _, expr := range f.Exprs {
+func (expr *FuncExpr) evalFuncArgs(evalCtx *EvalContext) (propagateNulls bool, args datum.Datums, _ error) {
+	args = make(datum.Datums, 0, len(expr.Exprs))
+	for _, expr := range expr.Exprs {
 		arg, err := expr.Eval(evalCtx)
 		if err != nil {
 			return false, nil, err
@@ -71,43 +85,74 @@ func (f *FuncExpr) evalFuncArgs(evalCtx *EvalContext) (propagateNulls bool, args
 }
 
 func NewFuncExpr(fnName string, exprs ...Expression) (*FuncExpr, error) {
-	overload, ok := BuiltinFnOverloads[fnName]
+	overloadSet, ok := builtinFuncs[fnName]
 	if !ok {
 		return nil, fmt.Errorf("function %s not found", fnName)
 	}
-	if len(overload.ArgTypes) != len(exprs) {
-		return nil, fmt.Errorf("function %s expects %d arguments, but got %d", fnName, len(overload.ArgTypes), len(exprs))
-	}
-
-	var typedExprs []Expression
-	for i, expr := range exprs {
-		if expr.ReturnType() != overload.ArgTypes[i] {
-			typedExprs = append(typedExprs, NewCastExpr(expr, overload.ArgTypes[i]))
-		} else {
-			typedExprs = append(typedExprs, expr)
-		}
+	if overloadSet.argLen != len(exprs) {
+		return nil, fmt.Errorf("function %s expects %d arguments, but got %d", fnName, overloadSet.argLen, len(exprs))
 	}
 
 	return &FuncExpr{
-		FnName:   fnName,
-		Exprs:    typedExprs,
-		Overload: overload,
+		FnName:      fnName,
+		Exprs:       exprs,
+		overloadSet: overloadSet,
 	}, nil
 }
 
-type FnOverload struct {
-	ArgTypes   []types.T
-	ReturnType types.T
-	Fn         func(*EvalContext, datum.Datums) (datum.Datum, error)
+type funcOverload struct {
+	argTypes   []types.T
+	returnType types.T
+	eval       func(*EvalContext, datum.Datums) (datum.Datum, error)
 }
 
-var BuiltinFnOverloads = map[string]*FnOverload{
-	"id": {
-		ArgTypes:   []types.T{types.Vertex},
-		ReturnType: types.Int,
-		Fn: func(evalCtx *EvalContext, args datum.Datums) (datum.Datum, error) {
-			v := datum.MustBeVertex(args[0])
-			return datum.NewInt(v.ID), nil
+type funcOverloadSet struct {
+	argLen     int
+	overloads  []*funcOverload
+	returnType types.T
+}
+
+func (s *funcOverloadSet) lookupImpl(argTypes []types.T) (*funcOverload, bool) {
+	for _, overload := range s.overloads {
+		if slices.Equal(overload.argTypes, argTypes) {
+			return overload, true
+		}
+	}
+	return nil, false
+}
+
+func (s *funcOverloadSet) inferReturnType(argTypes []types.T) types.T {
+	if s.returnType != types.Unknown {
+		return s.returnType
+	}
+	for _, overload := range s.overloads {
+		if slices.Equal(overload.argTypes, argTypes) {
+			return overload.returnType
+		}
+	}
+	return types.Unknown
+}
+
+var builtinFuncs = map[string]*funcOverloadSet{
+	ast.ID: {
+		argLen:     1,
+		returnType: types.Int,
+		overloads: []*funcOverload{
+			{
+				argTypes:   []types.T{types.Vertex},
+				returnType: types.Int,
+				eval: func(evalCtx *EvalContext, args datum.Datums) (datum.Datum, error) {
+					v := datum.MustBeVertex(args[0])
+					return datum.NewInt(v.ID), nil
+				},
+			},
+			{
+				argTypes:   []types.T{types.Edge},
+				returnType: types.Int,
+				eval: func(evalCtx *EvalContext, args datum.Datums) (datum.Datum, error) {
+					return datum.NewInt(0), nil
+				},
+			},
 		},
 	},
 }
