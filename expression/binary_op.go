@@ -140,10 +140,6 @@ func (s *cmpOpOverloadSet) inferReturnType(_, _ types.T) types.T {
 	return types.Bool
 }
 
-func (s *cmpOpOverloadSet) callOnNullInput() bool {
-	return false
-}
-
 type logicalOpOverloadSet struct {
 	overload *binOp
 }
@@ -224,6 +220,15 @@ var binOps = map[opcode.Op]binOpOverloadSet{
 		{types.Decimal, types.Int, types.Decimal, modDecimalInt},
 		{types.Decimal, types.Float, types.Decimal, modDecimalFloat},
 		{types.Decimal, types.Decimal, types.Decimal, modDecimalDecimal},
+	}},
+	opcode.Concat: &genericBinOpOverloadSet{overloads: []*binOp{
+		{leftType: types.String, rightType: types.String, returnType: types.String,
+			fn: func(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+				l := datum.MustBeString(left)
+				r := datum.MustBeString(right)
+				return datum.NewString(string(l) + string(r)), nil
+			},
+		},
 	}},
 	opcode.EQ: &cmpOpOverloadSet{overload: &binOp{returnType: types.Bool,
 		fn: func(evalCtx *EvalContext, left, right datum.Datum) (datum.Datum, error) {
