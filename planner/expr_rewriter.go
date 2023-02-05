@@ -60,12 +60,21 @@ func (er *exprRewriter) Leave(n ast.Node) (node ast.Node, ok bool) {
 		lExpr := er.ctxStack[er.ctxStackLen()-2]
 		rExpr := er.ctxStack[er.ctxStackLen()-1]
 		er.ctxStackPop(2)
-		opFunc, err := expression.NewBinaryExpr(expr.Op, lExpr, rExpr)
+		binExpr, err := expression.NewBinaryExpr(expr.Op, lExpr, rExpr)
 		if err != nil {
 			er.err = err
 			return n, true
 		}
-		er.ctxStackAppend(opFunc)
+		er.ctxStackAppend(binExpr)
+	case *ast.UnaryOperationExpr:
+		input := er.ctxStack[er.ctxStackLen()-1]
+		er.ctxStackPop(1)
+		unaryExpr, err := expression.NewUnaryExpr(expr.Op, input)
+		if err != nil {
+			er.err = err
+			return n, true
+		}
+		er.ctxStackAppend(unaryExpr)
 	case *ast.VariableReference:
 		idx := er.p.Columns().FindColumnIndex(expr.VariableName)
 		if idx == -1 {

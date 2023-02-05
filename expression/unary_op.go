@@ -25,21 +25,21 @@ import (
 var _ Expression = &UnaryExpr{}
 
 type UnaryExpr struct {
-	Op        opcode.Op
-	Expr      Expression
-	Overloads *UnaryOpOverloads
+	Op          opcode.Op
+	Expr        Expression
+	overloadSet *unaryOpOverloadSet
 }
 
-func NewUnaryExpr(op opcode.Op, expr Expression) *UnaryExpr {
-	overloads, ok := UnaryOps[op]
+func NewUnaryExpr(op opcode.Op, expr Expression) (*UnaryExpr, error) {
+	overloadSet, ok := unaryOps[op]
 	if !ok {
-		panic(fmt.Sprintf("no overloads for unary operator %s", op))
+		return nil, fmt.Errorf("unsupported unary operator: %s", op)
 	}
 	return &UnaryExpr{
-		Op:        op,
-		Expr:      expr,
-		Overloads: overloads,
-	}
+		Op:          op,
+		Expr:        expr,
+		overloadSet: overloadSet,
+	}, nil
 }
 
 func (u *UnaryExpr) String() string {
@@ -47,9 +47,9 @@ func (u *UnaryExpr) String() string {
 }
 
 func (u *UnaryExpr) ReturnType() types.T {
-	unaryOp, ok := u.Overloads.LookupImpl(u.Expr.ReturnType())
+	op, ok := u.overloadSet.lookupImpl(u.Expr.ReturnType())
 	if ok {
-		return unaryOp.ReturnType
+		return op.returnType
 	}
 	return types.Unknown
 }
@@ -59,51 +59,51 @@ func (u *UnaryExpr) Eval(evalCtx *EvalContext) (datum.Datum, error) {
 	if err != nil || d == datum.Null {
 		return d, err
 	}
-	unaryOp, ok := u.Overloads.LookupImpl(u.Expr.ReturnType())
+	op, ok := u.overloadSet.lookupImpl(u.Expr.ReturnType())
 	if !ok {
 		return datum.Null, nil
 	}
-	return unaryOp.Fn(evalCtx, d)
+	return op.fn(evalCtx, d)
 }
 
-type UnaryOp struct {
-	Type       types.T
-	ReturnType types.T
-	Fn         func(*EvalContext, datum.Datum) (datum.Datum, error)
+type unaryOp struct {
+	typ        types.T
+	returnType types.T
+	fn         func(*EvalContext, datum.Datum) (datum.Datum, error)
 }
 
-type UnaryOpOverloads struct {
-	overloads map[types.T]*UnaryOp
+type unaryOpOverloadSet struct {
+	overloads map[types.T]*unaryOp
 }
 
-func (o *UnaryOpOverloads) LookupImpl(typ types.T) (*UnaryOp, bool) {
-	unaryOp, ok := o.overloads[typ]
-	return unaryOp, ok
+func (o *unaryOpOverloadSet) lookupImpl(typ types.T) (*unaryOp, bool) {
+	op, ok := o.overloads[typ]
+	return op, ok
 }
 
-var UnaryOps = map[opcode.Op]*UnaryOpOverloads{
+var unaryOps = map[opcode.Op]*unaryOpOverloadSet{
 	opcode.Minus: {
-		overloads: map[types.T]*UnaryOp{
+		overloads: map[types.T]*unaryOp{
 			types.Int: {
-				Type:       types.Int,
-				ReturnType: types.Int,
-				Fn: func(_ *EvalContext, d datum.Datum) (datum.Datum, error) {
+				typ:        types.Int,
+				returnType: types.Int,
+				fn: func(_ *EvalContext, d datum.Datum) (datum.Datum, error) {
 					i := datum.MustBeInt(d)
 					return datum.NewInt(-int64(i)), nil
 				},
 			},
 			types.Float: {
-				Type:       types.Float,
-				ReturnType: types.Float,
-				Fn: func(_ *EvalContext, d datum.Datum) (datum.Datum, error) {
+				typ:        types.Float,
+				returnType: types.Float,
+				fn: func(_ *EvalContext, d datum.Datum) (datum.Datum, error) {
 					f := datum.MustBeFloat(d)
 					return datum.NewFloat(-float64(f)), nil
 				},
 			},
 			types.Decimal: {
-				Type:       types.Decimal,
-				ReturnType: types.Decimal,
-				Fn: func(_ *EvalContext, d datum.Datum) (datum.Datum, error) {
+				typ:        types.Decimal,
+				returnType: types.Decimal,
+				fn: func(_ *EvalContext, d datum.Datum) (datum.Datum, error) {
 					dec := datum.MustBeDecimal(d)
 					res := &datum.Decimal{}
 					res.Neg(&dec.Decimal)
