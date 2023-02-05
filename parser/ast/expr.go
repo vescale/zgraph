@@ -31,15 +31,15 @@ var (
 	_ ExprNode = &VariableReference{}
 	_ ExprNode = &PropertyAccess{}
 	_ ExprNode = &BindVariable{}
-	_ ExprNode = &UnaryOperationExpr{}
-	_ ExprNode = &BinaryOperationExpr{}
+	_ ExprNode = &UnaryExpr{}
+	_ ExprNode = &BinaryExpr{}
 	_ ExprNode = &ParenthesesExpr{}
-	_ FuncNode = &FuncCallExpr{}
-	_ FuncNode = &SubstrFuncExpr{}
-	_ FuncNode = &AggregateFuncExpr{}
-	_ FuncNode = &ExtractFuncExpr{}
+	_ ExprNode = &FuncCallExpr{}
+	_ ExprNode = &SubstrFuncExpr{}
+	_ ExprNode = &AggregateFuncExpr{}
+	_ ExprNode = &ExtractFuncExpr{}
 	_ ExprNode = &IsNullExpr{}
-	_ FuncNode = &CastFuncExpr{}
+	_ ExprNode = &CastFuncExpr{}
 	_ ExprNode = &CaseExpr{}
 	_ ExprNode = &PatternInExpr{}
 	_ ExprNode = &SubqueryExpr{}
@@ -161,18 +161,18 @@ type BindVariable struct {
 	exprNode
 }
 
-func (b *BindVariable) Restore(ctx *format.RestoreCtx) error {
-	//TODO implement me
-	panic("implement me")
+func (n *BindVariable) Restore(ctx *format.RestoreCtx) error {
+	ctx.WritePlain("?")
+	return nil
 }
 
-func (b *BindVariable) Accept(v Visitor) (node Node, ok bool) {
-	//TODO implement me
-	panic("implement me")
+func (n *BindVariable) Accept(v Visitor) (node Node, ok bool) {
+	newNode, _ := v.Enter(n)
+	return v.Leave(newNode)
 }
 
-// UnaryOperationExpr is the expression for unary operator.
-type UnaryOperationExpr struct {
+// UnaryExpr is the expression for unary operator.
+type UnaryExpr struct {
 	exprNode
 	// Op is the operator opcode.
 	Op opcode.Op
@@ -181,7 +181,7 @@ type UnaryOperationExpr struct {
 }
 
 // Restore implements Node interface.
-func (n *UnaryOperationExpr) Restore(ctx *format.RestoreCtx) error {
+func (n *UnaryExpr) Restore(ctx *format.RestoreCtx) error {
 	if err := n.Op.Restore(ctx); err != nil {
 		return errors.Trace(err)
 	}
@@ -192,12 +192,12 @@ func (n *UnaryOperationExpr) Restore(ctx *format.RestoreCtx) error {
 }
 
 // Accept implements Node Accept interface.
-func (n *UnaryOperationExpr) Accept(v Visitor) (Node, bool) {
+func (n *UnaryExpr) Accept(v Visitor) (Node, bool) {
 	newNode, skipChildren := v.Enter(n)
 	if skipChildren {
 		return v.Leave(newNode)
 	}
-	n = newNode.(*UnaryOperationExpr)
+	n = newNode.(*UnaryExpr)
 	node, ok := n.V.Accept(v)
 	if !ok {
 		return n, false
@@ -206,8 +206,8 @@ func (n *UnaryOperationExpr) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
-// BinaryOperationExpr is for binary operation like `1 + 1`, `1 - 1`, etc.
-type BinaryOperationExpr struct {
+// BinaryExpr is for binary operation like `1 + 1`, `1 - 1`, etc.
+type BinaryExpr struct {
 	exprNode
 	// Op is the operator code for BinaryOperation.
 	Op opcode.Op
@@ -215,6 +215,26 @@ type BinaryOperationExpr struct {
 	L ExprNode
 	// R is the right expression in BinaryOperation.
 	R ExprNode
+}
+
+// Restore implements Node interface.
+func (n *BinaryExpr) Restore(ctx *format.RestoreCtx) error {
+	if ctx.Flags.HasRestoreBracketAroundBinaryOperation() {
+		ctx.WritePlain("(")
+	}
+	if err := n.L.Restore(ctx); err != nil {
+		return errors.Annotate(err, "An error occurred when restore BinaryExpr.L")
+	}
+	if err := restoreBinaryOpWithSpacesAround(ctx, n.Op); err != nil {
+		return errors.Annotate(err, "An error occurred when restore BinaryExpr.Op")
+	}
+	if err := n.R.Restore(ctx); err != nil {
+		return errors.Annotate(err, "An error occurred when restore BinaryExpr.R")
+	}
+	if ctx.Flags.HasRestoreBracketAroundBinaryOperation() {
+		ctx.WritePlain(")")
+	}
+	return nil
 }
 
 func restoreBinaryOpWithSpacesAround(ctx *format.RestoreCtx, op opcode.Op) error {
@@ -231,34 +251,14 @@ func restoreBinaryOpWithSpacesAround(ctx *format.RestoreCtx, op opcode.Op) error
 	return nil
 }
 
-// Restore implements Node interface.
-func (n *BinaryOperationExpr) Restore(ctx *format.RestoreCtx) error {
-	if ctx.Flags.HasRestoreBracketAroundBinaryOperation() {
-		ctx.WritePlain("(")
-	}
-	if err := n.L.Restore(ctx); err != nil {
-		return errors.Annotate(err, "An error occurred when restore BinaryOperationExpr.L")
-	}
-	if err := restoreBinaryOpWithSpacesAround(ctx, n.Op); err != nil {
-		return errors.Annotate(err, "An error occurred when restore BinaryOperationExpr.Op")
-	}
-	if err := n.R.Restore(ctx); err != nil {
-		return errors.Annotate(err, "An error occurred when restore BinaryOperationExpr.R")
-	}
-	if ctx.Flags.HasRestoreBracketAroundBinaryOperation() {
-		ctx.WritePlain(")")
-	}
-	return nil
-}
-
 // Accept implements Node interface.
-func (n *BinaryOperationExpr) Accept(v Visitor) (Node, bool) {
+func (n *BinaryExpr) Accept(v Visitor) (Node, bool) {
 	newNode, skipChildren := v.Enter(n)
 	if skipChildren {
 		return v.Leave(newNode)
 	}
 
-	n = newNode.(*BinaryOperationExpr)
+	n = newNode.(*BinaryExpr)
 	node, ok := n.L.Accept(v)
 	if !ok {
 		return n, false
@@ -308,18 +308,10 @@ func (n *ParenthesesExpr) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
-type FuncCallExprType int8
-
-const (
-	FuncCallExprTypeKeyword FuncCallExprType = iota
-	FuncCallExprTypeGeneric
-)
-
 // FuncCallExpr is for function expression.
 type FuncCallExpr struct {
-	funcNode
+	exprNode
 
-	Tp FuncCallExprType
 	// FnName is the function name.
 	FnName model.CIStr
 	// Args is the function args.
@@ -328,12 +320,7 @@ type FuncCallExpr struct {
 
 // Restore implements Node interface.
 func (n *FuncCallExpr) Restore(ctx *format.RestoreCtx) error {
-	if n.Tp == FuncCallExprTypeGeneric {
-		ctx.WriteName(n.FnName.O)
-	} else {
-		ctx.WriteKeyWord(n.FnName.O)
-	}
-
+	ctx.WriteKeyWord(n.FnName.O)
 	ctx.WritePlain("(")
 	for i, argv := range n.Args {
 		if i != 0 {
@@ -366,7 +353,7 @@ func (n *FuncCallExpr) Accept(v Visitor) (Node, bool) {
 
 // SubstrFuncExpr is for function expression.
 type SubstrFuncExpr struct {
-	funcNode
+	exprNode
 
 	Expr  ExprNode
 	Start ExprNode
@@ -385,7 +372,7 @@ func (s *SubstrFuncExpr) Accept(v Visitor) (node Node, ok bool) {
 
 // AggregateFuncExpr represents aggregate function expression.
 type AggregateFuncExpr struct {
-	funcNode
+	exprNode
 	// F is the function name.
 	F string
 	// Args is the function args.
@@ -464,7 +451,7 @@ const (
 
 // ExtractFuncExpr is for function expression.
 type ExtractFuncExpr struct {
-	funcNode
+	exprNode
 
 	ExtractField ExtractField
 	Expr         ExprNode
@@ -563,7 +550,7 @@ func (f DataType) String() string {
 }
 
 type CastFuncExpr struct {
-	funcNode
+	exprNode
 	// Expr is the expression to be converted.
 	Expr ExprNode
 	// DataType is the conversion type.

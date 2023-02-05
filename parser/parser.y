@@ -858,67 +858,67 @@ BindVariable:
 ArithmeticExpression:
 	'-' ValueExpression %prec neg
 	{
-		$$ = &ast.UnaryOperationExpr{ Op: opcode.Minus, V:  $2}
+		$$ = &ast.UnaryExpr{ Op: opcode.Minus, V:  $2}
 	}
 |	ValueExpression '*' ValueExpression %prec '*'
 	{
-		$$ = &ast.BinaryOperationExpr{Op: opcode.Mul, L: $1, R: $3}
+		$$ = &ast.BinaryExpr{Op: opcode.Mul, L: $1, R: $3}
 	}
 |	ValueExpression '/' ValueExpression %prec '/'
 	{
-		$$ = &ast.BinaryOperationExpr{Op: opcode.Div, L: $1, R: $3}
+		$$ = &ast.BinaryExpr{Op: opcode.Div, L: $1, R: $3}
 	}
 |	ValueExpression '%' ValueExpression %prec '%'
 	{
-		$$ = &ast.BinaryOperationExpr{Op: opcode.Mod, L: $1, R: $3}
+		$$ = &ast.BinaryExpr{Op: opcode.Mod, L: $1, R: $3}
 	}
 |	ValueExpression '+' ValueExpression %prec '+'
 	{
-		$$ = &ast.BinaryOperationExpr{Op: opcode.Plus, L: $1, R: $3}
+		$$ = &ast.BinaryExpr{Op: opcode.Plus, L: $1, R: $3}
 	}
 |	ValueExpression '-' ValueExpression %prec '-'
 	{
-		$$ = &ast.BinaryOperationExpr{Op: opcode.Minus, L: $1, R: $3}
+		$$ = &ast.BinaryExpr{Op: opcode.Minus, L: $1, R: $3}
 	}
 
 RelationalExpression:
 	ValueExpression eq ValueExpression
 	{
-		$$ = &ast.BinaryOperationExpr{Op: opcode.EQ, L: $1, R: $3}
+		$$ = &ast.BinaryExpr{Op: opcode.EQ, L: $1, R: $3}
 	}
 |	ValueExpression neqSynonym ValueExpression
 	{
-		$$ = &ast.BinaryOperationExpr{Op: opcode.NE, L: $1, R: $3}
+		$$ = &ast.BinaryExpr{Op: opcode.NE, L: $1, R: $3}
 	}
 |	ValueExpression '>' ValueExpression
 	{
-		$$ = &ast.BinaryOperationExpr{Op: opcode.GT, L: $1, R: $3}
+		$$ = &ast.BinaryExpr{Op: opcode.GT, L: $1, R: $3}
 	}
 |	ValueExpression '<' ValueExpression
 	{
-		$$ = &ast.BinaryOperationExpr{Op: opcode.LT, L: $1, R: $3}
+		$$ = &ast.BinaryExpr{Op: opcode.LT, L: $1, R: $3}
 	}
 |	ValueExpression ge ValueExpression
 	{
-		$$ = &ast.BinaryOperationExpr{Op: opcode.GE, L: $1, R: $3}
+		$$ = &ast.BinaryExpr{Op: opcode.GE, L: $1, R: $3}
 	}
 |	ValueExpression le ValueExpression
 	{
-		$$ = &ast.BinaryOperationExpr{Op: opcode.LE, L: $1, R: $3}
+		$$ = &ast.BinaryExpr{Op: opcode.LE, L: $1, R: $3}
 	}
 
 LogicalExpression:
 	ValueExpression "OR" ValueExpression %prec pipes
 	{
-		$$ = &ast.BinaryOperationExpr{Op: opcode.LogicOr, L: $1, R: $3}
+		$$ = &ast.BinaryExpr{Op: opcode.LogicOr, L: $1, R: $3}
 	}
 |	ValueExpression "XOR" ValueExpression %prec xor
 	{
-		$$ = &ast.BinaryOperationExpr{Op: opcode.LogicXor, L: $1, R: $3}
+		$$ = &ast.BinaryExpr{Op: opcode.LogicXor, L: $1, R: $3}
 	}
 |	ValueExpression "AND" ValueExpression %prec andand
 	{
-		$$ = &ast.BinaryOperationExpr{Op: opcode.LogicAnd, L: $1, R: $3}
+		$$ = &ast.BinaryExpr{Op: opcode.LogicAnd, L: $1, R: $3}
 	}
 |	"NOT" ValueExpression %prec not
 	{
@@ -927,14 +927,14 @@ LogicalExpression:
 			v.Not = true
 			$$ = $2
 		} else {
-			$$ = &ast.UnaryOperationExpr{ Op: opcode.Not, V:  $2}
+			$$ = &ast.UnaryExpr{ Op: opcode.Not, V:  $2}
 		}
 	}
 
 StringConcat:
 	ValueExpression pipes ValueExpression
 	{
-		$$ = &ast.BinaryOperationExpr{Op: opcode.Concat, L: $1, R: $3}
+		$$ = &ast.BinaryExpr{Op: opcode.Concat, L: $1, R: $3}
 	}
 
 BracketedValueExpression:

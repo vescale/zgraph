@@ -47,9 +47,6 @@ var (
 	_ Node = &OrderByClause{}
 	_ Node = &LimitClause{}
 
-	_ ResultSetNode = &MatchClause{}
-	_ ResultSetNode = &MatchClauseList{}
-
 	_ VertexPairConnection = &EdgePattern{}
 	_ VertexPairConnection = &ReachabilityPathExpr{}
 	_ VertexPairConnection = &QuantifiedPathExpr{}

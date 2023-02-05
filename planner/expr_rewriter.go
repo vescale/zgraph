@@ -56,7 +56,7 @@ func (er *exprRewriter) Leave(n ast.Node) (node ast.Node, ok bool) {
 	switch expr := n.(type) {
 	case *ast.ValueExpr:
 		er.ctxStackAppend(&expression.Constant{Value: expr.Datum})
-	case *ast.BinaryOperationExpr:
+	case *ast.BinaryExpr:
 		lExpr := er.ctxStack[er.ctxStackLen()-2]
 		rExpr := er.ctxStack[er.ctxStackLen()-1]
 		er.ctxStackPop(2)
@@ -66,7 +66,7 @@ func (er *exprRewriter) Leave(n ast.Node) (node ast.Node, ok bool) {
 			return n, true
 		}
 		er.ctxStackAppend(binExpr)
-	case *ast.UnaryOperationExpr:
+	case *ast.UnaryExpr:
 		input := er.ctxStack[er.ctxStackLen()-1]
 		er.ctxStackPop(1)
 		unaryExpr, err := expression.NewUnaryExpr(expr.Op, input)

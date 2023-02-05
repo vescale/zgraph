@@ -2465,63 +2465,63 @@ yynewstate:
 		}
 	case 100:
 		{
-			parser.yyVAL.expr = &ast.UnaryOperationExpr{Op: opcode.Minus, V: yyS[yypt-0].expr}
+			parser.yyVAL.expr = &ast.UnaryExpr{Op: opcode.Minus, V: yyS[yypt-0].expr}
 		}
 	case 101:
 		{
-			parser.yyVAL.expr = &ast.BinaryOperationExpr{Op: opcode.Mul, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
+			parser.yyVAL.expr = &ast.BinaryExpr{Op: opcode.Mul, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
 		}
 	case 102:
 		{
-			parser.yyVAL.expr = &ast.BinaryOperationExpr{Op: opcode.Div, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
+			parser.yyVAL.expr = &ast.BinaryExpr{Op: opcode.Div, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
 		}
 	case 103:
 		{
-			parser.yyVAL.expr = &ast.BinaryOperationExpr{Op: opcode.Mod, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
+			parser.yyVAL.expr = &ast.BinaryExpr{Op: opcode.Mod, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
 		}
 	case 104:
 		{
-			parser.yyVAL.expr = &ast.BinaryOperationExpr{Op: opcode.Plus, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
+			parser.yyVAL.expr = &ast.BinaryExpr{Op: opcode.Plus, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
 		}
 	case 105:
 		{
-			parser.yyVAL.expr = &ast.BinaryOperationExpr{Op: opcode.Minus, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
+			parser.yyVAL.expr = &ast.BinaryExpr{Op: opcode.Minus, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
 		}
 	case 106:
 		{
-			parser.yyVAL.expr = &ast.BinaryOperationExpr{Op: opcode.EQ, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
+			parser.yyVAL.expr = &ast.BinaryExpr{Op: opcode.EQ, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
 		}
 	case 107:
 		{
-			parser.yyVAL.expr = &ast.BinaryOperationExpr{Op: opcode.NE, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
+			parser.yyVAL.expr = &ast.BinaryExpr{Op: opcode.NE, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
 		}
 	case 108:
 		{
-			parser.yyVAL.expr = &ast.BinaryOperationExpr{Op: opcode.GT, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
+			parser.yyVAL.expr = &ast.BinaryExpr{Op: opcode.GT, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
 		}
 	case 109:
 		{
-			parser.yyVAL.expr = &ast.BinaryOperationExpr{Op: opcode.LT, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
+			parser.yyVAL.expr = &ast.BinaryExpr{Op: opcode.LT, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
 		}
 	case 110:
 		{
-			parser.yyVAL.expr = &ast.BinaryOperationExpr{Op: opcode.GE, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
+			parser.yyVAL.expr = &ast.BinaryExpr{Op: opcode.GE, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
 		}
 	case 111:
 		{
-			parser.yyVAL.expr = &ast.BinaryOperationExpr{Op: opcode.LE, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
+			parser.yyVAL.expr = &ast.BinaryExpr{Op: opcode.LE, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
 		}
 	case 112:
 		{
-			parser.yyVAL.expr = &ast.BinaryOperationExpr{Op: opcode.LogicOr, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
+			parser.yyVAL.expr = &ast.BinaryExpr{Op: opcode.LogicOr, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
 		}
 	case 113:
 		{
-			parser.yyVAL.expr = &ast.BinaryOperationExpr{Op: opcode.LogicXor, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
+			parser.yyVAL.expr = &ast.BinaryExpr{Op: opcode.LogicXor, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
 		}
 	case 114:
 		{
-			parser.yyVAL.expr = &ast.BinaryOperationExpr{Op: opcode.LogicAnd, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
+			parser.yyVAL.expr = &ast.BinaryExpr{Op: opcode.LogicAnd, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
 		}
 	case 115:
 		{
@@ -2530,12 +2530,12 @@ yynewstate:
 				v.Not = true
 				parser.yyVAL.expr = yyS[yypt-0].expr
 			} else {
-				parser.yyVAL.expr = &ast.UnaryOperationExpr{Op: opcode.Not, V: yyS[yypt-0].expr}
+				parser.yyVAL.expr = &ast.UnaryExpr{Op: opcode.Not, V: yyS[yypt-0].expr}
 			}
 		}
 	case 116:
 		{
-			parser.yyVAL.expr = &ast.BinaryOperationExpr{Op: opcode.Concat, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
+			parser.yyVAL.expr = &ast.BinaryExpr{Op: opcode.Concat, L: yyS[yypt-2].expr, R: yyS[yypt-0].expr}
 		}
 	case 117:
 		{

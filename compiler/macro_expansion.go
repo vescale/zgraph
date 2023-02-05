@@ -157,7 +157,7 @@ func (m *MacroExpansion) Leave(n ast.Node) (node ast.Node, ok bool) {
 			cnf = expr
 			continue
 		}
-		cnf = &ast.BinaryOperationExpr{
+		cnf = &ast.BinaryExpr{
 			Op: opcode.LogicAnd,
 			L:  cnf,
 			R:  expr,
@@ -170,7 +170,7 @@ func (m *MacroExpansion) Leave(n ast.Node) (node ast.Node, ok bool) {
 		newInsert := &ast.InsertStmt{}
 		*newInsert = *stmt
 		if newInsert.Where != nil {
-			newInsert.Where = &ast.BinaryOperationExpr{
+			newInsert.Where = &ast.BinaryExpr{
 				Op: opcode.LogicAnd,
 				L:  newInsert.Where,
 				R:  cnf,
@@ -183,7 +183,7 @@ func (m *MacroExpansion) Leave(n ast.Node) (node ast.Node, ok bool) {
 		newUpdate := &ast.UpdateStmt{}
 		*newUpdate = *stmt
 		if newUpdate.Where != nil {
-			newUpdate.Where = &ast.BinaryOperationExpr{
+			newUpdate.Where = &ast.BinaryExpr{
 				Op: opcode.LogicAnd,
 				L:  newUpdate.Where,
 				R:  cnf,
@@ -196,7 +196,7 @@ func (m *MacroExpansion) Leave(n ast.Node) (node ast.Node, ok bool) {
 		newDelete := &ast.DeleteStmt{}
 		*newDelete = *stmt
 		if newDelete.Where != nil {
-			newDelete.Where = &ast.BinaryOperationExpr{
+			newDelete.Where = &ast.BinaryExpr{
 				Op: opcode.LogicAnd,
 				L:  newDelete.Where,
 				R:  cnf,
@@ -209,7 +209,7 @@ func (m *MacroExpansion) Leave(n ast.Node) (node ast.Node, ok bool) {
 		newSelect := &ast.SelectStmt{}
 		*newSelect = *stmt
 		if newSelect.Where != nil {
-			newSelect.Where = &ast.BinaryOperationExpr{
+			newSelect.Where = &ast.BinaryExpr{
 				Op: opcode.LogicAnd,
 				L:  newSelect.Where,
 				R:  cnf,

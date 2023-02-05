@@ -73,22 +73,7 @@ func (dn *dmlNode) dmlStatement() {}
 // Expression implementations should embed it in.
 type exprNode struct {
 	node
-	flag uint64
 }
 
-// SetFlag implements ExprNode interface.
-func (en *exprNode) SetFlag(flag uint64) {
-	en.flag = flag
-}
-
-// GetFlag implements ExprNode interface.
-func (en *exprNode) GetFlag() uint64 {
-	return en.flag
-}
-
-type funcNode struct {
-	exprNode
-}
-
-// functionExpression implements FunctionNode interface.
-func (fn *funcNode) functionExpression() {}
+// expression implements ExprNode interface.
+func (en *exprNode) expression() {}

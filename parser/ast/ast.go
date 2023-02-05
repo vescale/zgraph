@@ -19,7 +19,6 @@ package ast
 
 import (
 	"github.com/vescale/zgraph/parser/format"
-	"github.com/vescale/zgraph/parser/model"
 )
 
 // Node is the basic element of the AST.
@@ -46,36 +45,11 @@ type Node interface {
 	OriginTextPosition() int
 }
 
-// Flags indicates whether an expression contains certain types of expression.
-const (
-	FlagConstant       uint64 = 0
-	FlagHasParamMarker uint64 = 1 << iota
-	FlagHasFunc
-	FlagHasReference
-	FlagHasAggregateFunc
-	FlagHasSubquery
-	FlagHasVariable
-	FlagHasDefault
-	FlagPreEvaluated
-)
-
 // ExprNode is a node that can be evaluated.
 // Name of implementations should have 'Expr' suffix.
 type ExprNode interface {
-	// Node is embedded in ExprNode.
 	Node
-	// SetFlag sets flag to the expression.
-	// Flag indicates whether the expression contains
-	// parameter marker, reference, aggregate function...
-	SetFlag(flag uint64)
-	// GetFlag returns the flag of the expression.
-	GetFlag() uint64
-}
-
-// FuncNode represents function call expression node.
-type FuncNode interface {
-	ExprNode
-	functionExpression()
+	expression()
 }
 
 // StmtNode represents statement node.
@@ -95,45 +69,6 @@ type DDLNode interface {
 type DMLNode interface {
 	StmtNode
 	dmlStatement()
-}
-
-// ResultField represents a result field which can be a column from a table,
-// or an expression in select field. It is a generated property during
-// binding process. ResultField is the key element to evaluate a ColumnNameExpr.
-// After resolving process, every ColumnNameExpr will be resolved to a ResultField.
-// During execution, every row retrieved from table will set the row value to
-// ResultFields of that table, so ColumnNameExpr resolved to that ResultField can be
-// easily evaluated.
-type ResultField struct {
-	Property       *model.PropertyInfo
-	PropertyAsName model.CIStr
-	Label          *model.LabelInfo
-	LabelAsName    model.CIStr
-	DBName         model.CIStr
-
-	// Expr represents the expression for the result field. If it is generated from a select field, it would
-	// be the expression of that select field, otherwise the type would be ValueExpr and value
-	// will be set for every retrieved row.
-	Expr ExprNode
-
-	// Referenced indicates the result field has been referenced or not.
-	// If not, we don't need to get the values.
-	Referenced bool
-}
-
-// ResultSetNode interface has a ResultFields property, represents a Node that returns result set.
-// Implementations include SelectStmt, SubqueryExpr, TableSource, TableName, Join and SetOprStmt.
-type ResultSetNode interface {
-	Node
-
-	resultSet()
-}
-
-// SensitiveStmtNode overloads StmtNode and provides a SecureText method.
-type SensitiveStmtNode interface {
-	StmtNode
-	// SecureText is different from Text that it hide password information.
-	SecureText() string
 }
 
 // Visitor visits a Node.

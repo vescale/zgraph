@@ -86,7 +86,7 @@ func TestMacroExpansion(t *testing.T) {
 				assert.Equal(expr.Macros["connects_to"], stmt.PathPatternMacros[0].Path)
 				assert.Equal(expr.Macros["has_parent"], stmt.PathPatternMacros[1].Path)
 				assert.NotNil(stmt.Where)
-				logicalAnd := stmt.Where.(*ast.BinaryOperationExpr)
+				logicalAnd := stmt.Where.(*ast.BinaryExpr)
 				assert.Equal(opcode.LogicAnd, logicalAnd.Op)
 			},
 		},
@@ -105,11 +105,11 @@ func TestMacroExpansion(t *testing.T) {
 				assert.Equal(expr.Macros["connects_to"], stmt.PathPatternMacros[0].Path)
 				assert.Equal(expr.Macros["has_parent"], stmt.PathPatternMacros[1].Path)
 				assert.NotNil(stmt.Where)
-				logicalAnd := stmt.Where.(*ast.BinaryOperationExpr)
+				logicalAnd := stmt.Where.(*ast.BinaryExpr)
 				assert.Equal(opcode.LogicAnd, logicalAnd.Op)
-				logicalEq := logicalAnd.L.(*ast.BinaryOperationExpr)
+				logicalEq := logicalAnd.L.(*ast.BinaryExpr)
 				assert.Equal(opcode.GT, logicalEq.Op) //  a > 10
-				logicalAnd = logicalAnd.R.(*ast.BinaryOperationExpr)
+				logicalAnd = logicalAnd.R.(*ast.BinaryExpr)
 				assert.Equal(opcode.LogicAnd, logicalAnd.Op)
 			},
 		},

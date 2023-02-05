@@ -14,8 +14,6 @@
 package opcode
 
 import (
-	"io"
-
 	"github.com/vescale/zgraph/parser/format"
 )
 
@@ -90,7 +88,7 @@ var ops = [...]struct {
 	},
 	NE: {
 		name:      "ne",
-		literal:   "<>", // perhaps should use `<>` here
+		literal:   "<>",
 		isKeyword: false,
 	},
 	LT: {
@@ -148,16 +146,6 @@ var ops = [...]struct {
 		literal:   "not ",
 		isKeyword: true,
 	},
-	//Not2: {
-	//	name:      "!",
-	//	literal:   "!",
-	//	isKeyword: false,
-	//},
-	//BitNeg: {
-	//	name:      "bitneg",
-	//	literal:   "~",
-	//	isKeyword: false,
-	//},
 	IntDiv: {
 		name:      "intdiv",
 		literal:   "DIV",
@@ -173,11 +161,6 @@ var ops = [...]struct {
 		literal:   "IN",
 		isKeyword: true,
 	},
-	//Like: {
-	//	name:      "like",
-	//	literal:   "LIKE",
-	//	isKeyword: true,
-	//},
 	Case: {
 		name:      "case",
 		literal:   "CASE",
@@ -213,11 +196,6 @@ var ops = [...]struct {
 // String implements Stringer interface.
 func (o Op) String() string {
 	return ops[o].name
-}
-
-// Format the ExprNode into a Writer.
-func (o Op) Format(w io.Writer) {
-	io.WriteString(w, ops[o].literal)
 }
 
 // IsKeyword returns whether the operator is a keyword.
