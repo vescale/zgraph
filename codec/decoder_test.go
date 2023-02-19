@@ -27,12 +27,12 @@ func TestPropertyDecoder_Decode(t *testing.T) {
 	cases := []struct {
 		labelIDs    []uint16
 		propertyIDs []uint16
-		values      datum.Datums
+		values      []datum.Datum
 	}{
 		{
 			labelIDs:    []uint16{1, 2, 3},
 			propertyIDs: []uint16{1, 2, 3},
-			values: datum.Datums{
+			values: []datum.Datum{
 				datum.NewString("hello"),
 				datum.NewInt(1),
 				datum.NewFloat(1.1),
@@ -41,7 +41,7 @@ func TestPropertyDecoder_Decode(t *testing.T) {
 		{
 			labelIDs:    []uint16{2, 3, 1},
 			propertyIDs: []uint16{2, 3, 1},
-			values: datum.Datums{
+			values: []datum.Datum{
 				datum.NewInt(1),
 				datum.NewFloat(1.1),
 				datum.NewString("hello"),

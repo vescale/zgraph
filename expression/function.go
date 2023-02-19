@@ -19,140 +19,128 @@ import (
 	"strings"
 
 	"github.com/vescale/zgraph/datum"
-	"github.com/vescale/zgraph/parser/ast"
+	"github.com/vescale/zgraph/stmtctx"
 	"github.com/vescale/zgraph/types"
-	"golang.org/x/exp/slices"
 )
 
 var _ Expression = &FuncExpr{}
 
 type FuncExpr struct {
-	FnName      string
-	Exprs       []Expression
-	overloadSet *funcOverloadSet
+	Name string
+	Args []Expression
+	Fn   Function
 }
 
 func (expr *FuncExpr) String() string {
-	argStrs := make([]string, 0, len(expr.Exprs))
-	for _, expr := range expr.Exprs {
-		argStrs = append(argStrs, expr.String())
+	sb := &strings.Builder{}
+	sb.WriteString(expr.Name)
+	sb.WriteByte('(')
+	sb.WriteString(expr.Args[0].String())
+	for i := 1; i < len(expr.Args); i++ {
+		sb.WriteString(", ")
+		sb.WriteString(expr.Args[i].String())
 	}
-	return fmt.Sprintf("%s(%s)", strings.ToUpper(expr.FnName), strings.Join(argStrs, ", "))
+	sb.WriteByte(')')
+	return sb.String()
 }
 
 func (expr *FuncExpr) ReturnType() types.T {
-	var argTypes []types.T
-	for _, argExpr := range expr.Exprs {
-		argTypes = append(argTypes, argExpr.ReturnType())
+	argTypes := make([]types.T, 0, len(expr.Args))
+	for _, arg := range expr.Args {
+		argTypes = append(argTypes, arg.ReturnType())
 	}
-	return expr.overloadSet.inferReturnType(argTypes)
+	return expr.Fn.InferReturnType(argTypes)
 }
 
-func (expr *FuncExpr) Eval(evalCtx *EvalContext) (datum.Datum, error) {
-	nullResult, args, err := expr.evalFuncArgs(evalCtx)
+func (expr *FuncExpr) Eval(stmtCtx *stmtctx.Context, input datum.Row) (datum.Datum, error) {
+	funcArgs, nullResult, err := expr.evalFuncArgs(stmtCtx, input)
 	if err != nil {
 		return nil, err
 	}
 	if nullResult {
 		return datum.Null, nil
 	}
-	var argTypes []types.T
-	for _, arg := range args {
-		argTypes = append(argTypes, arg.Type())
-	}
-	overload, ok := expr.overloadSet.lookupImpl(argTypes)
-	if !ok {
-		return datum.Null, nil
-	}
-	return overload.eval(evalCtx, args)
+	return expr.Fn.Eval(stmtCtx, funcArgs)
 }
 
-func (expr *FuncExpr) evalFuncArgs(evalCtx *EvalContext) (propagateNulls bool, args datum.Datums, _ error) {
-	args = make(datum.Datums, 0, len(expr.Exprs))
-	for _, expr := range expr.Exprs {
-		arg, err := expr.Eval(evalCtx)
+func (expr *FuncExpr) evalFuncArgs(stmtCtx *stmtctx.Context, input datum.Row) (_ []datum.Datum, propagateNulls bool, _ error) {
+	var funcArgs []datum.Datum
+	for _, arg := range expr.Args {
+		d, err := arg.Eval(stmtCtx, input)
 		if err != nil {
-			return false, nil, err
+			return nil, false, err
 		}
-		// TODO: If a function is expected to call with a NULL argument,
-		//  we shouldn't propagate NULL to the result.
-		if arg == datum.Null {
-			return true, nil, nil
+		if d == datum.Null && !expr.Fn.CallOnNullInput() {
+			return nil, true, nil
 		}
-		args = append(args, arg)
+		funcArgs = append(funcArgs, d)
 	}
-	return false, args, nil
+	return funcArgs, false, nil
 }
 
-func NewFuncExpr(fnName string, exprs ...Expression) (*FuncExpr, error) {
-	overloadSet, ok := builtinFuncs[fnName]
+func NewFuncExpr(name string, args ...Expression) (*FuncExpr, error) {
+	fn, ok := builtinFuncs[name]
 	if !ok {
-		return nil, fmt.Errorf("function %s not found", fnName)
+		return nil, fmt.Errorf("function %s not found", name)
 	}
-	if overloadSet.argLen != len(exprs) {
-		return nil, fmt.Errorf("function %s expects %d arguments, but got %d", fnName, overloadSet.argLen, len(exprs))
+	if fn.NumArgs() != len(args) {
+		return nil, fmt.Errorf("invalid arguments count to call function %s", name)
 	}
-
 	return &FuncExpr{
-		FnName:      fnName,
-		Exprs:       exprs,
-		overloadSet: overloadSet,
+		Name: name,
+		Args: args,
+		Fn:   fn,
 	}, nil
 }
 
-type funcOverload struct {
-	argTypes   []types.T
-	returnType types.T
-	eval       func(*EvalContext, datum.Datums) (datum.Datum, error)
+type Function interface {
+	NumArgs() int
+	InferReturnType(argTypes []types.T) types.T
+	CallOnNullInput() bool
+	Eval(stmtCtx *stmtctx.Context, args []datum.Datum) (datum.Datum, error)
 }
 
-type funcOverloadSet struct {
-	argLen     int
-	overloads  []*funcOverload
-	returnType types.T
+var builtinFuncs = map[string]Function{
+	"id": newBuiltIDFunc(),
 }
 
-func (s *funcOverloadSet) lookupImpl(argTypes []types.T) (*funcOverload, bool) {
-	for _, overload := range s.overloads {
-		if slices.Equal(overload.argTypes, argTypes) {
-			return overload, true
-		}
+type baseBuiltinFunc struct {
+	numArgs         int
+	callOnNullInput bool
+}
+
+func (b baseBuiltinFunc) NumArgs() int {
+	return b.numArgs
+}
+
+func (b baseBuiltinFunc) CallOnNullInput() bool {
+	return b.callOnNullInput
+}
+
+func newBaseBuiltinFunc(numArgs int, callOnNullInput bool) baseBuiltinFunc {
+	return baseBuiltinFunc{numArgs: numArgs, callOnNullInput: callOnNullInput}
+}
+
+type builtinIDFunc struct {
+	baseBuiltinFunc
+}
+
+func (b builtinIDFunc) InferReturnType(_ []types.T) types.T {
+	return types.Int
+}
+
+func (b builtinIDFunc) Eval(_ *stmtctx.Context, args []datum.Datum) (datum.Datum, error) {
+	switch x := args[0].(type) {
+	case *datum.Vertex:
+		return datum.NewInt(x.ID), nil
+	case *datum.Edge:
+		// TODO: Edge should have a unique id.
+		return datum.NewInt(0), nil
+	default:
+		return nil, fmt.Errorf("cannot get id from data type %s", args[0].Type())
 	}
-	return nil, false
 }
 
-func (s *funcOverloadSet) inferReturnType(argTypes []types.T) types.T {
-	if s.returnType != types.Unknown {
-		return s.returnType
-	}
-	for _, overload := range s.overloads {
-		if slices.Equal(overload.argTypes, argTypes) {
-			return overload.returnType
-		}
-	}
-	return types.Unknown
-}
-
-var builtinFuncs = map[string]*funcOverloadSet{
-	ast.ID: {
-		argLen:     1,
-		returnType: types.Int,
-		overloads: []*funcOverload{
-			{
-				argTypes:   []types.T{types.Vertex},
-				returnType: types.Int,
-				eval: func(evalCtx *EvalContext, args datum.Datums) (datum.Datum, error) {
-					v := datum.MustBeVertex(args[0])
-					return datum.NewInt(v.ID), nil
-				},
-			},
-			{
-				argTypes:   []types.T{types.Edge},
-				returnType: types.Int,
-				eval: func(evalCtx *EvalContext, args datum.Datums) (datum.Datum, error) {
-					return datum.NewInt(0), nil
-				},
-			},
-		},
-	},
+func newBuiltIDFunc() Function {
+	return builtinIDFunc{newBaseBuiltinFunc(1, false)}
 }

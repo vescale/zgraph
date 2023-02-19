@@ -35,7 +35,7 @@ type DDLExec struct {
 }
 
 // Next implements the Executor interface.
-func (e *DDLExec) Next(_ context.Context) (datum.Datums, error) {
+func (e *DDLExec) Next(_ context.Context) (datum.Row, error) {
 	if e.done {
 		return nil, nil
 	}

@@ -31,7 +31,7 @@ type SimpleExec struct {
 	statement ast.StmtNode
 }
 
-func (e *SimpleExec) Next(_ context.Context) (datum.Datums, error) {
+func (e *SimpleExec) Next(_ context.Context) (datum.Row, error) {
 	if e.done {
 		return nil, nil
 	}

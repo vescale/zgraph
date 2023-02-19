@@ -25,9 +25,9 @@ import (
 	"github.com/vescale/zgraph/types"
 )
 
-var (
-	Null Datum = null{}
+const Null = null(0)
 
+var (
 	_ Datum = NewBool(false)
 	_ Datum = NewInt(0)
 	_ Datum = NewFloat(0.0)
@@ -46,18 +46,18 @@ var (
 
 type Datum interface {
 	Type() types.T
-	AsString() string
+	String() string
 }
 
-type Datums []Datum
+type Row []Datum
 
-type null struct{}
+type null int
 
 func (null) Type() types.T {
 	return types.Unknown
 }
 
-func (null) AsString() string {
+func (null) String() string {
 	return "NULL"
 }
 
@@ -67,7 +67,7 @@ func (Bool) Type() types.T {
 	return types.Bool
 }
 
-func (b Bool) AsString() string {
+func (b Bool) String() string {
 	if b {
 		return "TRUE"
 	} else {
@@ -91,7 +91,7 @@ func ParseBool(s string) (*Bool, error) {
 func MustBeBool(d Datum) Bool {
 	b, ok := d.(*Bool)
 	if !ok {
-		panic(fmt.Sprintf("expected Bool, got %T", d))
+		panic(fmt.Sprintf("expected *Bool, got %T", d))
 	}
 	return *b
 }
@@ -102,7 +102,7 @@ func (Int) Type() types.T {
 	return types.Int
 }
 
-func (i Int) AsString() string {
+func (i Int) String() string {
 	return strconv.FormatInt(int64(i), 10)
 }
 
@@ -125,7 +125,7 @@ func (Float) Type() types.T {
 	return types.Float
 }
 
-func (f Float) AsString() string {
+func (f Float) String() string {
 	return strconv.FormatFloat(float64(f), 'g', -1, 64)
 }
 
@@ -148,7 +148,7 @@ func (String) Type() types.T {
 	return types.String
 }
 
-func (s String) AsString() string {
+func (s String) String() string {
 	return string(s)
 }
 
@@ -171,7 +171,7 @@ func (Bytes) Type() types.T {
 	return types.Bytes
 }
 
-func (b Bytes) AsString() string {
+func (b Bytes) String() string {
 	return string(b)
 }
 
@@ -196,7 +196,7 @@ func (Decimal) Type() types.T {
 	return types.Decimal
 }
 
-func (d Decimal) AsString() string {
+func (d Decimal) String() string {
 	return d.Decimal.Text('g')
 }
 
@@ -230,7 +230,7 @@ func (*Date) Type() types.T {
 	return types.Date
 }
 
-func (d *Date) AsString() string {
+func (d *Date) String() string {
 	return time.Unix(int64(d.days)*secondsPerDay, 0).Format(dateLayout)
 }
 
@@ -248,6 +248,14 @@ func ParseDate(s string) (*Date, error) {
 		return nil, err
 	}
 	return &Date{days: int32(t.Unix() / secondsPerDay)}, nil
+}
+
+func MustBeDate(d Datum) Date {
+	date, ok := d.(*Date)
+	if !ok {
+		panic(fmt.Sprintf("expected *Date, got %T", d))
+	}
+	return *date
 }
 
 const (
@@ -278,7 +286,7 @@ func (*Time) Type() types.T {
 	return types.Time
 }
 
-func (t *Time) AsString() string {
+func (t *Time) String() string {
 	return fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second())
 }
 
@@ -308,6 +316,14 @@ func ParseTime(s string) (*Time, error) {
 	return &Time{TimeOfDay: TimeOfDay(hour*secondsPerHour + minute*secondsPerMinute + second)}, nil
 }
 
+func MustBeTime(d Datum) Time {
+	t, ok := d.(*Time)
+	if !ok {
+		panic(fmt.Sprintf("expected *Time, got %T", d))
+	}
+	return *t
+}
+
 type TimeTZ struct {
 	TimeOfDay
 	offsetMinutes int32
@@ -317,7 +333,7 @@ func (t *TimeTZ) Type() types.T {
 	return types.TimeTZ
 }
 
-func (t *TimeTZ) AsString() string {
+func (t *TimeTZ) String() string {
 	offsetHour := t.offsetMinutes / minutesPerHour
 	offsetMinute := t.offsetMinutes % minutesPerHour
 	if t.offsetMinutes >= 0 {
@@ -360,6 +376,14 @@ func ParseTimeTZ(s string) (*TimeTZ, error) {
 	}, nil
 }
 
+func MustBeTimeTZ(d Datum) TimeTZ {
+	t, ok := d.(*TimeTZ)
+	if !ok {
+		panic(fmt.Sprintf("expected *TimeTZ, got %T", d))
+	}
+	return *t
+}
+
 func ParseTimeOrTimeTZ(s string) (*Time, *TimeTZ, error) {
 	t, err := ParseTime(s)
 	if err == nil {
@@ -382,7 +406,7 @@ func (t *Timestamp) Type() types.T {
 	return types.Timestamp
 }
 
-func (t *Timestamp) AsString() string {
+func (t *Timestamp) String() string {
 	return t.UTC().Format(timestampLayout)
 }
 
@@ -392,6 +416,14 @@ func ParseTimestamp(s string) (*Timestamp, error) {
 		return nil, err
 	}
 	return &Timestamp{Time: t}, nil
+}
+
+func MustBeTimestamp(d Datum) Timestamp {
+	t, ok := d.(*Timestamp)
+	if !ok {
+		panic(fmt.Sprintf("expected *Timestamp, got %T", d))
+	}
+	return *t
 }
 
 const timestampTZLayout = "2006-01-02 15:04:05-07:00"
@@ -404,7 +436,7 @@ func (t *TimestampTZ) Type() types.T {
 	return types.TimestampTZ
 }
 
-func (t *TimestampTZ) AsString() string {
+func (t *TimestampTZ) String() string {
 	return t.Format(timestampTZLayout)
 }
 
@@ -414,6 +446,14 @@ func ParseTimestampTZ(s string) (*TimestampTZ, error) {
 		return nil, err
 	}
 	return &TimestampTZ{Time: t}, nil
+}
+
+func MustBeTimestampTZ(d Datum) TimestampTZ {
+	t, ok := d.(*TimestampTZ)
+	if !ok {
+		panic(fmt.Sprintf("expected *TimestampTZ, got %T", d))
+	}
+	return *t
 }
 
 func ParseTimestampOrTimestampTZ(s string) (*Timestamp, *TimestampTZ, error) {
@@ -449,7 +489,7 @@ func (i *Interval) Type() types.T {
 	return types.Interval
 }
 
-func (i *Interval) AsString() string {
+func (i *Interval) String() string {
 	if i.months != 0 {
 		if i.months%12 == 0 {
 			return fmt.Sprintf("%d YEAR", i.months/12)
@@ -488,38 +528,55 @@ func NewInterval(dur int64, unit IntervalUnit) *Interval {
 	}
 }
 
+func MustBeInterval(d Datum) Interval {
+	i, ok := d.(*Interval)
+	if !ok {
+		panic(fmt.Sprintf("expected *Interval, got %T", d))
+	}
+	return *i
+}
+
 type Vertex struct {
-	ID         int64
-	Labels     []string
-	Properties map[string]Datum
+	ID     int64
+	Labels []string
+	Props  map[string]Datum
 }
 
 func (v *Vertex) Type() types.T {
 	return types.Vertex
 }
 
-func (v *Vertex) AsString() string {
+func (v *Vertex) String() string {
 	return fmt.Sprintf("VERTEX(%d)", v.ID)
 }
 
-func MustBeVertex(d Datum) *Vertex {
-	if v, ok := d.(*Vertex); ok {
-		return v
+func MustBeVertex(d Datum) Vertex {
+	v, ok := d.(*Vertex)
+	if !ok {
+		panic(fmt.Sprintf("expected *Vertex, got %T", d))
 	}
-	panic(fmt.Sprintf("expected vertex, got %T", d))
+	return *v
 }
 
 type Edge struct {
-	SrcID      int64
-	DstID      int64
-	Labels     []string
-	Properties map[string]Datum
+	SrcID  int64
+	DstID  int64
+	Labels []string
+	Props  map[string]Datum
 }
 
 func (e *Edge) Type() types.T {
 	return types.Edge
 }
 
-func (e *Edge) AsString() string {
+func (e *Edge) String() string {
 	return fmt.Sprintf("EDGE(%d, %d)", e.SrcID, e.DstID)
+}
+
+func MustBeEdge(d Datum) Edge {
+	e, ok := d.(*Edge)
+	if !ok {
+		panic(fmt.Sprintf("expected *Edge, got %T", d))
+	}
+	return *e
 }

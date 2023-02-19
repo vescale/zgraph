@@ -19,27 +19,16 @@ import (
 
 	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/parser/opcode"
+	"github.com/vescale/zgraph/stmtctx"
 	"github.com/vescale/zgraph/types"
 )
 
 var _ Expression = &UnaryExpr{}
 
 type UnaryExpr struct {
-	Op          opcode.Op
-	Expr        Expression
-	overloadSet *unaryOpOverloadSet
-}
-
-func NewUnaryExpr(op opcode.Op, expr Expression) (*UnaryExpr, error) {
-	overloadSet, ok := unaryOps[op]
-	if !ok {
-		return nil, fmt.Errorf("unsupported unary operator: %s", op)
-	}
-	return &UnaryExpr{
-		Op:          op,
-		Expr:        expr,
-		overloadSet: overloadSet,
-	}, nil
+	Op     opcode.Op
+	Expr   Expression
+	EvalOp UnaryEvalOp
 }
 
 func (u *UnaryExpr) String() string {
@@ -47,69 +36,62 @@ func (u *UnaryExpr) String() string {
 }
 
 func (u *UnaryExpr) ReturnType() types.T {
-	op, ok := u.overloadSet.lookupImpl(u.Expr.ReturnType())
-	if ok {
-		return op.returnType
-	}
-	return types.Unknown
+	return u.EvalOp.InferReturnType(u.Expr.ReturnType())
 }
 
-func (u *UnaryExpr) Eval(evalCtx *EvalContext) (datum.Datum, error) {
-	d, err := u.Expr.Eval(evalCtx)
-	if err != nil || d == datum.Null {
+func (u *UnaryExpr) Eval(stmtCtx *stmtctx.Context, input datum.Row) (datum.Datum, error) {
+	d, err := u.Expr.Eval(stmtCtx, input)
+	if err != nil {
 		return d, err
 	}
-	op, ok := u.overloadSet.lookupImpl(u.Expr.ReturnType())
-	if !ok {
-		return datum.Null, nil
+	if d == datum.Null && !u.EvalOp.CallOnNullInput() {
+		return d, nil
 	}
-	return op.fn(evalCtx, d)
+	return u.EvalOp.Eval(stmtCtx, d)
 }
 
-type unaryOp struct {
-	typ        types.T
-	returnType types.T
-	fn         func(*EvalContext, datum.Datum) (datum.Datum, error)
+func NewUnaryExpr(op opcode.Op, expr Expression) (*UnaryExpr, error) {
+	unaryOp, ok := unaryOps[op]
+	if !ok {
+		return nil, fmt.Errorf("unsupported unary operator: %s", op)
+	}
+	return &UnaryExpr{
+		Op:     op,
+		Expr:   expr,
+		EvalOp: unaryOp,
+	}, nil
 }
 
-type unaryOpOverloadSet struct {
-	overloads map[types.T]*unaryOp
+type UnaryEvalOp interface {
+	InferReturnType(inputType types.T) types.T
+	CallOnNullInput() bool
+	Eval(stmtCtx *stmtctx.Context, input datum.Datum) (datum.Datum, error)
 }
 
-func (o *unaryOpOverloadSet) lookupImpl(typ types.T) (*unaryOp, bool) {
-	op, ok := o.overloads[typ]
-	return op, ok
+var unaryOps = map[opcode.Op]UnaryEvalOp{
+	opcode.Minus: unaryMinusOp{},
 }
 
-var unaryOps = map[opcode.Op]*unaryOpOverloadSet{
-	opcode.Minus: {
-		overloads: map[types.T]*unaryOp{
-			types.Int: {
-				typ:        types.Int,
-				returnType: types.Int,
-				fn: func(_ *EvalContext, d datum.Datum) (datum.Datum, error) {
-					i := datum.MustBeInt(d)
-					return datum.NewInt(-int64(i)), nil
-				},
-			},
-			types.Float: {
-				typ:        types.Float,
-				returnType: types.Float,
-				fn: func(_ *EvalContext, d datum.Datum) (datum.Datum, error) {
-					f := datum.MustBeFloat(d)
-					return datum.NewFloat(-float64(f)), nil
-				},
-			},
-			types.Decimal: {
-				typ:        types.Decimal,
-				returnType: types.Decimal,
-				fn: func(_ *EvalContext, d datum.Datum) (datum.Datum, error) {
-					dec := datum.MustBeDecimal(d)
-					res := &datum.Decimal{}
-					res.Neg(&dec.Decimal)
-					return res, nil
-				},
-			},
-		},
-	},
+type unaryMinusOp struct{}
+
+func (u unaryMinusOp) InferReturnType(inputType types.T) types.T {
+	return inputType
+}
+
+func (u unaryMinusOp) CallOnNullInput() bool {
+	return false
+}
+
+func (u unaryMinusOp) Eval(_ *stmtctx.Context, input datum.Datum) (datum.Datum, error) {
+	switch d := input.(type) {
+	case *datum.Int:
+		return datum.NewInt(-int64(*d)), nil
+	case *datum.Float:
+		return datum.NewFloat(-float64(*d)), nil
+	case *datum.Decimal:
+		neg := &datum.Decimal{Decimal: *d.Decimal.Neg(&d.Decimal)}
+		return neg, nil
+	default:
+		return nil, fmt.Errorf("cannot negate %s", d.Type())
+	}
 }

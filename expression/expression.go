@@ -23,26 +23,10 @@ import (
 	"github.com/vescale/zgraph/types"
 )
 
-type EvalContext struct {
-	StmtCtx *stmtctx.Context
-	CurRow  datum.Datums
-}
-
-func NewEvalContext(stmtCtx *stmtctx.Context) *EvalContext {
-	return &EvalContext{
-		StmtCtx: stmtCtx,
-	}
-}
-
-func (ec *EvalContext) EvalExprWithCurRow(expr Expression, curRow datum.Datums) (datum.Datum, error) {
-	ec.CurRow = curRow
-	return expr.Eval(ec)
-}
-
 type Expression interface {
 	fmt.Stringer
 	ReturnType() types.T
-	Eval(evalCtx *EvalContext) (datum.Datum, error)
+	Eval(stmtCtx *stmtctx.Context, input datum.Row) (datum.Datum, error)
 }
 
 // Assignment represents an assignment in INSERT/UPDATE statements.

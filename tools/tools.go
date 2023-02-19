@@ -17,5 +17,5 @@
 package tools
 
 import (
-	_ "golang.org/x/tools/cmd/goimports"
+	_ "github.com/daixiang0/gci"
 )

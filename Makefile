@@ -20,14 +20,14 @@ parser: tools/bin/goyacc
 	@echo "bin/goyacc -o parser/parser.y.go"
 	@tools/bin/goyacc -o parser/parser.y.go parser/parser.y
 
-fmt: tools/bin/goimports
-	tools/bin/goimports -w $(FILES)
+fmt: tools/bin/gci
+	tools/bin/gci write $(FILES)
 
 test:
-	$(GO) test -v $(PACKAGES)
+	$(GO) test $(PACKAGES)
 
 tools/bin/goyacc:
 	$(GO) build -o tools/bin/goyacc ./parser/goyacc/
 
-tools/bin/goimports:
-	cd tools && $(GO) build -o ./bin/goimports golang.org/x/tools/cmd/goimports
+tools/bin/gci:
+	cd tools && $(GO) build -o ./bin/gci github.com/daixiang0/gci

@@ -28,17 +28,15 @@ type ProjectionExec struct {
 	exprs []expression.Expression
 }
 
-func (p *ProjectionExec) Next(ctx context.Context) (datum.Datums, error) {
+func (p *ProjectionExec) Next(ctx context.Context) (datum.Row, error) {
 	childRow, err := p.children[0].Next(ctx)
 	if err != nil || childRow == nil {
 		return nil, err
 	}
 
-	evalCtx := expression.NewEvalContext(p.sc)
-
-	result := make(datum.Datums, len(p.exprs))
+	result := make(datum.Row, len(p.exprs))
 	for i, expr := range p.exprs {
-		d, err := evalCtx.EvalExprWithCurRow(expr, childRow)
+		d, err := expr.Eval(p.sc, childRow)
 		if err != nil {
 			return nil, err
 		}

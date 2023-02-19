@@ -26,11 +26,11 @@ import (
 type PropertyEncoder struct {
 	rowBytes
 
-	values datum.Datums
+	values []datum.Datum
 }
 
 // Encode encodes properties into a value bytes.
-func (e *PropertyEncoder) Encode(buf []byte, labelIDs, propertyIDs []uint16, values datum.Datums) ([]byte, error) {
+func (e *PropertyEncoder) Encode(buf []byte, labelIDs, propertyIDs []uint16, values []datum.Datum) ([]byte, error) {
 	e.reform(labelIDs, propertyIDs, values)
 	for i, value := range e.values {
 		err := e.encodeDatum(value)
@@ -102,7 +102,7 @@ func (e *PropertyEncoder) reform(labelIDs, propertyIDs []uint16, values []datum.
 
 type propertySorter struct {
 	propertyIDs []uint16
-	values      datum.Datums
+	values      []datum.Datum
 }
 
 // Less implements the Sorter interface.

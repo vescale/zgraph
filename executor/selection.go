@@ -28,14 +28,13 @@ type SelectionExec struct {
 	condition expression.Expression
 }
 
-func (p *SelectionExec) Next(ctx context.Context) (datum.Datums, error) {
-	evalCtx := expression.NewEvalContext(p.sc)
+func (p *SelectionExec) Next(ctx context.Context) (datum.Row, error) {
 	for {
 		row, err := p.children[0].Next(ctx)
 		if err != nil || row == nil {
 			return nil, err
 		}
-		d, err := evalCtx.EvalExprWithCurRow(p.condition, row)
+		d, err := p.condition.Eval(p.sc, row)
 		if err != nil {
 			return nil, err
 		}

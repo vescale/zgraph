@@ -25,12 +25,12 @@ func TestPropertyEncoder_Encode(t *testing.T) {
 	cases := []struct {
 		labelIDs    []uint16
 		propertyIDs []uint16
-		values      datum.Datums
+		values      []datum.Datum
 	}{
 		{
 			labelIDs:    []uint16{1, 2, 3},
 			propertyIDs: []uint16{1, 2, 3},
-			values: datum.Datums{
+			values: []datum.Datum{
 				datum.NewString("hello"),
 				datum.NewInt(1),
 				datum.NewFloat(1.1),

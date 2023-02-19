@@ -16,6 +16,7 @@ package expression
 
 import (
 	"github.com/vescale/zgraph/datum"
+	"github.com/vescale/zgraph/stmtctx"
 	"github.com/vescale/zgraph/types"
 )
 
@@ -28,13 +29,13 @@ type Constant struct {
 
 // String implements the fmt.Stringer interface.
 func (c *Constant) String() string {
-	return c.Value.AsString()
+	return c.Value.String()
 }
 
 func (c *Constant) ReturnType() types.T {
 	return c.Value.Type()
 }
 
-func (c *Constant) Eval(evalCtx *EvalContext) (datum.Datum, error) {
+func (c *Constant) Eval(stmtCtx *stmtctx.Context, input datum.Row) (datum.Datum, error) {
 	return c.Value, nil
 }

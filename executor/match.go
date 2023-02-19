@@ -36,11 +36,11 @@ type MatchExec struct {
 
 	prepared bool
 	matched  map[string]datum.Datum
-	results  []datum.Datums
+	results  []datum.Row
 	txn      kv.Transaction
 }
 
-func (m *MatchExec) Next(ctx context.Context) (datum.Datums, error) {
+func (m *MatchExec) Next(ctx context.Context) (datum.Row, error) {
 	if !m.prepared {
 		if err := m.prepare(ctx); err != nil {
 			return nil, err
@@ -179,7 +179,7 @@ func (m *MatchExec) isMatched() bool {
 }
 
 func (m *MatchExec) appendResult() {
-	result := make(datum.Datums, 0, len(m.subgraph.SingletonVars))
+	result := make(datum.Row, 0, len(m.subgraph.SingletonVars))
 	for _, singletonVar := range m.subgraph.SingletonVars {
 		d := m.matched[singletonVar.Name.L]
 		result = append(result, d)
@@ -354,7 +354,7 @@ func (m *MatchExec) decodeVertexValue(val []byte, v *datum.Vertex) error {
 		return err
 	}
 	v.Labels = labels
-	v.Properties = properties
+	v.Props = properties
 	return nil
 }
 
@@ -364,7 +364,7 @@ func (m *MatchExec) decodeEdgeValue(val []byte, v *datum.Edge) error {
 		return err
 	}
 	v.Labels = labels
-	v.Properties = properties
+	v.Props = properties
 	return nil
 }
 

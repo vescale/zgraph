@@ -19,46 +19,21 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"strings"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/parser/opcode"
+	"github.com/vescale/zgraph/stmtctx"
 	"github.com/vescale/zgraph/types"
 )
 
 var _ Expression = &BinaryExpr{}
 
 type BinaryExpr struct {
-	Op    opcode.Op
-	Left  Expression
-	Right Expression
-
-	overloadSet binOpOverloadSet
-	inferredOp  *binOp
-}
-
-func NewBinaryExpr(op opcode.Op, left, right Expression) (*BinaryExpr, error) {
-	overloadSet, ok := binOps[op]
-	if !ok {
-		return nil, fmt.Errorf("unsupported binary operator: %s", op)
-	}
-	expr := &BinaryExpr{
-		Op:          op,
-		Left:        left,
-		Right:       right,
-		overloadSet: overloadSet,
-	}
-
-	leftType, rightType := left.ReturnType(), right.ReturnType()
-	if leftType != types.Unknown && rightType != types.Unknown {
-		if inferredOp, ok := overloadSet.lookupImpl(leftType, rightType); ok {
-			expr.inferredOp = inferredOp
-		} else {
-			// TODO: Do we need to return an error here?
-		}
-	}
-	return expr, nil
+	Op     opcode.Op
+	Left   Expression
+	Right  Expression
+	EvalOp BinaryEvalOp
 }
 
 func (expr *BinaryExpr) String() string {
@@ -66,323 +41,231 @@ func (expr *BinaryExpr) String() string {
 }
 
 func (expr *BinaryExpr) ReturnType() types.T {
-	if expr.inferredOp != nil {
-		return expr.inferredOp.returnType
-	}
-	return expr.overloadSet.inferReturnType(expr.Left.ReturnType(), expr.Right.ReturnType())
+	leftType := expr.Left.ReturnType()
+	rightType := expr.Right.ReturnType()
+	return expr.EvalOp.InferReturnType(leftType, rightType)
 }
 
-// Eval implements the Expression interface.
-// TODO: Move logical operators out of BinaryExpr, since they have too many special cases.
-func (expr *BinaryExpr) Eval(evalCtx *EvalContext) (datum.Datum, error) {
-	left, err := expr.Left.Eval(evalCtx)
-	if err != nil || left == datum.Null {
-		return left, err
+func (expr *BinaryExpr) Eval(stmtCtx *stmtctx.Context, input datum.Row) (datum.Datum, error) {
+	left, err := expr.Left.Eval(stmtCtx, input)
+	if err != nil {
+		return nil, err
 	}
-	right, err := expr.Right.Eval(evalCtx)
-	if err != nil || right == datum.Null {
-		return right, err
-	}
-	op := expr.inferredOp
-	if op == nil {
-		op, _ = expr.overloadSet.lookupImpl(left.Type(), right.Type())
-	}
-	if op == nil {
-		// TODO: Do we need to return an error here?
+	if left == datum.Null && !expr.EvalOp.CallOnNullInput() {
 		return datum.Null, nil
 	}
-	return op.fn(evalCtx, left, right)
+	right, err := expr.Right.Eval(stmtCtx, input)
+	if err != nil {
+		return nil, err
+	}
+	if right == datum.Null && !expr.EvalOp.CallOnNullInput() {
+		return datum.Null, nil
+	}
+	return expr.EvalOp.Eval(stmtCtx, left, right)
 }
 
-type binOp struct {
-	leftType   types.T
-	rightType  types.T
-	returnType types.T
-	fn         func(_ *EvalContext, left, right datum.Datum) (datum.Datum, error)
+func NewBinaryExpr(op opcode.Op, left, right Expression) (*BinaryExpr, error) {
+	binOp, ok := binOps[op]
+	if !ok {
+		return nil, fmt.Errorf("unsupported binary operator: %s", op)
+	}
+	return &BinaryExpr{
+		Op:     op,
+		Left:   left,
+		Right:  right,
+		EvalOp: binOp,
+	}, nil
 }
 
-type binOpOverloadSet interface {
-	lookupImpl(leftType, rightType types.T) (*binOp, bool)
-	inferReturnType(leftType, rightType types.T) types.T
+type BinaryEvalOp interface {
+	InferReturnType(leftType, rightType types.T) types.T
+	CallOnNullInput() bool
+	Eval(stmtCtx *stmtctx.Context, left, right datum.Datum) (datum.Datum, error)
 }
 
-type genericBinOpOverloadSet struct {
-	overloads []*binOp
+var binOps = map[opcode.Op]BinaryEvalOp{
+	opcode.Plus:     makeArithOp(opcode.Plus),
+	opcode.Minus:    makeArithOp(opcode.Minus),
+	opcode.Mul:      makeArithOp(opcode.Mul),
+	opcode.Div:      makeArithOp(opcode.Div),
+	opcode.Mod:      makeArithOp(opcode.Mod),
+	opcode.LogicAnd: logicalAndOp{},
+	opcode.LogicOr:  logicalOrOp{},
+	opcode.EQ:       makeCmpOp(opcode.EQ),
+	opcode.NE:       makeNegateCmpOp(opcode.EQ), // NE(left, right) is implemented as !EQ(left, right)
+	opcode.LT:       makeCmpOp(opcode.LT),
+	opcode.LE:       makeFlippedNegateCmpOp(opcode.LT), // LE(left, right) is implemented as !LT(right, left)
+	opcode.GE:       makeNegateCmpOp(opcode.LT),        // GE(left, right) is implemented as !LT(left, right)
+	opcode.GT:       makeFlippedCmpOp(opcode.LT),       // GT(left, right) is implemented as LT(right, left)
 }
 
-func (s *genericBinOpOverloadSet) lookupImpl(leftType, rightType types.T) (*binOp, bool) {
-	for _, overload := range s.overloads {
-		if leftType == overload.leftType && rightType == overload.rightType {
-			return overload, true
+type typePair struct {
+	left  types.T
+	right types.T
+}
+
+type binEvalFunc func(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error)
+
+func makeBinEvalFuncWithLeftCast(eval binEvalFunc, cast castFunc) binEvalFunc {
+	return func(stmtCtx *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+		left, err := cast(stmtCtx, left)
+		if err != nil {
+			return nil, err
 		}
+		return eval(stmtCtx, left, right)
 	}
-	return nil, false
 }
 
-func (s *genericBinOpOverloadSet) inferReturnType(leftType, rightType types.T) types.T {
-	for _, binOp := range s.overloads {
-		if leftType == binOp.leftType && rightType == binOp.rightType {
-			return binOp.returnType
+func makeBinEvalFuncWithRightCast(eval binEvalFunc, cast castFunc) binEvalFunc {
+	return func(stmtCtx *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+		right, err := cast(stmtCtx, right)
+		if err != nil {
+			return nil, err
 		}
+		return eval(stmtCtx, left, right)
 	}
-	return types.Unknown
 }
 
-type cmpOpOverloadSet struct {
-	overload *binOp
+var numericOpReturnTypes = map[typePair]types.T{
+	{types.Int, types.Int}:         types.Int,
+	{types.Int, types.Float}:       types.Float,
+	{types.Int, types.Decimal}:     types.Decimal,
+	{types.Float, types.Int}:       types.Float,
+	{types.Float, types.Float}:     types.Float,
+	{types.Float, types.Decimal}:   types.Decimal,
+	{types.Decimal, types.Int}:     types.Decimal,
+	{types.Decimal, types.Float}:   types.Decimal,
+	{types.Decimal, types.Decimal}: types.Decimal,
 }
 
-func (s *cmpOpOverloadSet) lookupImpl(_, _ types.T) (*binOp, bool) {
-	return s.overload, true
-}
-
-func (s *cmpOpOverloadSet) inferReturnType(_, _ types.T) types.T {
-	return types.Bool
-}
-
-type logicalOpOverloadSet struct {
-	overload *binOp
-}
-
-func (s *logicalOpOverloadSet) lookupImpl(leftType, rightType types.T) (*binOp, bool) {
-	if leftType == types.Bool && rightType == types.Bool {
-		return s.overload, true
+var arithOpReturnTypes = func() map[opcode.Op]map[typePair]types.T {
+	result := make(map[opcode.Op]map[typePair]types.T)
+	for _, op := range []opcode.Op{opcode.Plus, opcode.Minus, opcode.Mul, opcode.Div, opcode.Mod} {
+		result[op] = numericOpReturnTypes
 	}
-	return nil, false
-}
+	for _, op := range []opcode.Op{opcode.Plus, opcode.Minus} {
+		result[op][typePair{types.Date, types.Interval}] = types.Date
+		result[op][typePair{types.Time, types.Interval}] = types.Time
+		result[op][typePair{types.TimeTZ, types.Interval}] = types.TimeTZ
+		result[op][typePair{types.Timestamp, types.Interval}] = types.Timestamp
+		result[op][typePair{types.TimestampTZ, types.Interval}] = types.TimestampTZ
+	}
+	return result
+}()
 
-func (s *logicalOpOverloadSet) inferReturnType(leftType, rightType types.T) types.T {
-	return types.Bool
-}
-
-var binOps = map[opcode.Op]binOpOverloadSet{
-	opcode.Plus: &genericBinOpOverloadSet{overloads: []*binOp{
-		{types.Int, types.Int, types.Int, plusIntInt},
-		{types.Int, types.Float, types.Float, plusIntFloat},
-		{types.Int, types.Decimal, types.Decimal, plusIntDecimal},
-		{types.Float, types.Int, types.Float, plusFloatInt},
-		{types.Float, types.Float, types.Float, plusFloatFloat},
-		{types.Float, types.Decimal, types.Decimal, plusFloatDecimal},
-		{types.Decimal, types.Int, types.Decimal, plusDecimalInt},
-		{types.Decimal, types.Float, types.Decimal, plusDecimalFloat},
-		{types.Decimal, types.Decimal, types.Decimal, plusDecimalDecimal},
-		{types.Date, types.Interval, types.Date, plusDateInterval},
-		{types.Time, types.Interval, types.Time, plusTimeInterval},
-		{types.TimeTZ, types.Interval, types.TimeTZ, plusTimeTZInterval},
-		{types.Timestamp, types.Interval, types.Timestamp, plusTimestampInterval},
-		{types.TimestampTZ, types.Interval, types.TimestampTZ, plusTimestampTZInterval},
-	}},
-	opcode.Minus: &genericBinOpOverloadSet{overloads: []*binOp{
-		{types.Int, types.Int, types.Int, minusIntInt},
-		{types.Int, types.Float, types.Float, minusIntFloat},
-		{types.Int, types.Decimal, types.Decimal, minusIntDecimal},
-		{types.Float, types.Int, types.Float, minusFloatInt},
-		{types.Float, types.Float, types.Float, minusFloatFloat},
-		{types.Float, types.Decimal, types.Decimal, minusFloatDecimal},
-		{types.Decimal, types.Int, types.Decimal, minusDecimalInt},
-		{types.Decimal, types.Float, types.Decimal, minusDecimalFloat},
-		{types.Decimal, types.Decimal, types.Decimal, minusDecimalDecimal},
-		{types.Date, types.Interval, types.Date, minusDateInterval},
-		{types.Time, types.Interval, types.Time, minusTimeInterval},
-		{types.TimeTZ, types.Interval, types.TimeTZ, minusTimeTZInterval},
-		{types.Timestamp, types.Interval, types.Timestamp, minusTimestampInterval},
-		{types.TimestampTZ, types.Interval, types.TimestampTZ, minusTimestampTZInterval},
-	}},
-	opcode.Mul: &genericBinOpOverloadSet{overloads: []*binOp{
-		{types.Int, types.Int, types.Int, mulIntInt},
-		{types.Int, types.Float, types.Float, mulIntFloat},
-		{types.Int, types.Decimal, types.Decimal, mulIntDecimal},
-		{types.Float, types.Int, types.Float, mulFloatInt},
-		{types.Float, types.Float, types.Float, mulFloatFloat},
-		{types.Float, types.Decimal, types.Decimal, mulFloatDecimal},
-		{types.Decimal, types.Int, types.Decimal, mulDecimalInt},
-		{types.Decimal, types.Float, types.Decimal, mulDecimalFloat},
-		{types.Decimal, types.Decimal, types.Decimal, mulDecimalDecimal},
-	}},
-	opcode.Div: &genericBinOpOverloadSet{overloads: []*binOp{
-		{types.Int, types.Int, types.Int, divIntInt},
-		{types.Int, types.Float, types.Float, divIntFloat},
-		{types.Int, types.Decimal, types.Decimal, divIntDecimal},
-		{types.Float, types.Int, types.Float, divFloatInt},
-		{types.Float, types.Float, types.Float, divFloatFloat},
-		{types.Float, types.Decimal, types.Decimal, divFloatDecimal},
-		{types.Decimal, types.Int, types.Decimal, divDecimalInt},
-		{types.Decimal, types.Float, types.Decimal, divDecimalFloat},
-		{types.Decimal, types.Decimal, types.Decimal, divDecimalDecimal},
-	}},
-	opcode.Mod: &genericBinOpOverloadSet{overloads: []*binOp{
-		{types.Int, types.Int, types.Int, modIntInt},
-		{types.Int, types.Float, types.Float, modIntFloat},
-		{types.Int, types.Decimal, types.Decimal, modIntDecimal},
-		{types.Float, types.Int, types.Float, modFloatInt},
-		{types.Float, types.Float, types.Float, modFloatFloat},
-		{types.Float, types.Decimal, types.Decimal, modFloatDecimal},
-		{types.Decimal, types.Int, types.Decimal, modDecimalInt},
-		{types.Decimal, types.Float, types.Decimal, modDecimalFloat},
-		{types.Decimal, types.Decimal, types.Decimal, modDecimalDecimal},
-	}},
-	opcode.Concat: &genericBinOpOverloadSet{overloads: []*binOp{
-		{leftType: types.String, rightType: types.String, returnType: types.String,
-			fn: func(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-				l := datum.MustBeString(left)
-				r := datum.MustBeString(right)
-				return datum.NewString(string(l) + string(r)), nil
-			},
-		},
-	}},
-	opcode.EQ: &cmpOpOverloadSet{overload: &binOp{returnType: types.Bool,
-		fn: func(evalCtx *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-			cmp, canCmp := compareDatum(evalCtx, left, right)
-			if !canCmp {
-				return datum.Null, nil
-			}
-			return datum.NewBool(cmp == 0), nil
-		},
-	}},
-	opcode.NE: &cmpOpOverloadSet{overload: &binOp{returnType: types.Bool,
-		fn: func(evalCtx *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-			cmp, canCmp := compareDatum(evalCtx, left, right)
-			if !canCmp {
-				return datum.Null, nil
-			}
-			return datum.NewBool(cmp != 0), nil
-		},
-	}},
-	opcode.LT: &cmpOpOverloadSet{overload: &binOp{returnType: types.Bool,
-		fn: func(evalCtx *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-			cmp, canCmp := compareDatum(evalCtx, left, right)
-			if !canCmp {
-				return datum.Null, nil
-			}
-			return datum.NewBool(cmp < 0), nil
-		},
-	}},
-	opcode.LE: &cmpOpOverloadSet{overload: &binOp{returnType: types.Bool,
-		fn: func(evalCtx *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-			cmp, canCmp := compareDatum(evalCtx, left, right)
-			if !canCmp {
-				return datum.Null, nil
-			}
-			return datum.NewBool(cmp <= 0), nil
-		},
-	}},
-	opcode.GT: &cmpOpOverloadSet{overload: &binOp{returnType: types.Bool,
-		fn: func(evalCtx *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-			cmp, canCmp := compareDatum(evalCtx, left, right)
-			if !canCmp {
-				return datum.Null, nil
-			}
-			return datum.NewBool(cmp > 0), nil
-		},
-	}},
-	opcode.GE: &cmpOpOverloadSet{overload: &binOp{returnType: types.Bool,
-		fn: func(evalCtx *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-			cmp, canCmp := compareDatum(evalCtx, left, right)
-			if !canCmp {
-				return datum.Null, nil
-			}
-			return datum.NewBool(cmp >= 0), nil
-		},
-	}},
-	opcode.LogicAnd: &logicalOpOverloadSet{
-		overload: &binOp{
-			leftType:   types.Bool,
-			rightType:  types.Bool,
-			returnType: types.Bool,
-			fn: func(evalCtx *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-				l := datum.MustBeBool(left)
-				r := datum.MustBeBool(right)
-				return datum.NewBool(bool(l) && bool(r)), nil
-			},
-		},
+var arithOpEvalFuncs = map[opcode.Op]map[typePair]binEvalFunc{
+	opcode.Plus: {
+		{types.Int, types.Int}:              plusInt,
+		{types.Int, types.Float}:            makeBinEvalFuncWithLeftCast(plusFloat, castIntAsFloat),
+		{types.Int, types.Decimal}:          makeBinEvalFuncWithLeftCast(plusDecimal, castIntAsDecimal),
+		{types.Float, types.Int}:            makeBinEvalFuncWithRightCast(plusFloat, castIntAsFloat),
+		{types.Float, types.Float}:          plusFloat,
+		{types.Float, types.Decimal}:        makeBinEvalFuncWithLeftCast(plusDecimal, castFloatAsDecimal),
+		{types.Decimal, types.Int}:          makeBinEvalFuncWithRightCast(plusDecimal, castIntAsDecimal),
+		{types.Decimal, types.Float}:        makeBinEvalFuncWithRightCast(plusDecimal, castFloatAsDecimal),
+		{types.Decimal, types.Decimal}:      plusDecimal,
+		{types.Date, types.Interval}:        plusDateInterval,
+		{types.Time, types.Interval}:        plusTimeInterval,
+		{types.TimeTZ, types.Interval}:      plusTimeTZInterval,
+		{types.Timestamp, types.Interval}:   plusTimestampInterval,
+		{types.TimestampTZ, types.Interval}: plusTimestampTZInterval,
 	},
-	opcode.LogicOr: &logicalOpOverloadSet{
-		overload: &binOp{
-			leftType:   types.Bool,
-			rightType:  types.Bool,
-			returnType: types.Bool,
-			fn: func(evalCtx *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-				l := datum.MustBeBool(left)
-				r := datum.MustBeBool(right)
-				return datum.NewBool(bool(l) || bool(r)), nil
-			},
-		},
+	opcode.Minus: {
+		{types.Int, types.Int}:              minusInt,
+		{types.Int, types.Float}:            makeBinEvalFuncWithLeftCast(minusFloat, castIntAsFloat),
+		{types.Int, types.Decimal}:          makeBinEvalFuncWithLeftCast(minusDecimal, castIntAsDecimal),
+		{types.Float, types.Int}:            makeBinEvalFuncWithRightCast(minusFloat, castIntAsFloat),
+		{types.Float, types.Float}:          minusFloat,
+		{types.Float, types.Decimal}:        makeBinEvalFuncWithLeftCast(minusDecimal, castFloatAsDecimal),
+		{types.Decimal, types.Int}:          makeBinEvalFuncWithRightCast(minusDecimal, castIntAsDecimal),
+		{types.Decimal, types.Float}:        makeBinEvalFuncWithRightCast(minusDecimal, castFloatAsDecimal),
+		{types.Decimal, types.Decimal}:      minusDecimal,
+		{types.Date, types.Interval}:        minusDateInterval,
+		{types.Time, types.Interval}:        minusTimeInterval,
+		{types.TimeTZ, types.Interval}:      minusTimeTZInterval,
+		{types.Timestamp, types.Interval}:   minusTimestampInterval,
+		{types.TimestampTZ, types.Interval}: minusTimestampTZInterval,
+	},
+	opcode.Mul: {
+		{types.Int, types.Int}:         mulInt,
+		{types.Int, types.Float}:       makeBinEvalFuncWithLeftCast(mulFloat, castIntAsFloat),
+		{types.Int, types.Decimal}:     makeBinEvalFuncWithLeftCast(mulDecimal, castIntAsDecimal),
+		{types.Float, types.Int}:       makeBinEvalFuncWithRightCast(mulFloat, castIntAsFloat),
+		{types.Float, types.Float}:     mulFloat,
+		{types.Float, types.Decimal}:   makeBinEvalFuncWithLeftCast(mulDecimal, castFloatAsDecimal),
+		{types.Decimal, types.Int}:     makeBinEvalFuncWithRightCast(mulDecimal, castIntAsDecimal),
+		{types.Decimal, types.Float}:   makeBinEvalFuncWithRightCast(mulDecimal, castFloatAsDecimal),
+		{types.Decimal, types.Decimal}: mulDecimal,
+	},
+	opcode.Div: {
+		{types.Int, types.Int}:         divInt,
+		{types.Int, types.Float}:       makeBinEvalFuncWithLeftCast(divFloat, castIntAsFloat),
+		{types.Int, types.Decimal}:     makeBinEvalFuncWithLeftCast(divDecimal, castIntAsDecimal),
+		{types.Float, types.Int}:       makeBinEvalFuncWithRightCast(divFloat, castIntAsFloat),
+		{types.Float, types.Float}:     divFloat,
+		{types.Float, types.Decimal}:   makeBinEvalFuncWithLeftCast(divDecimal, castFloatAsDecimal),
+		{types.Decimal, types.Int}:     makeBinEvalFuncWithRightCast(divDecimal, castIntAsDecimal),
+		{types.Decimal, types.Float}:   makeBinEvalFuncWithRightCast(divDecimal, castFloatAsDecimal),
+		{types.Decimal, types.Decimal}: divDecimal,
+	},
+	opcode.Mod: {
+		{types.Int, types.Int}:         modInt,
+		{types.Int, types.Float}:       makeBinEvalFuncWithLeftCast(modFloat, castIntAsFloat),
+		{types.Int, types.Decimal}:     makeBinEvalFuncWithLeftCast(modDecimal, castIntAsDecimal),
+		{types.Float, types.Int}:       makeBinEvalFuncWithRightCast(modFloat, castIntAsFloat),
+		{types.Float, types.Float}:     modFloat,
+		{types.Float, types.Decimal}:   makeBinEvalFuncWithLeftCast(modDecimal, castFloatAsDecimal),
+		{types.Decimal, types.Int}:     makeBinEvalFuncWithRightCast(modDecimal, castIntAsDecimal),
+		{types.Decimal, types.Float}:   makeBinEvalFuncWithRightCast(modDecimal, castFloatAsDecimal),
+		{types.Decimal, types.Decimal}: modDecimal,
 	},
 }
 
-func plusIntInt(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+type arithOp struct {
+	op          opcode.Op
+	returnTypes map[typePair]types.T
+	evalFuncs   map[typePair]binEvalFunc
+}
+
+func (op arithOp) InferReturnType(leftType, rightType types.T) types.T {
+	return op.returnTypes[typePair{leftType, rightType}]
+}
+
+func (op arithOp) CallOnNullInput() bool {
+	return false
+}
+
+func (op arithOp) Eval(ctx *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	evalFunc, ok := op.evalFuncs[typePair{left.Type(), right.Type()}]
+	if !ok {
+		return nil, fmt.Errorf("cannot evaluate %s on %s and %s", op.op, left.Type(), right.Type())
+	}
+	return evalFunc(ctx, left, right)
+}
+
+func makeArithOp(op opcode.Op) arithOp {
+	returnTypes := arithOpReturnTypes[op]
+	evalFuncs := arithOpEvalFuncs[op]
+	return arithOp{
+		op:          op,
+		returnTypes: returnTypes,
+		evalFuncs:   evalFuncs,
+	}
+}
+
+func plusInt(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	l := datum.MustBeInt(left)
 	r := datum.MustBeInt(right)
 	return datum.NewInt(int64(l) + int64(r)), nil
 }
 
-func plusIntFloat(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeInt(left)
-	r := datum.MustBeFloat(right)
-	return datum.NewFloat(float64(l) + float64(r)), nil
-}
-
-func plusIntDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeInt(left)
-	r := datum.MustBeDecimal(right).Decimal
-	d := &datum.Decimal{}
-	d.SetInt64(int64(l))
-	_, err := apd.BaseContext.Add(&d.Decimal, &d.Decimal, &r)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func plusFloatInt(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeFloat(left)
-	r := datum.MustBeInt(right)
-	return datum.NewFloat(float64(l) + float64(r)), nil
-}
-
-func plusFloatFloat(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func plusFloat(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	l := datum.MustBeFloat(left)
 	r := datum.MustBeFloat(right)
 	return datum.NewFloat(float64(l) + float64(r)), nil
 }
 
-func plusFloatDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeFloat(left)
-	r := datum.MustBeDecimal(right).Decimal
-	d := &datum.Decimal{}
-	d.SetFloat64(float64(l))
-	_, err := apd.BaseContext.Add(&d.Decimal, &d.Decimal, &r)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func plusDecimalInt(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeDecimal(left).Decimal
-	r := datum.MustBeInt(right)
-	d := &datum.Decimal{}
-	d.SetInt64(int64(r))
-	_, err := apd.BaseContext.Add(&d.Decimal, &l, &d.Decimal)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func plusDecimalFloat(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeDecimal(left).Decimal
-	r := datum.MustBeFloat(right)
-	d := &datum.Decimal{}
-	d.SetFloat64(float64(r))
-	_, err := apd.BaseContext.Add(&d.Decimal, &l, &d.Decimal)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func plusDecimalDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func plusDecimal(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	l := datum.MustBeDecimal(left).Decimal
 	r := datum.MustBeDecimal(right).Decimal
 	d := &datum.Decimal{}
@@ -393,99 +276,39 @@ func plusDecimalDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, e
 	return d, nil
 }
 
-func plusDateInterval(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func plusDateInterval(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	return nil, errors.New("plusDateInterval unimplemented")
 }
 
-func plusTimeInterval(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func plusTimeInterval(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	return nil, errors.New("plusTimeInterval unimplemented")
 }
 
-func plusTimeTZInterval(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func plusTimeTZInterval(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	return nil, errors.New("plusTimeTZInterval unimplemented")
 }
 
-func plusTimestampInterval(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func plusTimestampInterval(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	return nil, errors.New("plusTimestampInterval unimplemented")
 }
 
-func plusTimestampTZInterval(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func plusTimestampTZInterval(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	return nil, errors.New("plusTimestampTZInterval unimplemented")
 }
 
-func minusIntInt(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func minusInt(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	l := datum.MustBeInt(left)
 	r := datum.MustBeInt(right)
 	return datum.NewInt(int64(l) - int64(r)), nil
 }
 
-func minusIntFloat(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeInt(left)
-	r := datum.MustBeFloat(right)
-	return datum.NewFloat(float64(l) - float64(r)), nil
-}
-
-func minusIntDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeInt(left)
-	r := datum.MustBeDecimal(right).Decimal
-	d := &datum.Decimal{}
-	d.SetInt64(int64(l))
-	_, err := apd.BaseContext.Sub(&d.Decimal, &d.Decimal, &r)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func minusFloatInt(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeFloat(left)
-	r := datum.MustBeInt(right)
-	return datum.NewFloat(float64(l) - float64(r)), nil
-}
-
-func minusFloatFloat(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func minusFloat(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	l := datum.MustBeFloat(left)
 	r := datum.MustBeFloat(right)
 	return datum.NewFloat(float64(l) - float64(r)), nil
 }
 
-func minusFloatDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeFloat(left)
-	r := datum.MustBeDecimal(right).Decimal
-	d := &datum.Decimal{}
-	d.SetFloat64(float64(l))
-	_, err := apd.BaseContext.Sub(&d.Decimal, &d.Decimal, &r)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func minusDecimalInt(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeDecimal(left).Decimal
-	r := datum.MustBeInt(right)
-	d := &datum.Decimal{}
-	d.SetInt64(int64(r))
-	_, err := apd.BaseContext.Sub(&d.Decimal, &l, &d.Decimal)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func minusDecimalFloat(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeDecimal(left).Decimal
-	r := datum.MustBeFloat(right)
-	d := &datum.Decimal{}
-	d.SetFloat64(float64(r))
-	_, err := apd.BaseContext.Sub(&d.Decimal, &l, &d.Decimal)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func minusDecimalDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func minusDecimal(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	l := datum.MustBeDecimal(left).Decimal
 	r := datum.MustBeDecimal(right).Decimal
 	d := &datum.Decimal{}
@@ -496,99 +319,39 @@ func minusDecimalDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, 
 	return d, nil
 }
 
-func minusDateInterval(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func minusDateInterval(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	return nil, errors.New("minusDateInterval unimplemented")
 }
 
-func minusTimeInterval(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func minusTimeInterval(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	return nil, errors.New("minusTimeInterval unimplemented")
 }
 
-func minusTimeTZInterval(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func minusTimeTZInterval(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	return nil, errors.New("minusTimeTZInterval unimplemented")
 }
 
-func minusTimestampInterval(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func minusTimestampInterval(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	return nil, errors.New("minusTimestampInterval unimplemented")
 }
 
-func minusTimestampTZInterval(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func minusTimestampTZInterval(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	return nil, errors.New("minusTimestampTZInterval unimplemented")
 }
 
-func mulIntInt(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func mulInt(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	l := datum.MustBeInt(left)
 	r := datum.MustBeInt(right)
 	return datum.NewInt(int64(l) * int64(r)), nil
 }
 
-func mulIntFloat(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeInt(left)
-	r := datum.MustBeFloat(right)
-	return datum.NewFloat(float64(l) * float64(r)), nil
-}
-
-func mulIntDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeInt(left)
-	r := datum.MustBeDecimal(right).Decimal
-	d := &datum.Decimal{}
-	d.SetInt64(int64(l))
-	_, err := apd.BaseContext.Mul(&d.Decimal, &d.Decimal, &r)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func mulFloatInt(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeFloat(left)
-	r := datum.MustBeInt(right)
-	return datum.NewFloat(float64(l) * float64(r)), nil
-}
-
-func mulFloatFloat(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func mulFloat(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	l := datum.MustBeFloat(left)
 	r := datum.MustBeFloat(right)
 	return datum.NewFloat(float64(l) * float64(r)), nil
 }
 
-func mulFloatDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeFloat(left)
-	r := datum.MustBeDecimal(right).Decimal
-	d := &datum.Decimal{}
-	d.SetFloat64(float64(l))
-	_, err := apd.BaseContext.Mul(&d.Decimal, &d.Decimal, &r)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func mulDecimalInt(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeDecimal(left).Decimal
-	r := datum.MustBeInt(right)
-	d := &datum.Decimal{}
-	d.SetInt64(int64(r))
-	_, err := apd.BaseContext.Mul(&d.Decimal, &l, &d.Decimal)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func mulDecimalFloat(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeDecimal(left).Decimal
-	r := datum.MustBeFloat(right)
-	d := &datum.Decimal{}
-	d.SetFloat64(float64(r))
-	_, err := apd.BaseContext.Mul(&d.Decimal, &l, &d.Decimal)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func mulDecimalDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func mulDecimal(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	l := datum.MustBeDecimal(left).Decimal
 	r := datum.MustBeDecimal(right).Decimal
 	d := &datum.Decimal{}
@@ -599,7 +362,7 @@ func mulDecimalDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, er
 	return d, nil
 }
 
-func divIntInt(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func divInt(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	l := datum.MustBeInt(left)
 	r := datum.MustBeInt(right)
 	if r == 0 {
@@ -608,40 +371,7 @@ func divIntInt(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
 	return datum.NewInt(int64(l) / int64(r)), nil
 }
 
-func divIntFloat(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeInt(left)
-	r := datum.MustBeFloat(right)
-	if r == 0 {
-		return nil, errors.New("division by zero")
-	}
-	return datum.NewFloat(float64(l) / float64(r)), nil
-}
-
-func divIntDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeInt(left)
-	r := datum.MustBeDecimal(right).Decimal
-	if r.IsZero() {
-		return nil, errors.New("division by zero")
-	}
-	d := &datum.Decimal{}
-	d.SetInt64(int64(l))
-	_, err := apd.BaseContext.Quo(&d.Decimal, &d.Decimal, &r)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func divFloatInt(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeFloat(left)
-	r := datum.MustBeInt(right)
-	if r == 0 {
-		return nil, errors.New("division by zero")
-	}
-	return datum.NewFloat(float64(l) / float64(r)), nil
-}
-
-func divFloatFloat(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func divFloat(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	l := datum.MustBeFloat(left)
 	r := datum.MustBeFloat(right)
 	if r == 0 {
@@ -650,52 +380,7 @@ func divFloatFloat(_ *EvalContext, left, right datum.Datum) (datum.Datum, error)
 	return datum.NewFloat(float64(l) / float64(r)), nil
 }
 
-func divFloatDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeFloat(left)
-	r := datum.MustBeDecimal(right).Decimal
-	if r.IsZero() {
-		return nil, errors.New("division by zero")
-	}
-	d := &datum.Decimal{}
-	d.SetFloat64(float64(l))
-	_, err := apd.BaseContext.Quo(&d.Decimal, &d.Decimal, &r)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func divDecimalInt(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeDecimal(left).Decimal
-	r := datum.MustBeInt(right)
-	if r == 0 {
-		return nil, errors.New("division by zero")
-	}
-	d := &datum.Decimal{}
-	d.SetInt64(int64(r))
-	_, err := apd.BaseContext.Quo(&d.Decimal, &l, &d.Decimal)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func divDecimalFloat(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeDecimal(left).Decimal
-	r := datum.MustBeFloat(right)
-	if r == 0 {
-		return nil, errors.New("division by zero")
-	}
-	d := &datum.Decimal{}
-	d.SetFloat64(float64(r))
-	_, err := apd.BaseContext.Quo(&d.Decimal, &l, &d.Decimal)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func divDecimalDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func divDecimal(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	l := datum.MustBeDecimal(left).Decimal
 	r := datum.MustBeDecimal(right).Decimal
 	if r.IsZero() {
@@ -709,7 +394,7 @@ func divDecimalDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, er
 	return d, nil
 }
 
-func modIntInt(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func modInt(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	l := datum.MustBeInt(left)
 	r := datum.MustBeInt(right)
 	if r == 0 {
@@ -718,40 +403,7 @@ func modIntInt(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
 	return datum.NewInt(int64(l) % int64(r)), nil
 }
 
-func modIntFloat(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeInt(left)
-	r := datum.MustBeFloat(right)
-	if r == 0 {
-		return nil, errors.New("division by zero")
-	}
-	return datum.NewFloat(math.Mod(float64(l), float64(r))), nil
-}
-
-func modIntDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeInt(left)
-	r := datum.MustBeDecimal(right).Decimal
-	if r.IsZero() {
-		return nil, errors.New("division by zero")
-	}
-	d := &datum.Decimal{}
-	d.SetInt64(int64(l))
-	_, err := apd.BaseContext.Rem(&d.Decimal, &d.Decimal, &r)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func modFloatInt(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeFloat(left)
-	r := datum.MustBeInt(right)
-	if r == 0 {
-		return nil, errors.New("division by zero")
-	}
-	return datum.NewFloat(math.Mod(float64(l), float64(r))), nil
-}
-
-func modFloatFloat(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func modFloat(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	l := datum.MustBeFloat(left)
 	r := datum.MustBeFloat(right)
 	if r == 0 {
@@ -760,52 +412,7 @@ func modFloatFloat(_ *EvalContext, left, right datum.Datum) (datum.Datum, error)
 	return datum.NewFloat(math.Mod(float64(l), float64(r))), nil
 }
 
-func modFloatDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeFloat(left)
-	r := datum.MustBeDecimal(right).Decimal
-	if r.IsZero() {
-		return nil, errors.New("division by zero")
-	}
-	d := &datum.Decimal{}
-	d.SetFloat64(float64(l))
-	_, err := apd.BaseContext.Rem(&d.Decimal, &d.Decimal, &r)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func modDecimalInt(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeDecimal(left).Decimal
-	r := datum.MustBeInt(right)
-	if r == 0 {
-		return nil, errors.New("division by zero")
-	}
-	d := &datum.Decimal{}
-	d.SetInt64(int64(r))
-	_, err := apd.BaseContext.Rem(&d.Decimal, &l, &d.Decimal)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func modDecimalFloat(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeDecimal(left).Decimal
-	r := datum.MustBeFloat(right)
-	if r == 0 {
-		return nil, errors.New("division by zero")
-	}
-	d := &datum.Decimal{}
-	d.SetFloat64(float64(r))
-	_, err := apd.BaseContext.Rem(&d.Decimal, &l, &d.Decimal)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
-func modDecimalDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, error) {
+func modDecimal(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	l := datum.MustBeDecimal(left).Decimal
 	r := datum.MustBeDecimal(right).Decimal
 	if r.IsZero() {
@@ -819,82 +426,287 @@ func modDecimalDecimal(_ *EvalContext, left, right datum.Datum) (datum.Datum, er
 	return d, nil
 }
 
-func compareDatum(_ *EvalContext, left, right datum.Datum) (cmp int, canCmp bool) {
-	switch l := left.(type) {
-	case *datum.Bool:
-		switch r := right.(type) {
-		case *datum.Bool:
-			return compareBool(bool(*l), bool(*r)), true
-		}
-	case *datum.Int:
-		switch r := right.(type) {
-		case *datum.Int:
-			return compareInt(int64(*l), int64(*r)), true
-		case *datum.Float:
-			return compareFloat(float64(*l), float64(*r)), true
-		}
-	case *datum.Float:
-		switch r := right.(type) {
-		case *datum.Int:
-			return compareFloat(float64(*l), float64(*r)), true
-		case *datum.Float:
-			return compareFloat(float64(*l), float64(*r)), true
-		}
-	case *datum.Decimal:
-	case *datum.Bytes:
-		switch r := right.(type) {
-		case *datum.Bytes:
-			return bytes.Compare(*l, *r), true
-		case *datum.String:
-			return bytes.Compare(*l, []byte(*r)), true
-		}
-	case *datum.String:
-		switch r := right.(type) {
-		case *datum.Bytes:
-			return bytes.Compare([]byte(*l), *r), true
-		case *datum.String:
-			return strings.Compare(string(*l), string(*r)), true
-		}
-	case *datum.Date:
-	case *datum.Time:
-	case *datum.Timestamp:
-	case *datum.Interval:
-	case *datum.Vertex:
-		switch r := right.(type) {
-		case *datum.Vertex:
-			return compareInt(l.ID, r.ID), true
-		}
-	case *datum.Edge:
-	}
-	return 0, false
+type logicalAndOp struct{}
+
+func (logicalAndOp) InferReturnType(_, _ types.T) types.T {
+	return types.Bool
 }
 
-func compareBool(a, b bool) int {
-	if a == b {
-		return 0
-	}
-	if a {
-		return 1
-	}
-	return -1
+func (logicalAndOp) CallOnNullInput() bool {
+	return true
 }
 
-func compareInt(a, b int64) int {
-	if a == b {
-		return 0
+func (logicalAndOp) Eval(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	leftBool, leftIsBool := left.(*datum.Bool)
+	rightBool, rightIsBool := right.(*datum.Bool)
+	if left == datum.Null {
+		if rightIsBool && !bool(*rightBool) {
+			return datum.NewBool(false), nil
+		}
+		return datum.Null, nil
 	}
-	if a > b {
-		return 1
+	if right == datum.Null {
+		if leftIsBool && !bool(*leftBool) {
+			return datum.NewBool(false), nil
+		}
+		return datum.Null, nil
 	}
-	return -1
+	return datum.NewBool(bool(*leftBool) && bool(*rightBool)), nil
 }
 
-func compareFloat(a, b float64) int {
-	if a == b {
-		return 0
+type logicalOrOp struct{}
+
+func (logicalOrOp) InferReturnType(_, _ types.T) types.T {
+	return types.Bool
+}
+
+func (logicalOrOp) CallOnNullInput() bool {
+	return true
+}
+
+func (logicalOrOp) Eval(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	leftBool, leftIsBool := left.(*datum.Bool)
+	rightBool, rightIsBool := right.(*datum.Bool)
+	if left == datum.Null {
+		if rightIsBool && bool(*rightBool) {
+			return datum.NewBool(true), nil
+		}
+		return datum.Null, nil
 	}
-	if a > b {
-		return 1
+	if right == datum.Null {
+		if leftIsBool && bool(*leftBool) {
+			return datum.NewBool(true), nil
+		}
+		return datum.Null, nil
 	}
-	return -1
+	return datum.NewBool(bool(*leftBool) || bool(*rightBool)), nil
+}
+
+var cmpOpEvalFuncs = map[opcode.Op]map[typePair]binEvalFunc{
+	opcode.EQ: {
+		{types.Bool, types.Bool}:               cmpEqBool,
+		{types.Int, types.Int}:                 cmpEqInt,
+		{types.Int, types.Float}:               makeBinEvalFuncWithLeftCast(cmpEqFloat, castIntAsFloat),
+		{types.Int, types.Decimal}:             makeBinEvalFuncWithLeftCast(cmpEqDecimal, castIntAsDecimal),
+		{types.Float, types.Int}:               makeBinEvalFuncWithRightCast(cmpEqFloat, castIntAsFloat),
+		{types.Float, types.Float}:             cmpEqFloat,
+		{types.Float, types.Decimal}:           makeBinEvalFuncWithLeftCast(cmpEqDecimal, castFloatAsDecimal),
+		{types.Decimal, types.Int}:             makeBinEvalFuncWithRightCast(cmpEqDecimal, castIntAsDecimal),
+		{types.Decimal, types.Float}:           makeBinEvalFuncWithRightCast(cmpEqDecimal, castFloatAsDecimal),
+		{types.Decimal, types.Decimal}:         cmpEqDecimal,
+		{types.String, types.String}:           cmpEqString,
+		{types.String, types.Bytes}:            makeBinEvalFuncWithRightCast(cmpEqString, castBytesAsString),
+		{types.Bytes, types.String}:            makeBinEvalFuncWithLeftCast(cmpEqString, castBytesAsString),
+		{types.Bytes, types.Bytes}:             cmpEqBytes,
+		{types.Date, types.Date}:               cmpEqDate,
+		{types.Time, types.Time}:               cmpEqTime,
+		{types.Time, types.TimeTZ}:             makeBinEvalFuncWithLeftCast(cmpEqTimeTZ, castTimeAsTimeTZ),
+		{types.TimeTZ, types.Time}:             makeBinEvalFuncWithRightCast(cmpEqTimeTZ, castTimeAsTimeTZ),
+		{types.TimeTZ, types.TimeTZ}:           cmpEqTimeTZ,
+		{types.Timestamp, types.Timestamp}:     cmpEqTimestamp,
+		{types.Timestamp, types.TimestampTZ}:   makeBinEvalFuncWithLeftCast(cmpEqTimestampTZ, castTimestampAsTimestampTZ),
+		{types.TimestampTZ, types.Timestamp}:   makeBinEvalFuncWithRightCast(cmpEqTimestampTZ, castTimestampAsTimestampTZ),
+		{types.TimestampTZ, types.TimestampTZ}: cmpEqTimestampTZ,
+		{types.Vertex, types.Vertex}:           cmpEqVertex,
+		{types.Edge, types.Edge}:               cmpEqEdge,
+	},
+	opcode.LT: {
+		{types.Bool, types.Bool}:               cmpLtBool,
+		{types.Int, types.Int}:                 cmpLtInt,
+		{types.Int, types.Float}:               makeBinEvalFuncWithLeftCast(cmpLtFloat, castIntAsFloat),
+		{types.Int, types.Decimal}:             makeBinEvalFuncWithLeftCast(cmpLtDecimal, castIntAsDecimal),
+		{types.Float, types.Int}:               makeBinEvalFuncWithRightCast(cmpLtFloat, castIntAsFloat),
+		{types.Float, types.Float}:             cmpLtFloat,
+		{types.Float, types.Decimal}:           makeBinEvalFuncWithLeftCast(cmpLtDecimal, castFloatAsDecimal),
+		{types.Decimal, types.Int}:             makeBinEvalFuncWithRightCast(cmpLtDecimal, castIntAsDecimal),
+		{types.Decimal, types.Float}:           makeBinEvalFuncWithRightCast(cmpLtDecimal, castFloatAsDecimal),
+		{types.Decimal, types.Decimal}:         cmpLtDecimal,
+		{types.String, types.String}:           cmpLtString,
+		{types.String, types.Bytes}:            makeBinEvalFuncWithRightCast(cmpLtString, castBytesAsString),
+		{types.Bytes, types.String}:            makeBinEvalFuncWithLeftCast(cmpLtString, castBytesAsString),
+		{types.Bytes, types.Bytes}:             cmpLtBytes,
+		{types.Date, types.Date}:               cmpLtDate,
+		{types.Time, types.Time}:               cmpLtTime,
+		{types.Time, types.TimeTZ}:             makeBinEvalFuncWithLeftCast(cmpLtTimeTZ, castTimeAsTimeTZ),
+		{types.TimeTZ, types.Time}:             makeBinEvalFuncWithRightCast(cmpLtTimeTZ, castTimeAsTimeTZ),
+		{types.TimeTZ, types.TimeTZ}:           cmpLtTimeTZ,
+		{types.Timestamp, types.Timestamp}:     cmpLtTimestamp,
+		{types.Timestamp, types.TimestampTZ}:   makeBinEvalFuncWithLeftCast(cmpLtTimestampTZ, castTimestampAsTimestampTZ),
+		{types.TimestampTZ, types.Timestamp}:   makeBinEvalFuncWithRightCast(cmpLtTimestampTZ, castTimestampAsTimestampTZ),
+		{types.TimestampTZ, types.TimestampTZ}: cmpLtTimestampTZ,
+	},
+}
+
+type cmpOp struct {
+	op        opcode.Op
+	evalFuncs map[typePair]binEvalFunc
+}
+
+func (op cmpOp) InferReturnType(_, _ types.T) types.T {
+	return types.Bool
+}
+
+func (op cmpOp) CallOnNullInput() bool {
+	return false
+}
+
+func (op cmpOp) Eval(ctx *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	evalFunc, ok := op.evalFuncs[typePair{left.Type(), right.Type()}]
+	if !ok {
+		return nil, fmt.Errorf("cannot evaluate %s on %s and %s", op.op, left.Type(), right.Type())
+	}
+	return evalFunc(ctx, left, right)
+}
+
+func makeCmpOp(op opcode.Op) cmpOp {
+	evalFuncs := cmpOpEvalFuncs[op]
+	return cmpOp{
+		op:        op,
+		evalFuncs: evalFuncs,
+	}
+}
+
+type flippedCmpOp struct {
+	cmpOp
+}
+
+func (op flippedCmpOp) Eval(ctx *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return op.cmpOp.Eval(ctx, right, left)
+}
+
+func makeFlippedCmpOp(op opcode.Op) flippedCmpOp {
+	return flippedCmpOp{makeCmpOp(op)}
+}
+
+type negateCmpOp struct {
+	cmpOp
+}
+
+func (op negateCmpOp) Eval(ctx *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	res, err := op.cmpOp.Eval(ctx, left, right)
+	if err != nil {
+		return nil, err
+	}
+	return datum.NewBool(!bool(datum.MustBeBool(res))), nil
+}
+
+func makeNegateCmpOp(op opcode.Op) negateCmpOp {
+	return negateCmpOp{makeCmpOp(op)}
+}
+
+type flippedNegateCmpOp struct {
+	cmpOp
+}
+
+func (op flippedNegateCmpOp) Eval(ctx *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	res, err := op.cmpOp.Eval(ctx, right, left)
+	if err != nil {
+		return nil, err
+	}
+	return datum.NewBool(!bool(datum.MustBeBool(res))), nil
+}
+
+func makeFlippedNegateCmpOp(op opcode.Op) flippedNegateCmpOp {
+	return flippedNegateCmpOp{makeCmpOp(op)}
+}
+
+func cmpEqBool(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return datum.NewBool(datum.MustBeBool(left) == datum.MustBeBool(right)), nil
+}
+
+func cmpLtBool(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	// left < right is true if left is false and right is true.
+	return datum.NewBool(bool(!datum.MustBeBool(left)) && bool(datum.MustBeBool(right))), nil
+}
+
+func cmpEqInt(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return datum.NewBool(datum.MustBeInt(left) == datum.MustBeInt(right)), nil
+}
+
+func cmpLtInt(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return datum.NewBool(datum.MustBeInt(left) < datum.MustBeInt(right)), nil
+}
+
+func cmpEqFloat(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return datum.NewBool(datum.MustBeFloat(left) == datum.MustBeFloat(right)), nil
+}
+
+func cmpLtFloat(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return datum.NewBool(datum.MustBeFloat(left) < datum.MustBeFloat(right)), nil
+}
+
+func cmpEqDecimal(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	l := datum.MustBeDecimal(left)
+	r := datum.MustBeDecimal(right)
+	return datum.NewBool(l.Cmp(&r.Decimal) == 0), nil
+}
+
+func cmpLtDecimal(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	l := datum.MustBeDecimal(left)
+	r := datum.MustBeDecimal(right)
+	return datum.NewBool(l.Cmp(&r.Decimal) < 0), nil
+}
+
+func cmpEqString(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return datum.NewBool(datum.MustBeString(left) == datum.MustBeString(right)), nil
+}
+
+func cmpLtString(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return datum.NewBool(datum.MustBeString(left) < datum.MustBeString(right)), nil
+}
+
+func cmpEqBytes(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return datum.NewBool(bytes.Equal(datum.MustBeBytes(left), datum.MustBeBytes(right))), nil
+}
+
+func cmpLtBytes(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return datum.NewBool(bytes.Compare(datum.MustBeBytes(left), datum.MustBeBytes(right)) < 0), nil
+}
+
+func cmpEqDate(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return nil, fmt.Errorf("cmpEqDate not implemented")
+}
+
+func cmpLtDate(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return nil, fmt.Errorf("cmpLtDate not implemented")
+}
+
+func cmpEqTime(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return nil, fmt.Errorf("cmpEqTime not implemented")
+}
+
+func cmpLtTime(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return nil, fmt.Errorf("cmpLtTime not implemented")
+}
+
+func cmpEqTimeTZ(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return nil, fmt.Errorf("cmpEqTimeTZ not implemented")
+}
+
+func cmpLtTimeTZ(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return nil, fmt.Errorf("cmpLtTimeTZ not implemented")
+}
+
+func cmpEqTimestamp(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return nil, fmt.Errorf("cmpEqTimestamp not implemented")
+}
+
+func cmpLtTimestamp(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return nil, fmt.Errorf("cmpLtTimestamp not implemented")
+}
+
+func cmpEqTimestampTZ(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return nil, fmt.Errorf("cmpEqTimestampTZ not implemented")
+}
+
+func cmpLtTimestampTZ(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return nil, fmt.Errorf("cmpLtTimestampTZ not implemented")
+}
+
+func cmpEqVertex(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return nil, fmt.Errorf("cmpEqVertex not implemented")
+}
+
+func cmpEqEdge(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
+	return nil, fmt.Errorf("cmpEqEdge not implemented")
 }

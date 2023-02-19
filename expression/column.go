@@ -19,6 +19,7 @@ import (
 
 	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/parser/model"
+	"github.com/vescale/zgraph/stmtctx"
 	"github.com/vescale/zgraph/types"
 )
 
@@ -38,9 +39,9 @@ func (c *Column) ReturnType() types.T {
 	return c.Type
 }
 
-func (c *Column) Eval(evalCtx *EvalContext) (datum.Datum, error) {
-	if c.Index >= len(evalCtx.CurRow) {
-		return nil, fmt.Errorf("column index %d out of evalCtx.CurRow length %d", c.Index, len(evalCtx.CurRow))
+func (c *Column) Eval(stmtCtx *stmtctx.Context, input datum.Row) (datum.Datum, error) {
+	if c.Index >= len(input) {
+		return nil, fmt.Errorf("column index %d out of input row length %d", c.Index, len(input))
 	}
-	return evalCtx.CurRow[c.Index], nil
+	return input[c.Index], nil
 }

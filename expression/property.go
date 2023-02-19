@@ -19,6 +19,7 @@ import (
 
 	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/parser/model"
+	"github.com/vescale/zgraph/stmtctx"
 	"github.com/vescale/zgraph/types"
 )
 
@@ -40,15 +41,15 @@ func (p *PropertyAccess) ReturnType() types.T {
 	return types.Unknown
 }
 
-func (p *PropertyAccess) Eval(evalCtx *EvalContext) (datum.Datum, error) {
-	d, err := p.Expr.Eval(evalCtx)
+func (p *PropertyAccess) Eval(stmtCtx *stmtctx.Context, input datum.Row) (datum.Datum, error) {
+	d, err := p.Expr.Eval(stmtCtx, input)
 	if err != nil || d == datum.Null {
 		return d, err
 	}
 
 	v, ok := d.(*datum.Vertex)
 	if ok {
-		d, ok := v.Properties[p.PropertyName.L]
+		d, ok := v.Props[p.PropertyName.L]
 		if !ok {
 			return datum.Null, nil
 		}
@@ -57,7 +58,7 @@ func (p *PropertyAccess) Eval(evalCtx *EvalContext) (datum.Datum, error) {
 
 	e, ok := d.(*datum.Edge)
 	if ok {
-		d, ok := e.Properties[p.PropertyName.L]
+		d, ok := e.Props[p.PropertyName.L]
 		if !ok {
 			return datum.Null, nil
 		}

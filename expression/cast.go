@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/vescale/zgraph/datum"
+	"github.com/vescale/zgraph/stmtctx"
 	"github.com/vescale/zgraph/types"
 )
 
@@ -43,8 +44,8 @@ func (c *CastExpr) ReturnType() types.T {
 	return c.Type
 }
 
-func (c *CastExpr) Eval(evalCtx *EvalContext) (datum.Datum, error) {
-	d, err := c.Expr.Eval(evalCtx)
+func (c *CastExpr) Eval(stmtCtx *stmtctx.Context, input datum.Row) (datum.Datum, error) {
+	d, err := c.Expr.Eval(stmtCtx, input)
 	if err != nil || d == datum.Null {
 		return d, err
 	}
@@ -74,4 +75,38 @@ func (c *CastExpr) Eval(evalCtx *EvalContext) (datum.Datum, error) {
 	case types.Interval:
 	}
 	return nil, fmt.Errorf("unsupported cast: %s -> %s", d.Type(), c.Type)
+}
+
+type castFunc func(stmtCtx *stmtctx.Context, input datum.Datum) (datum.Datum, error)
+
+func castIntAsFloat(_ *stmtctx.Context, input datum.Datum) (datum.Datum, error) {
+	i := datum.MustBeInt(input)
+	return datum.NewFloat(float64(i)), nil
+}
+
+func castIntAsDecimal(_ *stmtctx.Context, input datum.Datum) (datum.Datum, error) {
+	i := datum.MustBeInt(input)
+	d := &datum.Decimal{}
+	d.SetInt64(int64(i))
+	return d, nil
+}
+
+func castFloatAsDecimal(_ *stmtctx.Context, input datum.Datum) (datum.Datum, error) {
+	f := datum.MustBeFloat(input)
+	d := &datum.Decimal{}
+	d.SetInt64(int64(f))
+	return d, nil
+}
+
+func castBytesAsString(_ *stmtctx.Context, input datum.Datum) (datum.Datum, error) {
+	b := datum.MustBeBytes(input)
+	return datum.NewString(string(b)), nil
+}
+
+func castTimeAsTimeTZ(_ *stmtctx.Context, input datum.Datum) (datum.Datum, error) {
+	panic("unimplemented")
+}
+
+func castTimestampAsTimestampTZ(_ *stmtctx.Context, input datum.Datum) (datum.Datum, error) {
+	panic("unimplemented")
 }

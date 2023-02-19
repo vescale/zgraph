@@ -86,7 +86,7 @@ func NewValueExpr(lit interface{}) *ValueExpr {
 
 // Restore implements Node interface.
 func (n *ValueExpr) Restore(ctx *format.RestoreCtx) error {
-	str := n.Datum.AsString()
+	str := n.Datum.String()
 	switch n.Type() {
 	case types.Bool, types.Int, types.Float, types.Decimal:
 		ctx.WritePlain(str)
@@ -307,25 +307,6 @@ func (n *ParenthesesExpr) Accept(v Visitor) (Node, bool) {
 	}
 	return v.Leave(n)
 }
-
-const (
-	JavaRegexpLike = "JAVA_REGEXP_LIKE"
-	Lower          = "LOWER"
-	Upper          = "UPPER"
-	Abs            = "ABS"
-	Ceil           = "CEIL"
-	Ceiling        = "CEILING"
-	Floor          = "FLOOR"
-	ID             = "ID"
-	Label          = "LABEL"
-	Labels         = "LABELS"
-	HasLabel       = "HAS_LABEL"
-	MatchNumber    = "MATCH_NUMBER"
-	ElementNumber  = "ELEMENT_NUMBER"
-	AllDifferent   = "ALL_DIFFERENT"
-	InDegree       = "IN_DEGREE"
-	OutDegree      = "OUT_DEGREE"
-)
 
 // FuncCallExpr is for function expression.
 type FuncCallExpr struct {

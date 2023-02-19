@@ -27,7 +27,7 @@ type Executor interface {
 	base() *baseExecutor
 	Columns() planner.ResultColumns
 	Open(context.Context) error
-	Next(context.Context) (datum.Datums, error)
+	Next(context.Context) (datum.Row, error)
 	Close() error
 }
 
@@ -65,7 +65,7 @@ func (e *baseExecutor) Open(ctx context.Context) error {
 }
 
 // Next fills multiple rows into a chunk.
-func (e *baseExecutor) Next(context.Context) (datum.Datums, error) {
+func (e *baseExecutor) Next(context.Context) (datum.Row, error) {
 	return nil, nil
 }
 

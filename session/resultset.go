@@ -79,7 +79,7 @@ func (e emptyResultSet) Close() error {
 type queryResultSet struct {
 	valid  bool
 	alloc  *chunk.Allocator
-	row    datum.Datums
+	row    datum.Row
 	fields []*Field
 	exec   executor.Executor
 }
@@ -152,7 +152,7 @@ func (q *queryResultSet) Close() error {
 func assignField(field any, d datum.Datum) error {
 	switch f := field.(type) {
 	case *string:
-		*f = d.AsString()
+		*f = d.String()
 	case *int:
 		*f = int(datum.MustBeInt(d))
 	case *int64:
