@@ -47,7 +47,24 @@ var (
 type Datum interface {
 	Type() types.T
 	String() string
+	isDatum()
 }
+
+func (null) isDatum()         {}
+func (*Bool) isDatum()        {}
+func (*Int) isDatum()         {}
+func (*Float) isDatum()       {}
+func (*String) isDatum()      {}
+func (*Bytes) isDatum()       {}
+func (*Decimal) isDatum()     {}
+func (*Date) isDatum()        {}
+func (*Time) isDatum()        {}
+func (*TimeTZ) isDatum()      {}
+func (*Timestamp) isDatum()   {}
+func (*TimestampTZ) isDatum() {}
+func (*Interval) isDatum()    {}
+func (*Vertex) isDatum()      {}
+func (*Edge) isDatum()        {}
 
 type Row []Datum
 
@@ -63,12 +80,12 @@ func (null) String() string {
 
 type Bool bool
 
-func (Bool) Type() types.T {
+func (*Bool) Type() types.T {
 	return types.Bool
 }
 
-func (b Bool) String() string {
-	if b {
+func (b *Bool) String() string {
+	if *b {
 		return "TRUE"
 	} else {
 		return "FALSE"
@@ -98,12 +115,12 @@ func MustBeBool(d Datum) Bool {
 
 type Int int64
 
-func (Int) Type() types.T {
+func (*Int) Type() types.T {
 	return types.Int
 }
 
-func (i Int) String() string {
-	return strconv.FormatInt(int64(i), 10)
+func (i *Int) String() string {
+	return strconv.FormatInt(int64(*i), 10)
 }
 
 func NewInt(i int64) *Int {
@@ -121,12 +138,12 @@ func MustBeInt(d Datum) Int {
 
 type Float float64
 
-func (Float) Type() types.T {
+func (*Float) Type() types.T {
 	return types.Float
 }
 
-func (f Float) String() string {
-	return strconv.FormatFloat(float64(f), 'g', -1, 64)
+func (f *Float) String() string {
+	return strconv.FormatFloat(float64(*f), 'g', -1, 64)
 }
 
 func NewFloat(f float64) *Float {
@@ -144,12 +161,12 @@ func MustBeFloat(d Datum) Float {
 
 type String string
 
-func (String) Type() types.T {
+func (*String) Type() types.T {
 	return types.String
 }
 
-func (s String) String() string {
-	return string(s)
+func (s *String) String() string {
+	return string(*s)
 }
 
 func NewString(s string) *String {
@@ -167,12 +184,12 @@ func MustBeString(d Datum) String {
 
 type Bytes []byte
 
-func (Bytes) Type() types.T {
+func (*Bytes) Type() types.T {
 	return types.Bytes
 }
 
-func (b Bytes) String() string {
-	return string(b)
+func (b *Bytes) String() string {
+	return string(*b)
 }
 
 func NewBytes(b []byte) *Bytes {
@@ -192,11 +209,11 @@ type Decimal struct {
 	apd.Decimal
 }
 
-func (Decimal) Type() types.T {
+func (*Decimal) Type() types.T {
 	return types.Decimal
 }
 
-func (d Decimal) String() string {
+func (d *Decimal) String() string {
 	return d.Decimal.Text('g')
 }
 
