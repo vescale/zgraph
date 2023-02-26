@@ -254,26 +254,26 @@ func makeArithOp(op opcode.Op) arithOp {
 }
 
 func plusInt(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeInt(left)
-	r := datum.MustBeInt(right)
-	return datum.NewInt(int64(l) + int64(r)), nil
+	l := datum.AsInt(left)
+	r := datum.AsInt(right)
+	return datum.NewInt(l + r), nil
 }
 
 func plusFloat(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeFloat(left)
-	r := datum.MustBeFloat(right)
-	return datum.NewFloat(float64(l) + float64(r)), nil
+	l := datum.AsFloat(left)
+	r := datum.AsFloat(right)
+	return datum.NewFloat(l + r), nil
 }
 
 func plusDecimal(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeDecimal(left).Decimal
-	r := datum.MustBeDecimal(right).Decimal
-	d := &datum.Decimal{}
-	_, err := apd.BaseContext.Add(&d.Decimal, &l, &r)
+	l := datum.AsDecimal(left)
+	r := datum.AsDecimal(right)
+	d := &apd.Decimal{}
+	_, err := apd.BaseContext.Add(d, l, r)
 	if err != nil {
 		return nil, err
 	}
-	return d, nil
+	return datum.NewDecimal(d), nil
 }
 
 func plusDateInterval(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
@@ -297,26 +297,26 @@ func plusTimestampTZInterval(_ *stmtctx.Context, left, right datum.Datum) (datum
 }
 
 func minusInt(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeInt(left)
-	r := datum.MustBeInt(right)
-	return datum.NewInt(int64(l) - int64(r)), nil
+	l := datum.AsInt(left)
+	r := datum.AsInt(right)
+	return datum.NewInt(l - r), nil
 }
 
 func minusFloat(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeFloat(left)
-	r := datum.MustBeFloat(right)
-	return datum.NewFloat(float64(l) - float64(r)), nil
+	l := datum.AsFloat(left)
+	r := datum.AsFloat(right)
+	return datum.NewFloat(l - r), nil
 }
 
 func minusDecimal(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeDecimal(left).Decimal
-	r := datum.MustBeDecimal(right).Decimal
-	d := &datum.Decimal{}
-	_, err := apd.BaseContext.Sub(&d.Decimal, &l, &r)
+	l := datum.AsDecimal(left)
+	r := datum.AsDecimal(right)
+	d := &apd.Decimal{}
+	_, err := apd.BaseContext.Sub(d, l, r)
 	if err != nil {
 		return nil, err
 	}
-	return d, nil
+	return datum.NewDecimal(d), nil
 }
 
 func minusDateInterval(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
@@ -340,90 +340,90 @@ func minusTimestampTZInterval(_ *stmtctx.Context, left, right datum.Datum) (datu
 }
 
 func mulInt(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeInt(left)
-	r := datum.MustBeInt(right)
-	return datum.NewInt(int64(l) * int64(r)), nil
+	l := datum.AsInt(left)
+	r := datum.AsInt(right)
+	return datum.NewInt(l * r), nil
 }
 
 func mulFloat(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeFloat(left)
-	r := datum.MustBeFloat(right)
-	return datum.NewFloat(float64(l) * float64(r)), nil
+	l := datum.AsFloat(left)
+	r := datum.AsFloat(right)
+	return datum.NewFloat(l * r), nil
 }
 
 func mulDecimal(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeDecimal(left).Decimal
-	r := datum.MustBeDecimal(right).Decimal
-	d := &datum.Decimal{}
-	_, err := apd.BaseContext.Mul(&d.Decimal, &l, &r)
+	l := datum.AsDecimal(left)
+	r := datum.AsDecimal(right)
+	d := &apd.Decimal{}
+	_, err := apd.BaseContext.Mul(d, l, r)
 	if err != nil {
 		return nil, err
 	}
-	return d, nil
+	return datum.NewDecimal(d), nil
 }
 
 func divInt(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeInt(left)
-	r := datum.MustBeInt(right)
+	l := datum.AsInt(left)
+	r := datum.AsInt(right)
 	if r == 0 {
 		return nil, errors.New("division by zero")
 	}
-	return datum.NewInt(int64(l) / int64(r)), nil
+	return datum.NewInt(l / r), nil
 }
 
 func divFloat(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeFloat(left)
-	r := datum.MustBeFloat(right)
+	l := datum.AsFloat(left)
+	r := datum.AsFloat(right)
 	if r == 0 {
 		return nil, errors.New("division by zero")
 	}
-	return datum.NewFloat(float64(l) / float64(r)), nil
+	return datum.NewFloat(l / r), nil
 }
 
 func divDecimal(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeDecimal(left).Decimal
-	r := datum.MustBeDecimal(right).Decimal
+	l := datum.AsDecimal(left)
+	r := datum.AsDecimal(right)
 	if r.IsZero() {
 		return nil, errors.New("division by zero")
 	}
-	d := &datum.Decimal{}
-	_, err := apd.BaseContext.Quo(&d.Decimal, &l, &r)
+	d := &apd.Decimal{}
+	_, err := apd.BaseContext.Quo(d, l, r)
 	if err != nil {
 		return nil, err
 	}
-	return d, nil
+	return datum.NewDecimal(d), nil
 }
 
 func modInt(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeInt(left)
-	r := datum.MustBeInt(right)
+	l := datum.AsInt(left)
+	r := datum.AsInt(right)
 	if r == 0 {
 		return nil, errors.New("division by zero")
 	}
-	return datum.NewInt(int64(l) % int64(r)), nil
+	return datum.NewInt(l % r), nil
 }
 
 func modFloat(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeFloat(left)
-	r := datum.MustBeFloat(right)
+	l := datum.AsFloat(left)
+	r := datum.AsFloat(right)
 	if r == 0 {
 		return nil, errors.New("division by zero")
 	}
-	return datum.NewFloat(math.Mod(float64(l), float64(r))), nil
+	return datum.NewFloat(math.Mod(l, r)), nil
 }
 
 func modDecimal(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeDecimal(left).Decimal
-	r := datum.MustBeDecimal(right).Decimal
+	l := datum.AsDecimal(left)
+	r := datum.AsDecimal(right)
 	if r.IsZero() {
 		return nil, errors.New("division by zero")
 	}
-	d := &datum.Decimal{}
-	_, err := apd.BaseContext.Rem(&d.Decimal, &l, &r)
+	d := &apd.Decimal{}
+	_, err := apd.BaseContext.Rem(d, l, r)
 	if err != nil {
 		return nil, err
 	}
-	return d, nil
+	return datum.NewDecimal(d), nil
 }
 
 type logicalAndOp struct{}
@@ -437,21 +437,21 @@ func (logicalAndOp) CallOnNullInput() bool {
 }
 
 func (logicalAndOp) Eval(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	leftBool, leftIsBool := left.(*datum.Bool)
-	rightBool, rightIsBool := right.(*datum.Bool)
+	leftBool, lerr := datum.TryAsBool(left)
+	rightBool, rerr := datum.TryAsBool(right)
 	if left == datum.Null {
-		if rightIsBool && !bool(*rightBool) {
+		if rerr == nil && !rightBool {
 			return datum.NewBool(false), nil
 		}
 		return datum.Null, nil
 	}
 	if right == datum.Null {
-		if leftIsBool && !bool(*leftBool) {
+		if lerr == nil && !leftBool {
 			return datum.NewBool(false), nil
 		}
 		return datum.Null, nil
 	}
-	return datum.NewBool(bool(*leftBool) && bool(*rightBool)), nil
+	return datum.NewBool(leftBool && rightBool), nil
 }
 
 type logicalOrOp struct{}
@@ -465,21 +465,21 @@ func (logicalOrOp) CallOnNullInput() bool {
 }
 
 func (logicalOrOp) Eval(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	leftBool, leftIsBool := left.(*datum.Bool)
-	rightBool, rightIsBool := right.(*datum.Bool)
+	leftBool, lerr := datum.TryAsBool(left)
+	rightBool, rerr := datum.TryAsBool(right)
 	if left == datum.Null {
-		if rightIsBool && bool(*rightBool) {
+		if rerr == nil && rightBool {
 			return datum.NewBool(true), nil
 		}
 		return datum.Null, nil
 	}
 	if right == datum.Null {
-		if leftIsBool && bool(*leftBool) {
+		if lerr == nil && leftBool {
 			return datum.NewBool(true), nil
 		}
 		return datum.Null, nil
 	}
-	return datum.NewBool(bool(*leftBool) || bool(*rightBool)), nil
+	return datum.NewBool(leftBool || rightBool), nil
 }
 
 var cmpOpEvalFuncs = map[opcode.Op]map[typePair]binEvalFunc{
@@ -587,7 +587,7 @@ func (op negateCmpOp) Eval(ctx *stmtctx.Context, left, right datum.Datum) (datum
 	if err != nil {
 		return nil, err
 	}
-	return datum.NewBool(!bool(datum.MustBeBool(res))), nil
+	return datum.NewBool(!datum.AsBool(res)), nil
 }
 
 func makeNegateCmpOp(op opcode.Op) negateCmpOp {
@@ -603,7 +603,7 @@ func (op flippedNegateCmpOp) Eval(ctx *stmtctx.Context, left, right datum.Datum)
 	if err != nil {
 		return nil, err
 	}
-	return datum.NewBool(!bool(datum.MustBeBool(res))), nil
+	return datum.NewBool(!datum.AsBool(res)), nil
 }
 
 func makeFlippedNegateCmpOp(op opcode.Op) flippedNegateCmpOp {
@@ -611,56 +611,56 @@ func makeFlippedNegateCmpOp(op opcode.Op) flippedNegateCmpOp {
 }
 
 func cmpEqBool(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	return datum.NewBool(datum.MustBeBool(left) == datum.MustBeBool(right)), nil
+	return datum.NewBool(datum.AsBool(left) == datum.AsBool(right)), nil
 }
 
 func cmpLtBool(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
 	// left < right is true if left is false and right is true.
-	return datum.NewBool(bool(!datum.MustBeBool(left)) && bool(datum.MustBeBool(right))), nil
+	return datum.NewBool(!datum.AsBool(left) && datum.AsBool(right)), nil
 }
 
 func cmpEqInt(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	return datum.NewBool(datum.MustBeInt(left) == datum.MustBeInt(right)), nil
+	return datum.NewBool(datum.AsInt(left) == datum.AsInt(right)), nil
 }
 
 func cmpLtInt(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	return datum.NewBool(datum.MustBeInt(left) < datum.MustBeInt(right)), nil
+	return datum.NewBool(datum.AsInt(left) < datum.AsInt(right)), nil
 }
 
 func cmpEqFloat(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	return datum.NewBool(datum.MustBeFloat(left) == datum.MustBeFloat(right)), nil
+	return datum.NewBool(datum.AsFloat(left) == datum.AsFloat(right)), nil
 }
 
 func cmpLtFloat(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	return datum.NewBool(datum.MustBeFloat(left) < datum.MustBeFloat(right)), nil
+	return datum.NewBool(datum.AsFloat(left) < datum.AsFloat(right)), nil
 }
 
 func cmpEqDecimal(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeDecimal(left)
-	r := datum.MustBeDecimal(right)
-	return datum.NewBool(l.Cmp(&r.Decimal) == 0), nil
+	l := datum.AsDecimal(left)
+	r := datum.AsDecimal(right)
+	return datum.NewBool(l.Cmp(r) == 0), nil
 }
 
 func cmpLtDecimal(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	l := datum.MustBeDecimal(left)
-	r := datum.MustBeDecimal(right)
-	return datum.NewBool(l.Cmp(&r.Decimal) < 0), nil
+	l := datum.AsDecimal(left)
+	r := datum.AsDecimal(right)
+	return datum.NewBool(l.Cmp(r) < 0), nil
 }
 
 func cmpEqString(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	return datum.NewBool(datum.MustBeString(left) == datum.MustBeString(right)), nil
+	return datum.NewBool(datum.AsString(left) == datum.AsString(right)), nil
 }
 
 func cmpLtString(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	return datum.NewBool(datum.MustBeString(left) < datum.MustBeString(right)), nil
+	return datum.NewBool(datum.AsString(left) < datum.AsString(right)), nil
 }
 
 func cmpEqBytes(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	return datum.NewBool(bytes.Equal(datum.MustBeBytes(left), datum.MustBeBytes(right))), nil
+	return datum.NewBool(bytes.Equal(datum.AsBytes(left), datum.AsBytes(right))), nil
 }
 
 func cmpLtBytes(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {
-	return datum.NewBool(bytes.Compare(datum.MustBeBytes(left), datum.MustBeBytes(right)) < 0), nil
+	return datum.NewBool(bytes.Compare(datum.AsBytes(left), datum.AsBytes(right)) < 0), nil
 }
 
 func cmpEqDate(_ *stmtctx.Context, left, right datum.Datum) (datum.Datum, error) {

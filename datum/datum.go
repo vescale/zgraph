@@ -25,24 +25,7 @@ import (
 	"github.com/vescale/zgraph/types"
 )
 
-const Null = null(0)
-
-var (
-	_ Datum = NewBool(false)
-	_ Datum = NewInt(0)
-	_ Datum = NewFloat(0.0)
-	_ Datum = NewString("")
-	_ Datum = NewBytes(nil)
-	_ Datum = &Decimal{}
-	_ Datum = &Date{}
-	_ Datum = &Time{}
-	_ Datum = &TimeTZ{}
-	_ Datum = &Timestamp{}
-	_ Datum = &TimestampTZ{}
-	_ Datum = &Interval{}
-	_ Datum = &Vertex{}
-	_ Datum = &Edge{}
-)
+const Null = dNull(0)
 
 type Datum interface {
 	Type() types.T
@@ -50,13 +33,13 @@ type Datum interface {
 	isDatum()
 }
 
-func (null) isDatum()         {}
-func (*Bool) isDatum()        {}
-func (*Int) isDatum()         {}
-func (*Float) isDatum()       {}
-func (*String) isDatum()      {}
-func (*Bytes) isDatum()       {}
-func (*Decimal) isDatum()     {}
+func (dNull) isDatum()        {}
+func (dBool) isDatum()        {}
+func (dInt) isDatum()         {}
+func (dFloat) isDatum()       {}
+func (dString) isDatum()      {}
+func (dBytes) isDatum()       {}
+func (dDecimal) isDatum()     {}
 func (*Date) isDatum()        {}
 func (*Time) isDatum()        {}
 func (*TimeTZ) isDatum()      {}
@@ -68,170 +51,216 @@ func (*Edge) isDatum()        {}
 
 type Row []Datum
 
-type null int
+type dNull int
 
-func (null) Type() types.T {
-	return types.Unknown
-}
+func (dNull) Type() types.T  { return types.Unknown }
+func (dNull) String() string { return "NULL" }
 
-func (null) String() string {
-	return "NULL"
-}
+type dBool bool
 
-type Bool bool
-
-func (*Bool) Type() types.T {
+func (dBool) Type() types.T {
 	return types.Bool
 }
 
-func (b *Bool) String() string {
-	if *b {
+func (d dBool) String() string {
+	if d {
 		return "TRUE"
 	} else {
 		return "FALSE"
 	}
 }
 
-func NewBool(b bool) *Bool {
-	d := Bool(b)
-	return &d
+func NewBool(b bool) Datum {
+	return dBool(b)
 }
 
-func ParseBool(s string) (*Bool, error) {
-	b, err := strconv.ParseBool(s)
+func AsBool(d Datum) bool {
+	v, err := TryAsBool(d)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
-	return NewBool(b), nil
+	return v
 }
 
-func MustBeBool(d Datum) Bool {
-	b, ok := d.(*Bool)
-	if !ok {
-		panic(fmt.Sprintf("expected *Bool, got %T", d))
+func TryAsBool(d Datum) (bool, error) {
+	switch v := d.(type) {
+	case dBool:
+		return bool(v), nil
+	case dString:
+		return strconv.ParseBool(string(v))
+	default:
+		return false, fmt.Errorf("cannot convert %T to bool", d)
 	}
-	return *b
 }
 
-type Int int64
+type dInt int64
 
-func (*Int) Type() types.T {
+func (dInt) Type() types.T {
 	return types.Int
 }
 
-func (i *Int) String() string {
-	return strconv.FormatInt(int64(*i), 10)
+func (d dInt) String() string {
+	return strconv.FormatInt(int64(d), 10)
 }
 
-func NewInt(i int64) *Int {
-	d := Int(i)
-	return &d
+func NewInt(i int64) Datum {
+	return dInt(i)
 }
 
-func MustBeInt(d Datum) Int {
-	i, ok := d.(*Int)
-	if !ok {
-		panic(fmt.Sprintf("expected *Int, got %T", d))
+func AsInt(d Datum) int64 {
+	v, err := TryAsInt(d)
+	if err != nil {
+		panic(err)
 	}
-	return *i
+	return v
 }
 
-type Float float64
+func TryAsInt(d Datum) (int64, error) {
+	switch v := d.(type) {
+	case dInt:
+		return int64(v), nil
+	default:
+		return 0, fmt.Errorf("cannot convert %T to int", d)
+	}
+}
 
-func (*Float) Type() types.T {
+type dFloat float64
+
+func (dFloat) Type() types.T {
 	return types.Float
 }
 
-func (f *Float) String() string {
-	return strconv.FormatFloat(float64(*f), 'g', -1, 64)
+func (d dFloat) String() string {
+	return strconv.FormatFloat(float64(d), 'g', -1, 64)
 }
 
-func NewFloat(f float64) *Float {
-	d := Float(f)
-	return &d
+func NewFloat(f float64) Datum {
+	return dFloat(f)
 }
 
-func MustBeFloat(d Datum) Float {
-	f, ok := d.(*Float)
-	if !ok {
-		panic(fmt.Sprintf("expected *Float, got %T", d))
+func AsFloat(d Datum) float64 {
+	v, err := TryAsFloat(d)
+	if err != nil {
+		panic(err)
 	}
-	return *f
+	return v
 }
 
-type String string
+func TryAsFloat(d Datum) (float64, error) {
+	switch v := d.(type) {
+	case dFloat:
+		return float64(v), nil
+	default:
+		return 0, fmt.Errorf("cannot convert %T to float", d)
+	}
+}
 
-func (*String) Type() types.T {
+type dString string
+
+func (dString) Type() types.T {
 	return types.String
 }
 
-func (s *String) String() string {
-	return string(*s)
+func (d dString) String() string {
+	return string(d)
 }
 
-func NewString(s string) *String {
-	d := String(s)
-	return &d
+func NewString(s string) Datum {
+	return dString(s)
 }
 
-func MustBeString(d Datum) String {
-	s, ok := d.(*String)
-	if !ok {
-		panic(fmt.Sprintf("expected *String, got %T", d))
+func AsString(d Datum) string {
+	v, err := TryAsString(d)
+	if err != nil {
+		panic(err)
 	}
-	return *s
+	return v
 }
 
-type Bytes []byte
+func TryAsString(d Datum) (string, error) {
+	switch v := d.(type) {
+	case dString:
+		return string(v), nil
+	case dBytes:
+		return string(v), nil
+	default:
+		return "", fmt.Errorf("cannot convert %T to string", d)
+	}
+}
 
-func (*Bytes) Type() types.T {
+type dBytes []byte
+
+func (dBytes) Type() types.T {
 	return types.Bytes
 }
 
-func (b *Bytes) String() string {
-	return string(*b)
+func (d dBytes) String() string {
+	return string(d)
 }
 
-func NewBytes(b []byte) *Bytes {
-	d := Bytes(b)
-	return &d
+func NewBytes(b []byte) Datum {
+	return dBytes(b)
 }
 
-func MustBeBytes(d Datum) Bytes {
-	b, ok := d.(*Bytes)
-	if !ok {
-		panic(fmt.Sprintf("expected *Bytes, got %T", d))
+func AsBytes(d Datum) []byte {
+	v, err := TryAsBytes(d)
+	if err != nil {
+		panic(err)
 	}
-	return *b
+	return v
 }
 
-type Decimal struct {
-	apd.Decimal
+func TryAsBytes(d Datum) ([]byte, error) {
+	switch v := d.(type) {
+	case dBytes:
+		return v, nil
+	case dString:
+		return []byte(v), nil
+	default:
+		return nil, fmt.Errorf("cannot convert %T to bytes", d)
+	}
 }
 
-func (*Decimal) Type() types.T {
+type dDecimal struct {
+	*apd.Decimal
+}
+
+func (dDecimal) Type() types.T {
 	return types.Decimal
 }
 
-func (d *Decimal) String() string {
+func (d dDecimal) String() string {
 	return d.Decimal.Text('g')
 }
 
-func ParseDecimal(s string) (*Decimal, error) {
-	d := &Decimal{}
+func NewDecimal(d *apd.Decimal) Datum {
+	return dDecimal{d}
+}
+
+func ParseDecimal(s string) (Datum, error) {
+	d := &apd.Decimal{}
 	_, _, err := d.SetString(s)
 	if err != nil {
 		return nil, err
 	}
-	return d, nil
+	return NewDecimal(d), nil
 }
 
-func MustBeDecimal(d Datum) Decimal {
-	dec, ok := d.(*Decimal)
-	if !ok {
-		panic(fmt.Sprintf("expected *Decimal, got %T", d))
+func AsDecimal(d Datum) *apd.Decimal {
+	v, err := TryAsDecimal(d)
+	if err != nil {
+		panic(err)
 	}
-	return *dec
+	return v
+}
+
+func TryAsDecimal(d Datum) (*apd.Decimal, error) {
+	switch v := d.(type) {
+	case dDecimal:
+		return v.Decimal, nil
+	default:
+		return nil, fmt.Errorf("cannot convert %T to decimal", d)
+	}
 }
 
 const (
@@ -267,12 +296,21 @@ func ParseDate(s string) (*Date, error) {
 	return &Date{days: int32(t.Unix() / secondsPerDay)}, nil
 }
 
-func MustBeDate(d Datum) Date {
-	date, ok := d.(*Date)
-	if !ok {
-		panic(fmt.Sprintf("expected *Date, got %T", d))
+func AsDate(d Datum) *Date {
+	v, err := TryAsDate(d)
+	if err != nil {
+		panic(err)
 	}
-	return *date
+	return v
+}
+
+func TryAsDate(d Datum) (*Date, error) {
+	switch v := d.(type) {
+	case *Date:
+		return v, nil
+	default:
+		return nil, fmt.Errorf("cannot convert %T to date", d)
+	}
 }
 
 const (
@@ -333,12 +371,21 @@ func ParseTime(s string) (*Time, error) {
 	return &Time{TimeOfDay: TimeOfDay(hour*secondsPerHour + minute*secondsPerMinute + second)}, nil
 }
 
-func MustBeTime(d Datum) Time {
-	t, ok := d.(*Time)
-	if !ok {
-		panic(fmt.Sprintf("expected *Time, got %T", d))
+func AsTime(d Datum) *Time {
+	v, err := TryAsTime(d)
+	if err != nil {
+		panic(err)
 	}
-	return *t
+	return v
+}
+
+func TryAsTime(d Datum) (*Time, error) {
+	switch v := d.(type) {
+	case *Time:
+		return v, nil
+	default:
+		return nil, fmt.Errorf("cannot convert %T to time", d)
+	}
 }
 
 type TimeTZ struct {
@@ -393,12 +440,21 @@ func ParseTimeTZ(s string) (*TimeTZ, error) {
 	}, nil
 }
 
-func MustBeTimeTZ(d Datum) TimeTZ {
-	t, ok := d.(*TimeTZ)
-	if !ok {
-		panic(fmt.Sprintf("expected *TimeTZ, got %T", d))
+func AsTimeTZ(d Datum) *TimeTZ {
+	v, err := TryAsTimeTZ(d)
+	if err != nil {
+		panic(err)
 	}
-	return *t
+	return v
+}
+
+func TryAsTimeTZ(d Datum) (*TimeTZ, error) {
+	switch v := d.(type) {
+	case *TimeTZ:
+		return v, nil
+	default:
+		return nil, fmt.Errorf("cannot convert %T to time with time zone", d)
+	}
 }
 
 func ParseTimeOrTimeTZ(s string) (*Time, *TimeTZ, error) {
@@ -435,12 +491,21 @@ func ParseTimestamp(s string) (*Timestamp, error) {
 	return &Timestamp{Time: t}, nil
 }
 
-func MustBeTimestamp(d Datum) Timestamp {
-	t, ok := d.(*Timestamp)
-	if !ok {
-		panic(fmt.Sprintf("expected *Timestamp, got %T", d))
+func AsTimestamp(d Datum) *Timestamp {
+	v, err := TryAsTimestamp(d)
+	if err != nil {
+		panic(err)
 	}
-	return *t
+	return v
+}
+
+func TryAsTimestamp(d Datum) (*Timestamp, error) {
+	switch v := d.(type) {
+	case *Timestamp:
+		return v, nil
+	default:
+		return nil, fmt.Errorf("cannot convert %T to timestamp", d)
+	}
 }
 
 const timestampTZLayout = "2006-01-02 15:04:05-07:00"
@@ -465,12 +530,21 @@ func ParseTimestampTZ(s string) (*TimestampTZ, error) {
 	return &TimestampTZ{Time: t}, nil
 }
 
-func MustBeTimestampTZ(d Datum) TimestampTZ {
-	t, ok := d.(*TimestampTZ)
-	if !ok {
-		panic(fmt.Sprintf("expected *TimestampTZ, got %T", d))
+func AsTimestampTZ(d Datum) *TimestampTZ {
+	v, err := TryAsTimestampTZ(d)
+	if err != nil {
+		panic(err)
 	}
-	return *t
+	return v
+}
+
+func TryAsTimestampTZ(d Datum) (*TimestampTZ, error) {
+	switch v := d.(type) {
+	case *TimestampTZ:
+		return v, nil
+	default:
+		return nil, fmt.Errorf("cannot convert %T to timestamp with time zone", d)
+	}
 }
 
 func ParseTimestampOrTimestampTZ(s string) (*Timestamp, *TimestampTZ, error) {
@@ -545,12 +619,21 @@ func NewInterval(dur int64, unit IntervalUnit) *Interval {
 	}
 }
 
-func MustBeInterval(d Datum) Interval {
-	i, ok := d.(*Interval)
-	if !ok {
-		panic(fmt.Sprintf("expected *Interval, got %T", d))
+func AsInterval(d Datum) *Interval {
+	v, err := TryAsInterval(d)
+	if err != nil {
+		panic(err)
 	}
-	return *i
+	return v
+}
+
+func TryAsInterval(d Datum) (*Interval, error) {
+	switch v := d.(type) {
+	case *Interval:
+		return v, nil
+	default:
+		return nil, fmt.Errorf("cannot convert %T to interval", d)
+	}
 }
 
 type Vertex struct {
@@ -567,12 +650,21 @@ func (v *Vertex) String() string {
 	return fmt.Sprintf("VERTEX(%d)", v.ID)
 }
 
-func MustBeVertex(d Datum) Vertex {
-	v, ok := d.(*Vertex)
-	if !ok {
-		panic(fmt.Sprintf("expected *Vertex, got %T", d))
+func AsVertex(d Datum) *Vertex {
+	v, err := TryAsVertex(d)
+	if err != nil {
+		panic(err)
 	}
-	return *v
+	return v
+}
+
+func TryAsVertex(d Datum) (*Vertex, error) {
+	switch v := d.(type) {
+	case *Vertex:
+		return v, nil
+	default:
+		return nil, fmt.Errorf("cannot convert %T to vertex", d)
+	}
 }
 
 type Edge struct {
@@ -590,10 +682,19 @@ func (e *Edge) String() string {
 	return fmt.Sprintf("EDGE(%d, %d)", e.SrcID, e.DstID)
 }
 
-func MustBeEdge(d Datum) Edge {
-	e, ok := d.(*Edge)
-	if !ok {
-		panic(fmt.Sprintf("expected *Edge, got %T", d))
+func AsEdge(d Datum) *Edge {
+	v, err := TryAsEdge(d)
+	if err != nil {
+		panic(err)
 	}
-	return *e
+	return v
+}
+
+func TryAsEdge(d Datum) (*Edge, error) {
+	switch v := d.(type) {
+	case *Edge:
+		return v, nil
+	default:
+		return nil, fmt.Errorf("cannot convert %T to edge", d)
+	}
 }

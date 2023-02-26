@@ -38,7 +38,7 @@ func (p *SelectionExec) Next(ctx context.Context) (datum.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		if datum.MustBeBool(d) {
+		if datum.AsBool(d) {
 			return row, nil
 		}
 	}

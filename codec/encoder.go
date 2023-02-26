@@ -20,6 +20,7 @@ import (
 	"sort"
 
 	"github.com/vescale/zgraph/datum"
+	"github.com/vescale/zgraph/types"
 )
 
 // PropertyEncoder is used to encode datums into value bytes.
@@ -45,15 +46,15 @@ func (e *PropertyEncoder) Encode(buf []byte, labelIDs, propertyIDs []uint16, val
 func (e *PropertyEncoder) encodeDatum(value datum.Datum) error {
 	// Put the type information first.
 	e.data = append(e.data, byte(value.Type()))
-	switch v := value.(type) {
-	case *datum.Int:
-		e.data = encodeInt(e.data, int64(*v))
-	case *datum.Float:
-		e.data = EncodeFloat(e.data, float64(*v))
-	case *datum.String:
-		e.data = append(e.data, []byte((*v))...)
-	case *datum.Date:
-		e.data = encodeDate(e.data, *v)
+	switch value.Type() {
+	case types.Int:
+		e.data = encodeInt(e.data, datum.AsInt(value))
+	case types.Float:
+		e.data = EncodeFloat(e.data, datum.AsFloat(value))
+	case types.String:
+		e.data = append(e.data, datum.AsBytes(value)...)
+	case types.Date:
+		e.data = encodeDate(e.data, datum.AsDate(value))
 	default:
 		return fmt.Errorf("unsupported encode type %T", value)
 	}
@@ -77,7 +78,7 @@ func encodeInt(buf []byte, iVal int64) []byte {
 	return buf
 }
 
-func encodeDate(buf []byte, date datum.Date) []byte {
+func encodeDate(buf []byte, date *datum.Date) []byte {
 	return encodeInt(buf, int64(date.UnixEpochDays()))
 }
 

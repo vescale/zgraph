@@ -17,6 +17,7 @@ package expression
 import (
 	"fmt"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/stmtctx"
 	"github.com/vescale/zgraph/types"
@@ -53,16 +54,11 @@ func (c *CastExpr) Eval(stmtCtx *stmtctx.Context, input datum.Row) (datum.Datum,
 	// See https://pgql-lang.org/spec/1.5/#cast for supported casts.
 	switch c.Type {
 	case types.Bool:
-		switch v := d.(type) {
-		case *datum.Bool:
-			return d, nil
-		case *datum.String:
-			res, err := datum.ParseBool(string(*v))
-			if err != nil {
-				return nil, err
-			}
-			return res, nil
+		v, err := datum.TryAsBool(d)
+		if err != nil {
+			return nil, err
 		}
+		return datum.NewBool(v), nil
 	case types.Int:
 	case types.Float:
 	case types.Decimal:
@@ -80,26 +76,26 @@ func (c *CastExpr) Eval(stmtCtx *stmtctx.Context, input datum.Row) (datum.Datum,
 type castFunc func(stmtCtx *stmtctx.Context, input datum.Datum) (datum.Datum, error)
 
 func castIntAsFloat(_ *stmtctx.Context, input datum.Datum) (datum.Datum, error) {
-	i := datum.MustBeInt(input)
+	i := datum.AsInt(input)
 	return datum.NewFloat(float64(i)), nil
 }
 
 func castIntAsDecimal(_ *stmtctx.Context, input datum.Datum) (datum.Datum, error) {
-	i := datum.MustBeInt(input)
-	d := &datum.Decimal{}
-	d.SetInt64(int64(i))
-	return d, nil
+	i := datum.AsInt(input)
+	d := &apd.Decimal{}
+	d.SetInt64(i)
+	return datum.NewDecimal(d), nil
 }
 
 func castFloatAsDecimal(_ *stmtctx.Context, input datum.Datum) (datum.Datum, error) {
-	f := datum.MustBeFloat(input)
-	d := &datum.Decimal{}
+	f := datum.AsFloat(input)
+	d := &apd.Decimal{}
 	d.SetInt64(int64(f))
-	return d, nil
+	return datum.NewDecimal(d), nil
 }
 
 func castBytesAsString(_ *stmtctx.Context, input datum.Datum) (datum.Datum, error) {
-	b := datum.MustBeBytes(input)
+	b := datum.AsBytes(input)
 	return datum.NewString(string(b)), nil
 }
 

@@ -154,9 +154,9 @@ func assignField(field any, d datum.Datum) error {
 	case *string:
 		*f = d.String()
 	case *int:
-		*f = int(datum.MustBeInt(d))
+		*f = int(datum.AsInt(d))
 	case *int64:
-		*f = int64(datum.MustBeInt(d))
+		*f = datum.AsInt(d)
 	default:
 		// TODO: support more types
 		return fmt.Errorf("unsupported field type: %T", field)

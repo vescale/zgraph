@@ -201,8 +201,8 @@ func (e *InsertExec) encodeEdge(graphID int64, insertion *planner.ElementInserti
 		return err
 	}
 
-	srcID := int64(datum.MustBeInt(srcIDVal))
-	dstID := int64(datum.MustBeInt(dstIDVal))
+	srcID := datum.AsInt(srcIDVal)
+	dstID := datum.AsInt(dstIDVal)
 
 	var labelIDs []uint16
 	for _, label := range insertion.Labels {

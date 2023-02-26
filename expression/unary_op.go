@@ -17,6 +17,7 @@ package expression
 import (
 	"fmt"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/parser/opcode"
 	"github.com/vescale/zgraph/stmtctx"
@@ -83,15 +84,16 @@ func (u unaryMinusOp) CallOnNullInput() bool {
 }
 
 func (u unaryMinusOp) Eval(_ *stmtctx.Context, input datum.Datum) (datum.Datum, error) {
-	switch d := input.(type) {
-	case *datum.Int:
-		return datum.NewInt(-int64(*d)), nil
-	case *datum.Float:
-		return datum.NewFloat(-float64(*d)), nil
-	case *datum.Decimal:
-		neg := &datum.Decimal{Decimal: *d.Decimal.Neg(&d.Decimal)}
-		return neg, nil
+	switch input.Type() {
+	case types.Int:
+		return datum.NewInt(-datum.AsInt(input)), nil
+	case types.Float:
+		return datum.NewFloat(-datum.AsFloat(input)), nil
+	case types.Decimal:
+		d := datum.AsDecimal(input)
+		res := (&apd.Decimal{}).Neg(d)
+		return datum.NewDecimal(res), nil
 	default:
-		return nil, fmt.Errorf("cannot negate %s", d.Type())
+		return nil, fmt.Errorf("cannot negate %s", input.Type())
 	}
 }
