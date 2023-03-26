@@ -1,6 +1,6 @@
 module github.com/vescale/zgraph/tools
 
-go 1.19
+go 1.20
 
 require github.com/daixiang0/gci v0.9.1
 
