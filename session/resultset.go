@@ -16,167 +16,97 @@ package session
 
 import (
 	"context"
-	"database/sql/driver"
-	"fmt"
 
 	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/executor"
-	"github.com/vescale/zgraph/internal/chunk"
-	"github.com/vescale/zgraph/planner"
-	"github.com/vescale/zgraph/types"
 )
-
-// Field represents a field information.
-type Field struct {
-	Graph        string
-	Label        string
-	OrgLabel     string
-	Name         string
-	OrgName      string
-	ColumnLength uint32
-}
 
 // ResultSet represents the result of a query.
 type ResultSet interface {
-	// Fields returns the fields information of the current query.
-	Fields() []*Field
+	Columns() []string
 	// Valid reports whether the current result set valid.
 	Valid() bool
 	// Next advances the current result set to the next row of query result.
 	Next(ctx context.Context) error
-	// Scan reads the current row.
-	Scan(fields ...interface{}) error
+	// Row returns the current row of query result.
+	Row() datum.Row
 	// Close closes the current result set, which will release all query intermediate resources..
 	Close() error
 }
 
 type emptyResultSet struct{}
 
-// Fields implements the ResultSet interface.
-func (e emptyResultSet) Fields() []*Field {
-	return []*Field{}
+// Columns implements the ResultSet.Columns.
+func (e emptyResultSet) Columns() []string {
+	return nil
 }
 
-// Valid implements the ResultSet interface.
+// Valid implements the ResultSet.Valid.
 func (e emptyResultSet) Valid() bool {
 	return false
 }
 
-// Next implements the ResultSet interface.
+// Next implements the ResultSet.Next.
 func (e emptyResultSet) Next(_ context.Context) error {
 	return nil
 }
 
-// Scan implements the ResultSet interface.
-func (e emptyResultSet) Scan(fields ...interface{}) error {
+// Row implements the ResultSet.Row.
+func (e emptyResultSet) Row() datum.Row {
 	return nil
 }
 
-// Close implements the ResultSet interface.
+// Close implements the ResultSet.Close.
 func (e emptyResultSet) Close() error {
 	return nil
 }
 
 // queryResultSet is a wrapper of executor.RecordSet. It
 type queryResultSet struct {
-	valid  bool
-	alloc  *chunk.Allocator
-	row    datum.Row
-	fields []*Field
-	exec   executor.Executor
-}
-
-func retrieveFields(cols planner.ResultColumns) []*Field {
-	fields := make([]*Field, 0, len(cols))
-	for _, col := range cols {
-		fields = append(fields, &Field{
-			Name: col.Name.O,
-		})
-	}
-	return fields
+	valid bool
+	row   datum.Row
+	exec  executor.Executor
 }
 
 func newQueryResultSet(exec executor.Executor) ResultSet {
-	alloc := chunk.NewAllocator()
-	return &queryResultSet{
-		alloc:  alloc,
-		valid:  true,
-		exec:   exec,
-		fields: retrieveFields(exec.Columns()),
-		// TODO: implement row
-		// row:  exec.NewChunk(alloc),
+	return &queryResultSet{valid: true, exec: exec}
+}
+
+// Columns implements the ResultSet.Columns.
+func (q *queryResultSet) Columns() []string {
+	cols := make([]string, len(q.exec.Columns()))
+	for i, col := range q.exec.Columns() {
+		cols[i] = col.Name.O
 	}
+	return cols
 }
 
-// Fields implements the ResultSet interface.
-func (q *queryResultSet) Fields() []*Field {
-	return q.fields
-}
-
-// Valid implements the ResultSet interface.
+// Valid implements the ResultSet.Valid.
 func (q *queryResultSet) Valid() bool {
 	return q.valid
 }
 
-// Next implements the ResultSet interface.
+// Next implements the ResultSet.Next.
 func (q *queryResultSet) Next(ctx context.Context) error {
 	r, err := q.exec.Next(ctx)
 	if err != nil {
 		return err
 	}
+	q.row = r
 	if r == nil {
 		q.valid = false
-		return nil
 	}
-	q.row = r
 	return nil
 }
 
-// Scan implements the ResultSet interface.
-func (q *queryResultSet) Scan(fields ...any) error {
-	if len(fields) != len(q.fields) {
-		return ErrFieldCountNotMatch
-	}
-	for i, field := range fields {
-		if err := assignField(field, q.row[i]); err != nil {
-			return err
-		}
-	}
-	return nil
+// Row implements the ResultSet.Row.
+func (q *queryResultSet) Row() datum.Row {
+	return q.row
 }
 
 // Close implements the ResultSet interface.
 func (q *queryResultSet) Close() error {
 	q.valid = false
+	q.row = nil
 	return q.exec.Close()
-}
-
-func assignField(field any, d datum.Datum) error {
-	switch f := field.(type) {
-	case *string:
-		*f = d.String()
-	case *int:
-		*f = int(datum.AsInt(d))
-	case *int64:
-		*f = datum.AsInt(d)
-	case *driver.Value:
-		if d == datum.Null {
-			*f = nil
-			return nil
-		}
-		switch d.Type() {
-		case types.Bool:
-			*f = datum.AsBool(d)
-		case types.Int:
-			*f = datum.AsInt(d)
-		case types.Float:
-			*f = datum.AsFloat(d)
-		default:
-			*f = d.String()
-		}
-	default:
-		// TODO: support more types
-		return fmt.Errorf("unsupported field type: %T", field)
-	}
-	return nil
 }

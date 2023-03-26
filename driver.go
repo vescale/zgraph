@@ -22,7 +22,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/session"
+	"github.com/vescale/zgraph/types"
 )
 
 const driverName = "zgraph"
@@ -160,11 +162,7 @@ type rows struct {
 }
 
 func (r *rows) Columns() []string {
-	cols := make([]string, 0, len(r.rs.Fields()))
-	for _, f := range r.rs.Fields() {
-		cols = append(cols, f.Name)
-	}
-	return cols
+	return r.rs.Columns()
 }
 
 func (r *rows) Close() error {
@@ -178,9 +176,21 @@ func (r *rows) Next(dest []driver.Value) error {
 	if !r.rs.Valid() {
 		return io.EOF
 	}
-	var destPtrs []any
-	for i := range dest {
-		destPtrs = append(destPtrs, &dest[i])
+	for i, d := range r.rs.Row() {
+		if d == datum.Null {
+			dest[i] = nil
+			continue
+		}
+		switch d.Type() {
+		case types.Bool:
+			dest[i] = datum.AsBool(d)
+		case types.Int:
+			dest[i] = datum.AsInt(d)
+		case types.Float:
+			dest[i] = datum.AsFloat(d)
+		default:
+			dest[i] = datum.AsString(d)
+		}
 	}
-	return r.rs.Scan(destPtrs...)
+	return nil
 }
