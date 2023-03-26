@@ -22,6 +22,7 @@ import (
 
 	"github.com/cockroachdb/datadriven"
 	"github.com/stretchr/testify/require"
+	_ "github.com/vescale/zgraph"
 )
 
 func runDataDrivenTest(t *testing.T, path string, initSQLs []string) {

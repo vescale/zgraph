@@ -14,11 +14,7 @@
 
 package tests_test
 
-import (
-	"testing"
-
-	_ "github.com/vescale/zgraph"
-)
+import "testing"
 
 // An example in https://pgql-lang.org/spec/1.5/#edge-patterns.
 var initStudentNetwork = []string{
