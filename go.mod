@@ -33,6 +33,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/charmbracelet/bubbles v0.14.1-0.20221007152719-9a48dca00354 // indirect
 	github.com/charmbracelet/lipgloss v0.6.0 // indirect
+	github.com/cockroachdb/datadriven v1.0.2 // indirect
 	github.com/cockroachdb/errors v1.9.0 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20211118104740-dabe8e521a4f // indirect
 	github.com/cockroachdb/redact v1.1.3 // indirect
