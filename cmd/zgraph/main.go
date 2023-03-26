@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -26,8 +27,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/knz/bubbline"
 	"github.com/spf13/cobra"
-	"github.com/vescale/zgraph"
-	"github.com/vescale/zgraph/session"
+	_ "github.com/vescale/zgraph"
 )
 
 type options struct {
@@ -39,15 +39,19 @@ func main() {
 	cmd := cobra.Command{
 		Use: "zgraph --data <dirname>",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			db, err := zgraph.Open(opt.dataDir, nil)
+			db, err := sql.Open("zgraph", opt.dataDir)
 			if err != nil {
 				return err
 			}
+			defer db.Close()
 
-			session := db.NewSession()
-			defer session.Close()
+			conn, err := db.Conn(context.Background())
+			if err != nil {
+				return err
+			}
+			defer conn.Close()
 
-			interact(session)
+			interact(conn)
 
 			return nil
 		},
@@ -60,7 +64,7 @@ func main() {
 	cobra.CheckErr(err)
 }
 
-func interact(session *session.Session) {
+func interact(conn *sql.Conn) {
 	fmt.Println("Welcome to zGraph interactive command line.")
 
 	m := bubbline.New()
@@ -103,19 +107,21 @@ func interact(session *session.Session) {
 			if stmt == "" {
 				continue
 			}
-			runQuery(session, stmt)
+			runQuery(conn, stmt)
 		}
 		lastStmt = stmts[len(stmts)-1]
 	}
 }
 
-func runQuery(session *session.Session, query string) {
-	rs, err := session.Execute(context.Background(), query)
+func runQuery(conn *sql.Conn, query string) {
+	rows, err := conn.QueryContext(context.Background(), query)
 	if err != nil {
 		outputError(err)
 		return
 	}
-	output, err := render(rs)
+	defer rows.Close()
+
+	output, err := render(rows)
 	if err != nil {
 		outputError(err)
 		return
@@ -125,8 +131,7 @@ func runQuery(session *session.Session, query string) {
 	}
 }
 
-func render(rs session.ResultSet) (string, error) {
-	defer rs.Close()
+func render(rows *sql.Rows) (string, error) {
 	w := table.NewWriter()
 	w.Style().Format = table.FormatOptions{
 		Footer: text.FormatDefault,
@@ -134,37 +139,39 @@ func render(rs session.ResultSet) (string, error) {
 		Row:    text.FormatDefault,
 	}
 
-	if len(rs.Fields()) > 0 {
+	cols, err := rows.Columns()
+	if err != nil {
+		return "", err
+	}
+
+	if len(cols) > 0 {
 		var header []any
-		for _, field := range rs.Fields() {
-			header = append(header, field.Name)
+		for _, col := range cols {
+			header = append(header, col)
 		}
 		w.AppendHeader(header)
 	}
 
-	fields := make([]any, 0, len(rs.Fields()))
-	for range rs.Fields() {
-		var s string
-		fields = append(fields, &s)
+	dest := make([]any, len(cols))
+	for i := range cols {
+		var anyStr sql.NullString
+		dest[i] = &anyStr
 	}
 
-	for {
-		if err := rs.Next(context.Background()); err != nil {
-			return "", err
-		}
-		if !rs.Valid() {
-			break
-		}
-		if err := rs.Scan(fields...); err != nil {
+	for rows.Next() {
+		if err := rows.Scan(dest...); err != nil {
 			return "", err
 		}
 		var row []any
-		for _, f := range fields {
-			row = append(row, *f.(*string))
+		for _, d := range dest {
+			anyStr := *d.(*sql.NullString)
+			row = append(row, anyStr.String)
 		}
 		w.AppendRow(row)
 	}
-
+	if rows.Err() != nil {
+		return "", rows.Err()
+	}
 	return w.Render(), nil
 }
 

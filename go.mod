@@ -14,6 +14,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.4.4
 	github.com/knz/bubbline v0.0.0-20221212162141-945aa5519a47
 	github.com/pingcap/errors v0.11.5-0.20210425183316-da1aaba5fb63
+	github.com/samber/lo v1.38.1
 	github.com/sourcegraph/conc v0.1.0
 	github.com/spf13/cobra v1.6.1
 	github.com/stretchr/testify v1.8.1

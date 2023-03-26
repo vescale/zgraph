@@ -16,12 +16,14 @@ package session
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 
 	"github.com/vescale/zgraph/datum"
 	"github.com/vescale/zgraph/executor"
 	"github.com/vescale/zgraph/internal/chunk"
 	"github.com/vescale/zgraph/planner"
+	"github.com/vescale/zgraph/types"
 )
 
 // Field represents a field information.
@@ -157,6 +159,21 @@ func assignField(field any, d datum.Datum) error {
 		*f = int(datum.AsInt(d))
 	case *int64:
 		*f = datum.AsInt(d)
+	case *driver.Value:
+		if d == datum.Null {
+			*f = nil
+			return nil
+		}
+		switch d.Type() {
+		case types.Bool:
+			*f = datum.AsBool(d)
+		case types.Int:
+			*f = datum.AsInt(d)
+		case types.Float:
+			*f = datum.AsFloat(d)
+		default:
+			*f = d.String()
+		}
 	default:
 		// TODO: support more types
 		return fmt.Errorf("unsupported field type: %T", field)

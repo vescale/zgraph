@@ -47,7 +47,7 @@ func (tk *TestKit) MustExec(ctx context.Context, query string) {
 	require.NoError(tk.t, rs.Next(ctx))
 }
 
-func TestDB_DDL(t *testing.T) {
+func TestDBDDL(t *testing.T) {
 	db, err := Open(t.TempDir(), nil)
 	require.NoError(t, err)
 	require.NotNil(t, db)
@@ -86,7 +86,7 @@ func TestDB_DDL(t *testing.T) {
 	require.Nil(t, catalog.Graph("graph101"))
 }
 
-func TestDB_Select(t *testing.T) {
+func TestDBSelect(t *testing.T) {
 	db, err := Open(t.TempDir(), nil)
 	require.NoError(t, err)
 	require.NotNil(t, db)
