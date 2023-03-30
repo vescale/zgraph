@@ -60,6 +60,8 @@ func (b *Builder) Build(node ast.StmtNode) (Plan, error) {
 		err = b.buildInsert(stmt)
 	case *ast.SelectStmt:
 		err = b.buildSelect(stmt)
+	case *ast.ShowStmt:
+		err = b.buildShow(stmt)
 	}
 	if err != nil {
 		return nil, err
@@ -339,4 +341,12 @@ func (b *Builder) buildMatch(matches []*ast.MatchClause) (LogicalPlan, error) {
 	plan.SetColumns(cols)
 
 	return plan, nil
+}
+
+func (b *Builder) buildShow(stmt *ast.ShowStmt) error {
+	plan := &Simple{
+		Statement: stmt,
+	}
+	b.setPlan(plan)
+	return nil
 }

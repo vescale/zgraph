@@ -17,6 +17,7 @@ package executor
 import (
 	"github.com/pingcap/errors"
 	"github.com/vescale/zgraph/codec"
+	"github.com/vescale/zgraph/parser/ast"
 	"github.com/vescale/zgraph/planner"
 	"github.com/vescale/zgraph/stmtctx"
 )
@@ -69,9 +70,18 @@ func (b *Builder) buildDDL(plan *planner.DDL) Executor {
 }
 
 func (b *Builder) buildSimple(plan *planner.Simple) Executor {
-	exec := &SimpleExec{
-		baseExecutor: newBaseExecutor(b.sc, plan.Columns(), plan.ID()),
-		statement:    plan.Statement,
+	var exec Executor
+	switch s := plan.Statement.(type) {
+	case *ast.ShowStmt:
+		exec = &ShowExec{
+			baseExecutor: newBaseExecutor(b.sc, showStmtColumns[s.Tp], plan.ID()),
+			statement:    s,
+		}
+	default:
+		exec = &SimpleExec{
+			baseExecutor: newBaseExecutor(b.sc, plan.Columns(), plan.ID()),
+			statement:    plan.Statement,
+		}
 	}
 	return exec
 }

@@ -56,6 +56,8 @@ func (p *Preprocess) Enter(n ast.Node) (node ast.Node, skipChildren bool) {
 		p.checkInsertStmt(stmt)
 	case *ast.SelectStmt:
 		p.checkSelectStmt(stmt)
+	case *ast.ShowStmt:
+		p.checkShowStmt(stmt)
 	}
 	return n, p.err != nil
 }
@@ -265,3 +267,13 @@ func (p *Preprocess) checkInsertStmt(stmt *ast.InsertStmt) {
 }
 
 func (p *Preprocess) checkSelectStmt(_ *ast.SelectStmt) {}
+
+func (p *Preprocess) checkShowStmt(stmt *ast.ShowStmt) {
+	if stmt.Tp == ast.ShowTargetLabels && stmt.GraphName.IsEmpty() {
+		graph := p.sc.CurrentGraph()
+		if graph == nil {
+			p.err = meta.ErrNoGraphSelected
+			return
+		}
+	}
+}
