@@ -28,4 +28,5 @@ var (
 	ErrIndexNotExists    = errors.New("index not exists")
 	ErrPropertyExists    = errors.New("property exists")
 	ErrPropertyNotExists = errors.New("property not exists")
+	ErrNoGraphSelected   = errors.New("no graph selected")
 )

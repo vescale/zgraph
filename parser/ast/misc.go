@@ -25,6 +25,7 @@ var (
 	_ Node = &RollbackStmt{}
 	_ Node = &CommitStmt{}
 	_ Node = &ExplainStmt{}
+	_ Node = &ShowStmt{}
 )
 
 type UseStmt struct {
@@ -123,4 +124,41 @@ func (e *ExplainStmt) Accept(v Visitor) (node Node, ok bool) {
 	nn.Select = n.(*SelectStmt)
 
 	return v.Leave(nn)
+}
+
+type ShowTarget byte
+
+const (
+	ShowTargetGraphs ShowTarget = iota + 1
+	ShowTargetLabels
+)
+
+type ShowStmt struct {
+	stmtNode
+
+	Tp        ShowTarget
+	GraphName model.CIStr
+}
+
+func (s *ShowStmt) Restore(ctx *format.RestoreCtx) error {
+	ctx.WriteKeyWord("SHOW ")
+	switch s.Tp {
+	case ShowTargetGraphs:
+		ctx.WriteKeyWord("GRAPHS")
+	case ShowTargetLabels:
+		ctx.WriteKeyWord("LABELS")
+		if !s.GraphName.IsEmpty() {
+			ctx.WriteKeyWord(" IN ")
+			ctx.WriteName(s.GraphName.String())
+		}
+	}
+	return nil
+}
+
+func (s *ShowStmt) Accept(v Visitor) (node Node, ok bool) {
+	newNode, skipChildren := v.Enter(s)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	return v.Leave(newNode)
 }

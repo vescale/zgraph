@@ -94,6 +94,7 @@ import (
 	order                 "ORDER"
 	selectKwd             "SELECT"
 	set                   "SET"
+	show                  "SHOW"
 	trueKwd               "TRUE"
 	unique                "UNIQUE"
 	update                "UPDATE"
@@ -129,6 +130,7 @@ import (
 	rollback              "ROLLBACK"
 	offset                "OFFSET"
 	graph                 "GRAPH"
+	graphs                "GRAPHS"
 	all                   "ALL"
 	any                   "ANY"
 	shortest              "SHORTEST"
@@ -274,6 +276,7 @@ import (
 	Statement
 	UpdateStmt
 	UseStmt
+	ShowStmt
 
 %type	<ident>
 	Identifier
@@ -419,6 +422,7 @@ Statement:
 |	SelectStmt
 |	UpdateStmt
 |	UseStmt
+|	ShowStmt
 
 EmptyStmt:
 	/* EMPTY */
@@ -2039,6 +2043,27 @@ UseStmt:
 	{
 		$$ = &ast.UseStmt{
 			GraphName: $2.(model.CIStr),
+		}
+	}
+
+ShowStmt:
+	"SHOW" "GRAPHS"
+	{
+		$$ = &ast.ShowStmt{
+			Tp: ast.ShowTargetGraphs,
+		}
+	}
+|	"SHOW" "LABELS"
+	{
+		$$ = &ast.ShowStmt{
+			Tp: ast.ShowTargetLabels,
+		}
+	}
+|	"SHOW" "LABELS" "IN" GraphName
+	{
+		$$ = &ast.ShowStmt{
+			Tp: ast.ShowTargetLabels,
+			GraphName: $4.(model.CIStr),
 		}
 	}
 

@@ -85,6 +85,19 @@ func (c *Catalog) GraphByID(id int64) *Graph {
 	return c.byID[id]
 }
 
+// Graphs returns all graphs.
+func (c *Catalog) Graphs() []*Graph {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	graphs := make([]*Graph, 0, len(c.byName))
+	for _, g := range c.byName {
+		graphs = append(graphs, g)
+	}
+
+	return graphs
+}
+
 // Label returns the label of specified graph.
 func (c *Catalog) Label(graphName, labelName string) *Label {
 	g := c.Graph(graphName)
@@ -103,6 +116,16 @@ func (c *Catalog) LabelByID(graphID, labelID int64) *Label {
 	}
 
 	return g.LabelByID(labelID)
+}
+
+// Labels returns all labels of specified graph.
+func (c *Catalog) Labels(graphName string) []*Label {
+	g := c.Graph(graphName)
+	if g == nil {
+		return nil
+	}
+
+	return g.Labels()
 }
 
 // MDLock locks the catalog to prevent executing DDL concurrently.

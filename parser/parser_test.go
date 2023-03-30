@@ -331,6 +331,21 @@ func TestDDL(t *testing.T) {
 			true,
 			"DROP LABEL `l`",
 		},
+		{
+			`show graphs`,
+			true,
+			"SHOW GRAPHS",
+		},
+		{
+			`show labels`,
+			true,
+			"SHOW LABELS",
+		},
+		{
+			`show labels in g1`,
+			true,
+			"SHOW LABELS IN `g1`",
+		},
 	}
 	RunTest(t, table)
 }
