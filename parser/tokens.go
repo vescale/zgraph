@@ -220,7 +220,7 @@ var tokenMap = map[string]int{
 	"SELECT":           selectKwd,
 	"SET":              set,
 	"SHORTEST":         shortest,
-	"SHOW":			    show,
+	"SHOW":             show,
 	"STRING":           stringKwd,
 	"SUBSTR":           substring,
 	"SUBSTRING":        substring,
