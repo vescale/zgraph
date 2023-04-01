@@ -1,0 +1,69 @@
+statement ok
+CREATE GRAPH student_network
+
+statement ok
+USE student_network
+
+statement ok
+CREATE LABEL Person
+
+statement ok
+CREATE LABEL University
+
+statement ok
+CREATE LABEL knows
+
+statement ok
+CREATE LABEL studentOf
+
+statement ok
+INSERT VERTEX x LABELS (Person) PROPERTIES (x.name = 'Kathrine', x.dob = DATE '1994-01-15')
+
+statement ok
+INSERT VERTEX x LABELS (Person) PROPERTIES (x.name = 'Riya', x.dob = DATE '1995-03-20')
+
+statement ok
+INSERT VERTEX x LABELS (Person) PROPERTIES (x.name = 'Lee', x.dob = DATE '1996-01-20')
+
+statement ok
+INSERT VERTEX x LABELS (University) PROPERTIES (x.name = 'UC Berkeley')
+
+statement ok
+INSERT EDGE e BETWEEN x AND y LABELS ( knows ) FROM MATCH (x), MATCH (y) WHERE x.name = 'Kathrine' AND y.name = 'Lee'
+
+statement ok
+INSERT EDGE e BETWEEN x AND y LABELS ( knows ) FROM MATCH (x), MATCH (y) WHERE x.name = 'Kathrine' AND y.name = 'Riya'
+
+statement ok
+INSERT EDGE e BETWEEN x AND y LABELS ( knows ) FROM MATCH (x), MATCH (y) WHERE x.name = 'Lee' AND y.name = 'Kathrine'
+
+statement ok
+INSERT EDGE e BETWEEN x AND y LABELS ( studentOf ) FROM MATCH (x), MATCH (y) WHERE x.name = 'Kathrine' AND y.name = 'UC Berkeley'
+
+statement ok
+INSERT EDGE e BETWEEN x AND y LABELS ( studentOf ) FROM MATCH (x), MATCH (y) WHERE x.name = 'Riya' AND y.name = 'UC Berkeley'
+
+statement ok
+INSERT EDGE e BETWEEN x AND y LABELS ( studentOf ) FROM MATCH (x), MATCH (y) WHERE x.name = 'Lee' AND y.name = 'UC Berkeley'
+
+query TT rowsort
+SELECT a.name AS a, b.name AS b FROM MATCH (a:Person) -[e:knows]-> (b:Person)
+----
+Kathrine Lee
+Kathrine Riya
+Lee Kathrine
+
+query TT rowsort
+SELECT p2.name AS friend, u.name AS university
+FROM MATCH (u:University) <-[anon1:studentOf]- (p1:Person) -[anon2:knows]-> (p2:Person) -[anon3:studentOf]-> (u)
+WHERE p1.name = 'Lee'
+----
+Kathrine UC Berkeley
+
+query TTT rowsort
+SELECT p1.name AS p1, p2.name AS p2, p3.name AS p3
+FROM MATCH (p1:Person) -[anon1:knows]-> (p2:Person) -[anon2:knows]-> (p3:Person)
+WHERE p1.name = 'Lee';
+----
+Lee Kathrine Lee
+Lee Kathrine Riya
