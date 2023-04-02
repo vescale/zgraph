@@ -17,6 +17,7 @@ package tests_test
 import (
 	"bufio"
 	"context"
+	"crypto/md5"
 	"database/sql"
 	"fmt"
 	"os"
@@ -48,43 +49,46 @@ import (
 //      CREATE GRAPH g
 //
 //  - statement|query error <regexp>
-//    Run the statement and expect it to fail with an error message matching the regexp.
+//    Run the statement or query and expect it to fail with an error message matching the regexp.
 //    e.g.
 //      statement error graph g already exists
 //      CREATE GRAPH g
 //
-//   - query <type-string> <sort-mode> <label>
-//     Run the query and expect it to succeed. The result is compared with the expected results.
-//     The expected results is separated by '----' after the query statement. If '----' is omitted,
-//	   the query is expected to return empty set.
+//  - query <type-string> <sort-mode> <label>
+//    Run the query and expect it to succeed. The result is compared with the expected results.
+//    The expected results is separated by '----' after the query statement. If '----' is omitted,
+//    the query is expected to return empty set or results hash matches the previous query with
+//    the same label.
 //
-//     The <type-string> argument to the query statement is a short string that specifies the number
-//     of result columns and the expected datatype of each result column. There is one character in
-//     the <type-string> for each result column. The characters codes are "T" for a text result, "I"
-//     for an integer result, and "R" for a floating-point result.
+//    The <type-string> argument to the query statement is a short string that specifies the
+//    number of result columns and the expected datatype of each result column. There is one
+//    character in the <type-string> for each result column. The characters codes are "T" for
+//    a text result, "I" for an integer result, and "R" for a floating-point result.
 //
-//     The <sort-mode> argument is optional, which specifies how the result rows should be sorted before
-//     comparing with the expected results. If <sort-mode> is present, it must be either "nosort",
-//     "rowsort", "valuesort".
-//     - "nosort" means that the result rows should not be sorted before comparing with the expected results,
-//        which is the default behavior.
-//     - "rowsort" means that the result rows should be sorted by rows before comparing with the expected results.
-//     - "valuesort" is similar to "rowsort", but the results are sorted by values, regardless of how row groupings.
+//    The <sort-mode> argument is optional, which specifies how the result rows should be
+//    sorted before comparing with the expected results. If <sort-mode> is present, it must
+//    be either "nosort", "rowsort", "valuesort".
+//    - "nosort" means that the result rows should not be sorted before comparing with the
+//      expected results, which is the default behavior.
+//    - "rowsort" means that the result rows should be sorted by rows before comparing with
+//      the expected results.
+//    - "valuesort" is similar to "rowsort", but the results are sorted by values, regardless
+//      of how row groupings.
 //
-//     The <label> argument is optional. If present, the test runner will compute a hash of the results.
-//     If the same label is reused, the results must be the same.
+//    The <label> argument is optional. If present, the test runner will compute a hash of
+//    the results. If the same label is reused, the results must be the same.
 //
-//     In the results section, integer values are rendered as if by printf("%d"). Floating point values
-//     are rendered as if by printf("%.3f"). NULL values are rendered as "NULL". Empty strings are
-//     rendered as "(empty)". Within non-empty strings, all control characters and unprintable characters
-//     are rendered as "@".
+//    In the results section, integer values are rendered as if by printf("%d"). Floating
+//    point values are rendered as if by printf("%.3f"). NULL values are rendered as "NULL".
+//    Empty strings are rendered as "(empty)". Within non-empty strings, all control characters
+//    and unprintable characters are rendered as "@".
 //
-//     e.g.
-//	   query I rowsort
-//	   SELECT n.name FROM MATCH (n)
-//	   ----
-//	   Alice
-//	   Bob
+//    e.g.
+//      query I rowsort
+//      SELECT n.name FROM MATCH (n)
+//      ----
+//      Alice
+//      Bob
 
 const logicTestPath = "testdata/logic_test"
 
@@ -99,31 +103,53 @@ func TestLogic(t *testing.T) {
 
 		t.Run(info.Name(), func(t *testing.T) {
 			t.Parallel()
-			runLogicTest(t, path)
+
+			db, err := sql.Open("zgraph", t.TempDir())
+			require.NoError(t, err)
+			defer db.Close()
+
+			conn, err := db.Conn(context.Background())
+			require.NoError(t, err)
+			defer conn.Close()
+
+			lt := logicTest{
+				t:        t,
+				conn:     conn,
+				labelMap: make(map[string]string),
+			}
+			lt.run(path)
 		})
 		return nil
 	})
 	require.NoError(t, err)
 }
 
-func runLogicTest(t *testing.T, path string) {
+type lineScanner struct {
+	*bufio.Scanner
+	line int
+}
+
+func (ls *lineScanner) Scan() bool {
+	if ls.Scanner.Scan() {
+		ls.line++
+		return true
+	}
+	return false
+}
+
+type logicTest struct {
+	t    *testing.T
+	conn *sql.Conn
+
+	// labelMap is a map from label to hash.
+	labelMap map[string]string
+}
+
+func (lt *logicTest) run(path string) {
+	t := lt.t
 	f, err := os.Open(path)
 	require.NoError(t, err)
 	defer f.Close()
-
-	db, err := sql.Open("zgraph", t.TempDir())
-	require.NoError(t, err)
-	defer db.Close()
-
-	conn, err := db.Conn(context.Background())
-	require.NoError(t, err)
-	defer conn.Close()
-
-	lt := logicTest{
-		t:        t,
-		conn:     conn,
-		labelMap: make(map[string]string),
-	}
 
 	s := lineScanner{Scanner: bufio.NewScanner(f)}
 	for s.Scan() {
@@ -235,26 +261,6 @@ func runLogicTest(t *testing.T, path string) {
 	}
 }
 
-type lineScanner struct {
-	*bufio.Scanner
-	line int
-}
-
-func (ls *lineScanner) Scan() bool {
-	if ls.Scanner.Scan() {
-		ls.line++
-		return true
-	}
-	return false
-}
-
-type logicTest struct {
-	t    *testing.T
-	conn *sql.Conn
-
-	labelMap map[string]string
-}
-
 func (lt *logicTest) execStatement(stmt logicStatement) {
 	t := lt.t
 
@@ -341,9 +347,25 @@ func (lt *logicTest) execQuery(query logicQuery) {
 	require.NoError(t, rows.Err())
 
 	values = query.sorter(numCols, values)
-	// Format values so that they can be compared with expected values.
+	// Format values so that they can be compared with expected results.
 	values = strings.Fields(strings.Join(values, " "))
-	require.Equal(t, query.expectedResults, values, "%s: result mismatch", query.pos)
+
+	if len(query.expectedResults) > 0 || query.label == "" {
+		// If there are expected results, or if there is no label, then the results must match.
+		require.Equal(t, query.expectedResults, values, "%s: results mismatch", query.pos)
+	}
+
+	if query.label != "" {
+		hash := hashResults(values)
+		if prevHash, ok := lt.labelMap[query.label]; ok {
+			require.Equal(t, prevHash, hash, "%s: results for label %s mismatch", query.pos, query.label)
+		}
+		lt.labelMap[query.label] = hash
+	}
+}
+
+func hashResults(results []string) string {
+	return fmt.Sprintf("%x", md5.Sum([]byte(strings.Join(results, " "))))
 }
 
 type logicStatement struct {

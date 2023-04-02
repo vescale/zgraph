@@ -53,7 +53,7 @@ Kathrine Lee
 Kathrine Riya
 Lee Kathrine
 
-query TT rowsort
+query TT rowsort label1
 SELECT p2.name AS friend, u.name AS university
 FROM MATCH (u:University) <-[anon1:studentOf]- (p1:Person) -[anon2:knows]-> (p2:Person) -[anon3:studentOf]-> (u)
 WHERE p1.name = 'Lee'
@@ -67,3 +67,8 @@ WHERE p1.name = 'Lee';
 ----
 Lee Kathrine Lee
 Lee Kathrine Riya
+
+query TT rowsort label1
+SELECT p2.name AS friend, u.name AS university
+FROM MATCH (u:University) <-[anon1:studentOf]- (p1:Person) -[anon2:knows]-> (p2:Person) -[anon3:studentOf]-> (u)
+WHERE p1.name = 'Lee'
