@@ -1,0 +1,39 @@
+statement ok
+CREATE GRAPH test
+
+query T
+SHOW GRAPHS
+----
+test
+
+statement ok
+CREATE GRAPH student_network
+
+query T rowsort
+SHOW GRAPHS
+----
+student_network
+test
+
+statement ok
+USE student_network
+
+statement ok
+CREATE LABEL Person
+
+statement ok
+CREATE LABEL University
+
+statement ok
+CREATE LABEL knows
+
+statement ok
+CREATE LABEL studentOf
+
+query T rowsort
+SHOW LABELS IN student_network
+----
+Person
+University
+knows
+studentOf
