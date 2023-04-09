@@ -31,15 +31,50 @@ import (
 )
 
 type options struct {
-	dataDir string
+	global struct {
+		dataDir string
+	}
+	play struct {
+	}
+	serve struct {
+	}
 }
 
 func main() {
 	var opt options
 	cmd := cobra.Command{
-		Use: "zgraph --data <dirname>",
+		Use: "zgraph [command] [flags]",
+		Long: `zgraph is a command line tool for wrapping the embeddable graph
+database 'github.com/vescale/zgraph'', and provide a convenient
+approach to experiencing the power to graph database`,
+		Example: strings.TrimLeft(`
+  zgraph play                      # Launch a zGraph playground
+  zgraph play --datadir ./test     # Specify the data directory of the playground
+  zgraph service                   # Launch a zGraph as a data service`, "\n"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			db, err := sql.Open("zgraph", opt.dataDir)
+			return cmd.Help()
+		},
+		SilenceErrors:         true,
+		DisableFlagsInUseLine: true,
+	}
+
+	// Global options
+	cmd.Flags().StringVarP(&opt.global.dataDir, "datadir", "D", "./data", "Specify the data directory path")
+
+	// Subcommands
+	cmd.AddCommand(playCmd(&opt))
+	cmd.AddCommand(servCmd(&opt))
+
+	err := cmd.Execute()
+	cobra.CheckErr(err)
+}
+
+func playCmd(opt *options) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "play -D <dirname>",
+		Short: "Run the zgraph as a playground",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			db, err := sql.Open("zgraph", opt.global.dataDir)
 			if err != nil {
 				return err
 			}
@@ -58,10 +93,21 @@ func main() {
 		SilenceErrors: true,
 	}
 
-	cmd.Flags().StringVarP(&opt.dataDir, "data", "D", "./data", "Specify the data directory path")
+	return cmd
+}
 
-	err := cmd.Execute()
-	cobra.CheckErr(err)
+func servCmd(opt *options) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "service -D <dirname> -L :8080 --apis api.yaml",
+		Short: "Run the zgraph as a data service instance",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// TODO: implement the data API.
+			return nil
+		},
+		SilenceErrors: true,
+	}
+
+	return cmd
 }
 
 func interact(conn *sql.Conn) {

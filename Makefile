@@ -16,6 +16,9 @@ include build/Makefile.env
 
 .PHONY: parser goyacc
 
+build:
+	$(GO) build -o bin/zgraph ./cmd/zgraph
+
 parser: tools/bin/goyacc
 	@echo "bin/goyacc -o parser/parser.y.go"
 	@tools/bin/goyacc -o parser/parser.y.go parser/parser.y

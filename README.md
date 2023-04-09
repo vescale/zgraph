@@ -1,8 +1,9 @@
-# zgraph
+# What is zGraph
 [![Go Reference](https://pkg.go.dev/badge/github.com/vescale/zgraph.svg)](https://pkg.go.dev/github.com/vescale/zgraph)
 [![GitHub Actions](https://github.com/vescale/zgraph/workflows/Check/badge.svg)](https://github.com/vescale/zgraph/actions?query=workflow%3ACheck)
 
-An embeddable graph database for large-scale vertices and edges.
+zGraph is a [PGQL](https://pgql-lang.org/)-compatible embeddable graph database for large-scale vertices. 
+You can find the specification [here](https://pgql-lang.org/spec/1.5/).
 
 ## Installation
 
@@ -10,11 +11,17 @@ An embeddable graph database for large-scale vertices and edges.
 go get -u github.com/vescale/zgraph
 ```
 
-## Usage
+## Quick Start
 
+### Playground
+
+```bash
+> make build
+> ./bin/zgraph play
+```
+
+### Build Application
 zGraph implements driver for [database/sql](https://golang.org/pkg/database/sql/). To use zGraph, you can simply import zGraph package and use `zgraph` as the driver name in `sql.Open`.
-
-zGraph uses [PGQL](https://pgql-lang.org/) as its query language. You can find the specification [here](https://pgql-lang.org/spec/1.5/).
 
 Here is an example of how to use create a graph and query it. The graph is an example in [PGQL specification](https://pgql-lang.org/spec/1.5/#edge-patterns).
 

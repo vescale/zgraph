@@ -15,5 +15,7 @@
 # vendor/
 
 .idea
+/bin
+/data
 /tools/bin
 y.output
