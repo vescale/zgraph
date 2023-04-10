@@ -58,6 +58,9 @@ func (p *Preprocess) Enter(n ast.Node) (node ast.Node, skipChildren bool) {
 		p.checkSelectStmt(stmt)
 	case *ast.ShowStmt:
 		p.checkShowStmt(stmt)
+	case *ast.GroupByClause:
+		// FIXME: reject all unsupported clauses/expressions
+		p.err = errors.Errorf("unsupported clause/expression: %T", n)
 	}
 	return n, p.err != nil
 }
