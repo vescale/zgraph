@@ -14,7 +14,7 @@
 
 include build/Makefile.env
 
-.PHONY: parser goyacc
+.PHONY: parser goyacc build
 
 build:
 	$(GO) build -o bin/zgraph ./cmd/zgraph
