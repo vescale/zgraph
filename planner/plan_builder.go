@@ -58,6 +58,8 @@ func (b *Builder) Build(node ast.StmtNode) (Plan, error) {
 		err = b.buildSimple(stmt)
 	case *ast.InsertStmt:
 		err = b.buildInsert(stmt)
+	case *ast.DeleteStmt:
+		err = b.buildDelete(stmt)
 	case *ast.SelectStmt:
 		err = b.buildSelect(stmt)
 	case *ast.ShowStmt:
@@ -207,6 +209,34 @@ func (b *Builder) buildInsert(stmt *ast.InsertStmt) error {
 	}
 
 	b.setPlan(plan)
+	return nil
+}
+
+func (b *Builder) buildDelete(stmt *ast.DeleteStmt) error {
+	p, err := b.buildMatch(stmt.From.Matches)
+	if err != nil {
+		return err
+	}
+
+	if stmt.Where != nil {
+		cond, err := RewriteExpr(stmt.Where, p)
+		if err != nil {
+			return err
+		}
+		where := &LogicalSelection{
+			Condition: cond,
+		}
+		where.SetChildren(p)
+		p = where
+	}
+
+	del := &Delete{
+		Graph:     b.sc.CurrentGraph(),
+		MatchPlan: Optimize(p),
+	}
+
+	b.setPlan(del)
+
 	return nil
 }
 

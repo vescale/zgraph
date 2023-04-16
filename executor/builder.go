@@ -44,6 +44,8 @@ func (b *Builder) Build(plan planner.Plan) Executor {
 		return b.buildSimple(p)
 	case *planner.Insert:
 		return b.buildInsert(p)
+	case *planner.Delete:
+		return b.buildDelete(p)
 	case *planner.PhysicalMatch:
 		return b.buildMatch(p)
 	case *planner.PhysicalProjection:
@@ -94,6 +96,14 @@ func (b *Builder) buildInsert(plan *planner.Insert) Executor {
 		encoder:      &codec.PropertyEncoder{},
 		decoder:      &codec.PropertyDecoder{},
 	}
+	if plan.MatchPlan != nil {
+		exec.matchExec = b.Build(plan.MatchPlan)
+	}
+	return exec
+}
+
+func (b *Builder) buildDelete(plan *planner.Delete) Executor {
+	exec := &DeleteExec{}
 	if plan.MatchPlan != nil {
 		exec.matchExec = b.Build(plan.MatchPlan)
 	}

@@ -1,4 +1,4 @@
-// Copyright 2022 zGraph Authors. All rights reserved.
+// Copyright 2023 zGraph Authors. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package compiler
+package planner
 
-import "github.com/pingcap/errors"
-
-var (
-	ErrIncorrectGraphName        = errors.New("incorrect graph name")
-	ErrIncorrectLabelName        = errors.New("incorrect label name")
-	ErrIncorrectIndexName        = errors.New("incorrect index name")
-	ErrGraphNotChosen            = errors.New("please choose graph first")
-	ErrVariableReferenceNotExits = errors.New("reference not exists variable")
-	ErrFromClauseMissing         = errors.New("from clause is missing")
+import (
+	"github.com/vescale/zgraph/catalog"
 )
+
+// Delete represents the plan of Delete statement.
+type Delete struct {
+	basePlan
+
+	Graph     *catalog.Graph
+	MatchPlan Plan
+}

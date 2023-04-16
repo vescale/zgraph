@@ -54,6 +54,8 @@ func (p *Preprocess) Enter(n ast.Node) (node ast.Node, skipChildren bool) {
 		p.checkUseStmt(stmt)
 	case *ast.InsertStmt:
 		p.checkInsertStmt(stmt)
+	case *ast.DeleteStmt:
+		p.checkDeleteStmt(stmt)
 	case *ast.SelectStmt:
 		p.checkSelectStmt(stmt)
 	case *ast.ShowStmt:
@@ -266,6 +268,18 @@ func (p *Preprocess) checkInsertStmt(stmt *ast.InsertStmt) {
 				}
 			}
 		}
+	}
+}
+
+func (p *Preprocess) checkDeleteStmt(stmt *ast.DeleteStmt) {
+	if p.sc.CurrentGraph() == nil {
+		p.err = meta.ErrNoGraphSelected
+		return
+	}
+
+	if stmt.From == nil {
+		p.err = ErrFromClauseMissing
+		return
 	}
 }
 
